@@ -6,43 +6,7 @@ import subprocess
 import requests
 import json
 import re
-
-# Curated High-Definition Royalty-Free Public Direct Video URLs (Fallback if no Pexels key is provided)
-CURATED_BACKGROUNDS = {
-    "space": [
-        "https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-1610-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-galaxy-with-bright-stars-41618-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-flight-through-a-starfield-in-space-32988-large.mp4"
-    ],
-    "galaxy": [
-        "https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-1610-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-galaxy-with-bright-stars-41618-large.mp4"
-    ],
-    "dark mystery": [
-        "https://assets.mixkit.co/videos/preview/mixkit-smoke-floating-in-the-dark-42468-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-waves-in-the-water-1164-large.mp4"
-    ],
-    "technology": [
-        "https://assets.mixkit.co/videos/preview/mixkit-tunnel-of-futuristic-neon-lights-42527-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-screens-with-code-31911-large.mp4"
-    ],
-    "future city": [
-        "https://assets.mixkit.co/videos/preview/mixkit-tunnel-of-futuristic-neon-lights-42527-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-traffic-at-night-in-the-city-4318-large.mp4"
-    ],
-    "nature": [
-        "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-waves-crashing-on-a-rocky-beach-41527-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-waterfall-in-forest-2213-large.mp4"
-    ],
-    "ocean": [
-        "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-waves-crashing-on-a-rocky-beach-41527-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-waves-in-the-water-1164-large.mp4"
-    ],
-    "finance": [
-        "https://assets.mixkit.co/videos/preview/mixkit-traffic-at-night-in-the-city-4318-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-screens-with-code-31911-large.mp4"
-    ]
-}
+import urllib.parse
 
 def clean_voice_name(voice_input):
     """Extract standard voice ID if friendly name was selected"""
@@ -94,20 +58,17 @@ def create_ass_subtitles(words, ass_path, color_name="Yellow", max_words_per_chu
     }
     primary_color = color_map.get(color_name, "&H0000FFFF")
 
-    # Group words into short chunks
     chunks = []
     curr_chunk = []
     
     for w in words:
         curr_chunk.append(w)
-        # Split chunk if reaches word limit or sentence end punctuation
         if len(curr_chunk) >= max_words_per_chunk or any(curr_chunk[-1]["text"].endswith(p) for p in [".", "!", "?", ","]):
             chunks.append(curr_chunk)
             curr_chunk = []
     if curr_chunk:
         chunks.append(curr_chunk)
 
-    # Build ASS content
     ass_content = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -125,7 +86,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         start_time = format_ass_time(chunk[0]["start"])
         end_time = format_ass_time(chunk[-1]["start"] + chunk[-1]["duration"] + 0.15)
         text = " ".join([w["text"].upper() for w in chunk])
-        # Escape curly braces
         text = text.replace("{", "").replace("}", "")
         ass_content += f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{text}\n"
 
@@ -146,76 +106,118 @@ def get_audio_duration(audio_path):
         return float(out)
     except Exception as e:
         print(f"Warning: ffprobe failed ({e}), using default estimation.")
-        return 30.0
+        return 20.0
 
-def fetch_background_video(topic, pexels_api_key, output_video_path):
+def fetch_ai_image(prompt_text, output_img_path):
+    """Fetches high quality 9:16 vertical AI image from Pollinations (100% Free, No Key)"""
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    # Enhance prompt for high quality photorealistic cinematic 9:16 visual
+    clean = re.sub(r'[^a-zA-Z0-9\s]', ' ', prompt_text).strip()
+    enhanced_prompt = f"cinematic 4k photorealistic vertical {clean[:75]} masterpiece dramatic lighting 9:16"
+    encoded = urllib.parse.quote(enhanced_prompt)
+    url = f"https://image.pollinations.ai/prompt/{encoded}?width=720&height=1280&nologo=true"
+    
+    print(f"🎨 Generating AI Visual: {enhanced_prompt[:60]}...")
+    try:
+        r = requests.get(url, headers=headers, timeout=25)
+        if r.status_code == 200 and len(r.content) > 10000:
+            with open(output_img_path, "wb") as f:
+                f.write(r.content)
+            print("✅ AI Image generated successfully!")
+            return True
+    except Exception as e:
+        print(f"Pollinations fetch failed: {e}")
+    return False
+
+def create_animated_scene_clip(image_path, duration, output_clip_path, zoom_in=True):
     """
-    Downloads high quality portrait background video.
-    First tries Pexels if API key is given, else uses curated high quality CDN clips,
-    and falls back to procedural FFmpeg generation if offline.
+    Turns a still AI image into a smooth cinematic Ken-Burns camera motion video clip (1080x1920 30fps)
     """
-    # 1. Try Pexels if API key exists
-    if pexels_api_key and pexels_api_key.strip():
-        print(f"🔍 Searching Pexels for topic '{topic}'...")
-        headers = {"Authorization": pexels_api_key.strip()}
-        url = f"https://api.pexels.com/videos/search?query={topic}&orientation=portrait&per_page=10"
-        try:
-            r = requests.get(url, headers=headers, timeout=15)
-            if r.status_code == 200:
-                data = r.json()
-                videos = data.get("videos", [])
-                if videos:
-                    # Pick a suitable HD video file
-                    for v in videos:
-                        for vf in v.get("video_files", []):
-                            if vf.get("width") and vf.get("height") and vf["height"] > vf["width"]:
-                                video_url = vf["link"]
-                                print(f"📥 Downloading video from Pexels: {video_url[:60]}...")
-                                vid_data = requests.get(video_url, timeout=30)
-                                with open(output_video_path, "wb") as f:
-                                    f.write(vid_data.content)
-                                print("✅ Pexels background downloaded successfully!")
-                                return True
-        except Exception as e:
-            print(f"Pexels fetch failed ({e}), falling back to curated library.")
-
-    # 2. Try curated CDN loops
-    topic_key = topic.lower().strip()
-    urls = CURATED_BACKGROUNDS.get(topic_key) or CURATED_BACKGROUNDS.get("space")
-    for u in urls:
-        try:
-            print(f"📥 Fetching background loop for '{topic_key}': {u}...")
-            res = requests.get(u, timeout=20)
-            if res.status_code == 200 and len(res.content) > 100000:
-                with open(output_video_path, "wb") as f:
-                    f.write(res.content)
-                print("✅ Royalty-free background video downloaded!")
-                return True
-        except Exception as e:
-            print(f"Failed to fetch {u}: {e}")
-
-    # 3. Ultimate Fallback: Procedural Sci-Fi animated background via FFmpeg
-    print("🎨 Generating procedural dynamic background with FFmpeg...")
+    total_frames = int(duration * 30) + 10
+    zoom_expr = "min(zoom+0.0012,1.25)" if zoom_in else "max(1.25-0.0012*on,1.0)"
+    
     cmd = [
         "ffmpeg", "-y",
-        "-f", "lavfi",
-        "-i", "gradients=s=1080x1920:c0=0x0d0d1a:c1=0x38124d:c2=0x0a1c3d:speed=0.01:r=30",
-        "-t", "30",
+        "-loop", "1",
+        "-i", image_path,
+        "-vf", f"scale=1920:3413,zoompan=z='{zoom_expr}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920:fps=30",
+        "-t", str(duration),
+        "-c:v", "libx264",
+        "-preset", "veryfast",
         "-pix_fmt", "yuv420p",
-        output_video_path
+        output_clip_path
     ]
     subprocess.run(cmd, check=True)
-    print("✅ Procedural background generated!")
-    return True
+
+def generate_multi_scene_background(script_text, topic, total_duration, output_bg_path):
+    """
+    Analyzes script, breaks into 2-3 visual scenes, creates AI images with cinematic motion,
+    and concatenates into full vertical background video.
+    """
+    # Split script into sentences
+    sentences = [s.strip() for s in re.split(r'[.!?\n]+', script_text) if len(s.strip()) > 5]
+    
+    # Target 2 to 3 scenes (each 5-7 seconds)
+    if not sentences:
+        sentences = [script_text]
+        
+    num_scenes = min(max(2, int(total_duration / 6)), 3)
+    if len(sentences) < num_scenes:
+        # duplicate or supplement with topic
+        sentences.append(f"{topic} cinematic view")
+    
+    selected_scenes = sentences[:num_scenes]
+    scene_duration = total_duration / len(selected_scenes)
+    
+    print(f"🎬 Creating {len(selected_scenes)} cinematic AI scenes (each ~{scene_duration:.1f}s)...")
+    
+    clip_files = []
+    last_valid_img = None
+    
+    for i, scene in enumerate(selected_scenes):
+        img_path = f"temp/scene_{i}.jpg"
+        clip_path = f"temp/scene_{i}.mp4"
+        
+        success = fetch_ai_image(f"{scene} {topic}", img_path)
+        if not success:
+            if last_valid_img and os.path.exists(last_valid_img):
+                img_path = last_valid_img
+            else:
+                # Fallback to topic search
+                fetch_ai_image(f"cinematic {topic} landscape", img_path)
+        
+        last_valid_img = img_path
+        zoom_direction = (i % 2 == 0) # Alternate zoom in and zoom out
+        create_animated_scene_clip(img_path, scene_duration + 0.2, clip_path, zoom_in=zoom_direction)
+        clip_files.append(clip_path)
+
+    # Concat clips
+    if len(clip_files) == 1:
+        os.replace(clip_files[0], output_bg_path)
+    else:
+        concat_list = "temp/concat_list.txt"
+        with open(concat_list, "w") as f:
+            for c in clip_files:
+                f.write(f"file '{os.path.abspath(c)}'\n")
+        
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "concat",
+            "-safe", "0",
+            "-i", concat_list,
+            "-c", "copy",
+            output_bg_path
+        ]
+        subprocess.run(cmd, check=True)
+    print("✅ Full multi-scene cinematic background ready!")
 
 def render_final_short(bg_path, audio_path, ass_path, duration, output_path):
     """
     Assembles background video, audio, and burned subtitles into a 1080x1920 9:16 vertical MP4.
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    print(f"🎬 Rendering final 1080x1920 video (Duration: {duration:.2f}s)...")
+    print(f"🎬 Rendering final 1080x1920 video with burned subtitles (Duration: {duration:.2f}s)...")
     
-    # FFmpeg command to loop background, crop to 1080x1920, burn ASS subtitles, and sync audio
     cmd = [
         "ffmpeg", "-y",
         "-stream_loop", "-1",
@@ -263,8 +265,8 @@ def main():
     # Step 3: Exact Audio Duration
     duration = get_audio_duration(audio_path)
 
-    # Step 4: Background Video
-    fetch_background_video(args.topic, args.pexels_key, bg_video_path)
+    # Step 4: Multi-scene Cinematic AI Background
+    generate_multi_scene_background(args.script, args.topic, duration, bg_video_path)
 
     # Step 5: Render Final Video
     render_final_short(bg_video_path, audio_path, ass_path, duration, args.output)
