@@ -1,52 +1,39 @@
 name: Generate YouTube Short (Cloud Video Maker)
 
 on:
+  schedule:
+    # 2x Daily Automatic Runs at US Peak Traffic Times:
+    # 13:30 UTC = 7:00 PM IST = 9:30 AM EST (US Morning Commute / Coffee break)
+    - cron: '30 13 * * *'
+    # 22:30 UTC = 4:00 AM IST = 6:30 PM EST (US Evening Prime YouTube watching hour)
+    - cron: '30 22 * * *'
   workflow_dispatch:
     inputs:
-      script:
-        description: 'Enter Video Script (100% US English or Hindi)'
+      auto_pilot:
+        description: '🤖 Auto-Pilot Mode (Gemini 3.6 Flash writes script & directs)'
+        type: boolean
         required: true
-        default: 'A mighty lion was roaming deep in the wild jungle. His stomach was growling with extreme hunger. But instead of hunting deer, he stopped, looked around, and said: I am tired of hunting... today, I want to eat fresh Lauki! The entire jungle was in complete shock.'
-      voice:
-        description: 'Select Voiceover Voice'
-        required: true
-        default: 'en-US-ChristopherNeural (Deep US Narrator - Best for Facts/Mystery)'
-        type: choice
-        options:
-          - 'en-US-ChristopherNeural (Deep US Narrator - Best for Facts/Mystery)'
-          - 'en-US-GuyNeural (Energetic US Male - Best for News/Tech)'
-          - 'en-US-JennyNeural (Natural US Female Voice)'
-          - 'en-US-EricNeural (Calm US Male Voice)'
-          - 'hi-IN-MadhurNeural (Hindi Male RJ Voice)'
-          - 'hi-IN-SwaraNeural (Hindi Female Voice)'
+        default: true
       topic:
-        description: 'Background Visual Theme'
-        required: true
-        default: 'nature'
-        type: choice
-        options:
-          - 'nature'
-          - 'space'
-          - 'galaxy'
-          - 'dark mystery'
-          - 'technology'
-          - 'future city'
-          - 'ocean'
-          - 'finance'
-      color:
-        description: 'Subtitle Color'
-        required: true
-        default: 'Yellow'
-        type: choice
-        options:
-          - 'Yellow'
-          - 'White'
-          - 'Cyan'
-          - 'Green'
-      pexels_api_key:
-        description: '(Optional) Pexels Free API Key'
+        description: 'Mystery / Video Topic'
+        required: false
+        default: 'deep space cosmic mystery'
+      script:
+        description: '(Optional) Custom Script text (Leave empty to let Gemini create)'
         required: false
         default: ''
+      voice:
+        description: 'Select Voiceover Voice'
+        required: false
+        default: 'en-US-ChristopherNeural'
+        type: choice
+        options:
+          - 'en-US-ChristopherNeural'
+          - 'en-US-GuyNeural'
+          - 'en-US-JennyNeural'
+          - 'en-US-EricNeural'
+          - 'hi-IN-MadhurNeural'
+          - 'hi-IN-SwaraNeural'
 
 permissions:
   contents: write
@@ -74,16 +61,28 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 🚀 Run AI Video Generator
+      - name: 🚀 Run AI Video Generator with Gemini 3.6 Flash Director
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: |
-          python generate_video.py \
-            --script "${{ inputs.script }}" \
-            --voice "${{ inputs.voice }}" \
-            --topic "${{ inputs.topic }}" \
-            --color "${{ inputs.color }}" \
-            --pexels_key "${{ inputs.pexels_api_key }}" \
-            --output "output/final_video.mp4" \
-            --thumb "output/thumbnail.jpg"
+          if [ "${{ inputs.auto_pilot }}" = "false" ] && [ -n "${{ inputs.script }}" ]; then
+            echo "🎬 Running in Custom Script mode..."
+            python generate_video.py \
+              --script "${{ inputs.script }}" \
+              --voice "${{ inputs.voice || 'en-US-ChristopherNeural' }}" \
+              --topic "${{ inputs.topic || 'deep space mystery' }}" \
+              --output "output/final_video.mp4" \
+              --thumb "output/thumbnail.jpg"
+          else
+            echo "🧠 Running in 100% Auto-Pilot mode with Gemini 3.6 Flash Director..."
+            python generate_video.py \
+              --auto \
+              --voice "en-US-ChristopherNeural" \
+              --topic "${{ inputs.topic || 'deep space cosmic mystery' }}" \
+              --output "output/final_video.mp4" \
+              --thumb "output/thumbnail.jpg"
+          fi
 
       - name: 🌐 Prepare Web Player (Anti-Cache)
         run: |
@@ -92,6 +91,13 @@ jobs:
           cp output/thumbnail.jpg web/thumbnail.jpg
           BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           RUN_ID="${{ github.run_id }}"
+          
+          # Read video title from metadata if available
+          VIDEO_TITLE="AI Space Mystery Short"
+          if [ -f "output/metadata.json" ]; then
+            VIDEO_TITLE=$(python -c "import json; print(json.load(open('output/metadata.json')).get('title', 'AI Space Mystery Short'))")
+          fi
+          
           cat << EOF > web/index.html
           <!DOCTYPE html>
           <html lang="en">
@@ -101,7 +107,7 @@ jobs:
             <meta http-equiv="Pragma" content="no-cache">
             <meta http-equiv="Expires" content="0">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>AI YouTube Shorts Player</title>
+            <title>${VIDEO_TITLE}</title>
             <style>
               * { box-sizing: border-box; margin: 0; padding: 0; }
               body {
@@ -125,7 +131,7 @@ jobs:
                 box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
                 border: 1px solid #282a36;
               }
-              h1 { font-size: 1.3rem; margin-bottom: 4px; color: #fff; }
+              h1 { font-size: 1.2rem; margin-bottom: 4px; color: #fff; line-height: 1.3; }
               p.subtitle { font-size: 0.8rem; color: #10b981; font-weight: bold; margin-bottom: 14px; }
               .video-wrapper {
                 position: relative;
@@ -153,8 +159,8 @@ jobs:
           </head>
           <body>
             <div class="container">
-              <h1>🎬 AI Video Preview</h1>
-              <p class="subtitle">✅ Freshly Rendered: ${BUILD_TIME}</p>
+              <h1>${VIDEO_TITLE}</h1>
+              <p class="subtitle">✅ Directed by Gemini 3.6 Flash • ${BUILD_TIME}</p>
               <div class="video-wrapper">
                 <video controls autoplay loop playsinline poster="thumbnail.jpg?v=${RUN_ID}" src="video.mp4?v=${RUN_ID}"></video>
               </div>
@@ -177,12 +183,15 @@ jobs:
 
       - name: 📢 Print Watch Online Link in Summary
         run: |
-          echo "## 🎉 Your Upgraded Video is Ready!" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 Gemini 3.6 Flash Video Ready!" >> $GITHUB_STEP_SUMMARY
           echo "### 🌐 [Click Here to Watch Online (Anti-Cache)](https://chandan805026.github.io/ai-youtube-shorts-generator/?v=${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
 
-      - name: 💾 Upload Video as Artifact (Backup)
+      - name: 💾 Upload Video and Metadata as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: final_youtube_short
-          path: output/final_video.mp4
+          path: |
+            output/final_video.mp4
+            output/thumbnail.jpg
+            output/metadata.json
           retention-days: 7
