@@ -8,7 +8,7 @@ import json
 import re
 import urllib.parse
 import time
-
+import random
 import base64
 
 if sys.stdout.encoding != 'utf-8':
@@ -343,17 +343,19 @@ def fetch_pexels_candidates(queries, pexels_key):
     for q in queries:
         clean_q = re.sub(r'[^a-zA-Z0-9\s]', '', q).strip()
         encoded = urllib.parse.quote(clean_q)
-        url = f"https://api.pexels.com/videos/search?query={encoded}&orientation=portrait&per_page=4"
+        random_page = random.randint(1, 3)
+        url = f"https://api.pexels.com/videos/search?query={encoded}&orientation=portrait&per_page=6&page={random_page}"
         try:
             r = requests.get(url, headers=headers, timeout=15)
             if r.status_code == 200:
                 videos = r.json().get("videos", [])
+                random.shuffle(videos)
                 for v in videos:
                     vid = v.get("id")
                     if vid and vid not in seen_ids:
                         seen_ids.add(vid)
                         candidates.append(v)
-            if len(candidates) >= 4:
+            if len(candidates) >= 5:
                 break
         except Exception as e:
             print(f"Pexels search error for '{q}': {e}")
