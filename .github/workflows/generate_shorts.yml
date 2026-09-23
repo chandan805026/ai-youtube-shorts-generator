@@ -1,0 +1,89 @@
+name: Generate YouTube Short (Cloud Video Maker)
+
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: 'Enter Video Script (100% US English or Hindi)'
+        required: true
+        default: 'Did you know that if you fell into a black hole, time for the outside universe would speed up to infinity? You would literally witness the entire future of the cosmos flash before your eyes in a single second.'
+      voice:
+        description: 'Select Voiceover Voice'
+        required: true
+        default: 'en-US-ChristopherNeural (Deep US Narrator - Best for Facts/Mystery)'
+        type: choice
+        options:
+          - 'en-US-ChristopherNeural (Deep US Narrator - Best for Facts/Mystery)'
+          - 'en-US-GuyNeural (Energetic US Male - Best for News/Tech)'
+          - 'en-US-JennyNeural (Natural US Female Voice)'
+          - 'en-US-EricNeural (Calm US Male Voice)'
+          - 'hi-IN-MadhurNeural (Hindi Male RJ Voice)'
+          - 'hi-IN-SwaraNeural (Hindi Female Voice)'
+      topic:
+        description: 'Background Visual Theme'
+        required: true
+        default: 'space'
+        type: choice
+        options:
+          - 'space'
+          - 'galaxy'
+          - 'dark mystery'
+          - 'technology'
+          - 'future city'
+          - 'nature'
+          - 'ocean'
+          - 'finance'
+      color:
+        description: 'Subtitle Color'
+        required: true
+        default: 'Yellow'
+        type: choice
+        options:
+          - 'Yellow'
+          - 'White'
+          - 'Cyan'
+          - 'Green'
+      pexels_api_key:
+        description: '(Optional) Pexels Free API Key'
+        required: false
+        default: ''
+
+jobs:
+  build-and-generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 🎬 Install FFmpeg and Fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu fonts-liberation
+
+      - name: 📦 Install Python Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🚀 Run AI Video Generator
+        run: |
+          python generate_video.py \
+            --script "${{ inputs.script }}" \
+            --voice "${{ inputs.voice }}" \
+            --topic "${{ inputs.topic }}" \
+            --color "${{ inputs.color }}" \
+            --pexels_key "${{ inputs.pexels_api_key }}" \
+            --output "output/final_video.mp4"
+
+      - name: 💾 Upload Video as Artifact (Instant Download)
+        uses: actions/upload-artifact@v4
+        with:
+          name: final_youtube_short
+          path: output/final_video.mp4
+          retention-days: 7
