@@ -6,7 +6,7 @@ on:
       script:
         description: 'Enter Video Script (100% US English or Hindi)'
         required: true
-        default: 'Did you know that if you fell into a black hole, time for the outside universe would speed up to infinity? You would literally witness the entire future of the cosmos flash before your eyes in a single second.'
+        default: 'A mighty lion was roaming deep in the wild jungle. His stomach was growling with extreme hunger. But instead of hunting deer, he stopped, looked around, and said: I am tired of hunting... today, I want to eat fresh Lauki! The entire jungle was in complete shock.'
       voice:
         description: 'Select Voiceover Voice'
         required: true
@@ -22,15 +22,15 @@ on:
       topic:
         description: 'Background Visual Theme'
         required: true
-        default: 'space'
+        default: 'nature'
         type: choice
         options:
+          - 'nature'
           - 'space'
           - 'galaxy'
           - 'dark mystery'
           - 'technology'
           - 'future city'
-          - 'nature'
           - 'ocean'
           - 'finance'
       color:
@@ -82,17 +82,24 @@ jobs:
             --topic "${{ inputs.topic }}" \
             --color "${{ inputs.color }}" \
             --pexels_key "${{ inputs.pexels_api_key }}" \
-            --output "output/final_video.mp4"
+            --output "output/final_video.mp4" \
+            --thumb "output/thumbnail.jpg"
 
-      - name: 🌐 Prepare Web Player
+      - name: 🌐 Prepare Web Player (Anti-Cache)
         run: |
           mkdir -p web
           cp output/final_video.mp4 web/video.mp4
-          cat << 'EOF' > web/index.html
+          cp output/thumbnail.jpg web/thumbnail.jpg
+          BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          RUN_ID="${{ github.run_id }}"
+          cat << EOF > web/index.html
           <!DOCTYPE html>
           <html lang="en">
           <head>
             <meta charset="UTF-8">
+            <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+            <meta http-equiv="Pragma" content="no-cache">
+            <meta http-equiv="Expires" content="0">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>AI YouTube Shorts Player</title>
             <style>
@@ -118,8 +125,8 @@ jobs:
                 box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
                 border: 1px solid #282a36;
               }
-              h1 { font-size: 1.3rem; margin-bottom: 6px; color: #fff; }
-              p.subtitle { font-size: 0.85rem; color: #9da3af; margin-bottom: 16px; }
+              h1 { font-size: 1.3rem; margin-bottom: 4px; color: #fff; }
+              p.subtitle { font-size: 0.8rem; color: #10b981; font-weight: bold; margin-bottom: 14px; }
               .video-wrapper {
                 position: relative;
                 border-radius: 16px;
@@ -141,27 +148,27 @@ jobs:
               }
               .btn-download { background: #e50914; color: white; }
               .btn-create { background: #2563eb; color: white; }
-              .footer { margin-top: 14px; font-size: 0.75rem; color: #6b7280; }
+              .footer { margin-top: 14px; font-size: 0.72rem; color: #6b7280; }
             </style>
           </head>
           <body>
             <div class="container">
               <h1>🎬 AI Video Preview</h1>
-              <p class="subtitle">Cloud Rendered via GitHub Actions • 1080x1920</p>
+              <p class="subtitle">✅ Freshly Rendered: ${BUILD_TIME}</p>
               <div class="video-wrapper">
-                <video controls autoplay loop playsinline src="video.mp4"></video>
+                <video controls autoplay loop playsinline poster="thumbnail.jpg?v=${RUN_ID}" src="video.mp4?v=${RUN_ID}"></video>
               </div>
               <div class="actions">
-                <a href="video.mp4" download="youtube_short.mp4" class="btn btn-download">⬇️ Download Video (.mp4)</a>
+                <a href="video.mp4?v=${RUN_ID}" download="youtube_short.mp4" class="btn btn-download">⬇️ Download Video (.mp4)</a>
                 <a href="https://github.com/chandan805026/ai-youtube-shorts-generator/actions" target="_blank" class="btn btn-create">⚡ Generate Another Video</a>
               </div>
-              <p class="footer">Powered by Microsoft EdgeTTS • Zero Laptop Load</p>
+              <p class="footer">Cloud Rendered via GitHub Actions • Run #${RUN_ID}</p>
             </div>
           </body>
           </html>
           EOF
 
-      - name: 🚀 Publish Live to GitHub Pages (Watch Online Link)
+      - name: 🚀 Publish Live to GitHub Pages (Anti-Cache)
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -170,8 +177,8 @@ jobs:
 
       - name: 📢 Print Watch Online Link in Summary
         run: |
-          echo "## 🎉 Your Video is Ready!" >> $GITHUB_STEP_SUMMARY
-          echo "### 🌐 [Click Here to Watch Video Online Instantly](https://chandan805026.github.io/ai-youtube-shorts-generator/)" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 Your Upgraded Video is Ready!" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌐 [Click Here to Watch Online (Anti-Cache)](https://chandan805026.github.io/ai-youtube-shorts-generator/?v=${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
 
       - name: 💾 Upload Video as Artifact (Backup)
         uses: actions/upload-artifact@v4
