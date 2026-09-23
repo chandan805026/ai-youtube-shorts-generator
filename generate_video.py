@@ -18,7 +18,7 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 _PK = b"TGdHWjJoMTRYQk9RZTl2dXE0dmd6bVpwVVQyV3p2emJwbHRCRHlEaEVtY25EcEhKMXhvTWFhcVE="
-_GK = b"QVEuQWI4Uk42TEgwSzZWQzJVMUtpXzZGTEdheWV4ZEg4dDdsUUdGVkFFbW8ycGhaQjFoLUE="
+_GK = b"QVEuQWI4Uk42S0JEMFhIQjJnM1JlM3VMVVVVd1NHdDdRLUkyZkVxcnJ5bnNpTWpkNGNEanc="
 
 DEFAULT_PEXELS_KEY = (os.environ.get("PEXELS_API_KEY") or "").strip()
 if not DEFAULT_PEXELS_KEY:
@@ -222,22 +222,29 @@ def fetch_bgm_track(topic, output_bgm_path):
         print(f"BGM download failed: {e}")
     return False
 
-# ==========================================
-# 🧠 GEMINI 3.5 FLASH LITE SCRIPT & DIRECTOR ENGINE (500 RPD)
-# ==========================================
+# =========================================================================
+# 🧠 DUAL-SPECIALIST ARCHITECTURE:
+# 1. ✍️ Screenplay Writer : Gemini 3.8 Flash (Deep viral storytelling - 1 call)
+# 2. 🎬 Visual Director    : Gemini 3.5 Flash Lite (High-speed 4K clip curator - 500 RPD)
+# =========================================================================
 
-CASCADING_MODELS = [
-    "gemini-3.5-flash-lite",  # Primary: 500 Requests/Day (Superfast & unlimited for Shorts)
-    "gemini-3.1-flash-lite",  # Backup 1: 500 Requests/Day
-    "gemini-3.6-flash"        # Backup 2: 20 Requests/Day
+SCRIPT_MODELS = [
+    "gemini-3.8-flash",       # Top priority: Google's newest flagship for mind-bending scripts
+    "gemini-3.6-flash",       # High-tier backup
+    "gemini-3.5-flash-lite"   # Rock-solid backup
 ]
 
-def call_gemini_json_api(gemini_key, prompt, timeout=20):
+DIRECTOR_MODELS = [
+    "gemini-3.5-flash-lite",  # Top priority: 500 RPD for lightning-fast clip curation
+    "gemini-3.1-flash-lite"   # 500 RPD backup
+]
+
+def call_gemini_json_api(gemini_key, prompt, model_list, timeout=20):
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"responseMimeType": "application/json"}
     }
-    for model in CASCADING_MODELS:
+    for model in model_list:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
         try:
             res = requests.post(url, json=payload, timeout=timeout)
@@ -246,17 +253,20 @@ def call_gemini_json_api(gemini_key, prompt, timeout=20):
                 data = json.loads(text)
                 return data, model
             elif res.status_code == 429:
-                print(f"⚠️ Model {model} hit rate limit (429), switching to next model...")
+                print(f"⚠️ Model {model} hit rate limit (429), trying backup model...")
+                continue
+            elif res.status_code == 503:
+                print(f"⚠️ Model {model} busy (503), switching to fast backup...")
                 continue
             else:
-                print(f"Notice: Model {model} status {res.status_code}, trying next model...")
+                print(f"Notice: Model {model} returned status {res.status_code}, trying backup...")
         except Exception as e:
-            print(f"Notice: {model} failed ({e}), trying next model...")
+            print(f"Notice: Model {model} failed ({e}), trying backup...")
     return None, None
 
 def generate_ai_director_plan(gemini_key, topic="deep space mystery"):
     """
-    Uses Gemini 3.5 Flash Lite (500 RPD) to write a high-retention script, hook banner, and scene breakdowns
+    Uses Gemini 3.8 Flash (Screenplay Specialist) to write an unforgettable viral script
     """
     prompt = f"""You are a master viral YouTube Shorts creator and director specializing in cosmic anomalies, space mysteries, and mind-bending astronomy for an American audience.
 Create an unforgettable, high-retention 40-second space mystery short script on the topic: '{topic}'.
@@ -274,13 +284,13 @@ Requirements:
 
 Output valid, pure JSON without any markdown formatting or extra text."""
 
-    print(f"🧠 Gemini 3.5 Flash Lite is composing a viral script and scene plan for topic: '{topic}'...")
-    data, used_model = call_gemini_json_api(gemini_key, prompt, timeout=25)
+    print(f"✍️ Screenplay Master (Gemini 3.8 Flash) is composing a viral script for: '{topic}'...")
+    data, used_model = call_gemini_json_api(gemini_key, prompt, SCRIPT_MODELS, timeout=25)
     if data:
-        print(f"✨ Successfully generated using model: [{used_model}]")
+        print(f"✨ Masterpiece Script written by: [{used_model}]")
         print(f"🎬 Title: {data.get('title')}")
         print(f"📌 Hook Banner: {data.get('hook_banner')}")
-        print(f"📜 Generated {len(data.get('scenes', []))} scenes.")
+        print(f"📜 Generated {len(data.get('scenes', []))} sequential scenes.")
         return data
 
     print("⚠️ Falling back to curated high-retention space mystery plan.")
@@ -288,8 +298,7 @@ Output valid, pure JSON without any markdown formatting or extra text."""
 
 def director_select_best_clip(gemini_key, scene, candidates):
     """
-    Gemini 3.5 Flash Lite acts as Lead Visual Director:
-    Reviews candidate video clips and picks the #1 match for the scene's mood!
+    Uses Gemini 3.5 Flash Lite (Visual Director - 500 RPD) to curate and approve footage
     """
     if not candidates:
         return None
@@ -317,11 +326,11 @@ Select the best candidate clip index (0 to {len(candidate_summaries)-1}) that ha
 Output JSON:
 {{"selected_index": 0, "director_reason": "Brief reason for selection"}}"""
 
-    decision, used_model = call_gemini_json_api(gemini_key, prompt, timeout=12)
+    decision, used_model = call_gemini_json_api(gemini_key, prompt, DIRECTOR_MODELS, timeout=12)
     if decision:
         sel_idx = decision.get("selected_index", 0)
         if 0 <= sel_idx < len(candidates):
-            print(f"🏆 Gemini Director [{used_model}] selected candidate #{sel_idx}: {decision.get('director_reason')}")
+            print(f"🎬 Visual Director [{used_model}] selected candidate #{sel_idx}: {decision.get('director_reason')}")
             return candidates[sel_idx]
 
     return candidates[0]
