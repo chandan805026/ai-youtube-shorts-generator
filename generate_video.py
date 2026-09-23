@@ -223,14 +223,41 @@ def fetch_bgm_track(topic, output_bgm_path):
     return False
 
 # ==========================================
-# 🧠 GEMINI 3.6 FLASH SCRIPT & DIRECTOR ENGINE
+# 🧠 GEMINI 3.5 FLASH LITE SCRIPT & DIRECTOR ENGINE (500 RPD)
 # ==========================================
+
+CASCADING_MODELS = [
+    "gemini-3.5-flash-lite",  # Primary: 500 Requests/Day (Superfast & unlimited for Shorts)
+    "gemini-3.1-flash-lite",  # Backup 1: 500 Requests/Day
+    "gemini-3.6-flash"        # Backup 2: 20 Requests/Day
+]
+
+def call_gemini_json_api(gemini_key, prompt, timeout=20):
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"responseMimeType": "application/json"}
+    }
+    for model in CASCADING_MODELS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
+        try:
+            res = requests.post(url, json=payload, timeout=timeout)
+            if res.status_code == 200:
+                text = res.json()['candidates'][0]['content']['parts'][0]['text']
+                data = json.loads(text)
+                return data, model
+            elif res.status_code == 429:
+                print(f"⚠️ Model {model} hit rate limit (429), switching to next model...")
+                continue
+            else:
+                print(f"Notice: Model {model} status {res.status_code}, trying next model...")
+        except Exception as e:
+            print(f"Notice: {model} failed ({e}), trying next model...")
+    return None, None
 
 def generate_ai_director_plan(gemini_key, topic="deep space mystery"):
     """
-    Uses Gemini 3.6 Flash to write a high-retention script, hook banner, and scene breakdowns
+    Uses Gemini 3.5 Flash Lite (500 RPD) to write a high-retention script, hook banner, and scene breakdowns
     """
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={gemini_key}"
     prompt = f"""You are a master viral YouTube Shorts creator and director specializing in cosmic anomalies, space mysteries, and mind-bending astronomy for an American audience.
 Create an unforgettable, high-retention 40-second space mystery short script on the topic: '{topic}'.
 Requirements:
@@ -247,34 +274,21 @@ Requirements:
 
 Output valid, pure JSON without any markdown formatting or extra text."""
 
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"responseMimeType": "application/json"}
-    }
-
-    print(f"🧠 Gemini 3.6 Flash is composing a viral script and scene plan for topic: '{topic}'...")
-    for attempt in range(2):
-        try:
-            res = requests.post(url, json=payload, timeout=25)
-            if res.status_code == 200:
-                data = json.loads(res.json()['candidates'][0]['content']['parts'][0]['text'])
-                print(f"🎬 Title: {data.get('title')}")
-                print(f"📌 Hook Banner: {data.get('hook_banner')}")
-                print(f"📜 Generated {len(data.get('scenes', []))} scenes.")
-                return data
-            else:
-                print(f"Gemini API attempt {attempt+1} status: {res.status_code}")
-                time.sleep(2)
-        except Exception as e:
-            print(f"Gemini API call failed (attempt {attempt+1}): {e}")
-            time.sleep(2)
+    print(f"🧠 Gemini 3.5 Flash Lite is composing a viral script and scene plan for topic: '{topic}'...")
+    data, used_model = call_gemini_json_api(gemini_key, prompt, timeout=25)
+    if data:
+        print(f"✨ Successfully generated using model: [{used_model}]")
+        print(f"🎬 Title: {data.get('title')}")
+        print(f"📌 Hook Banner: {data.get('hook_banner')}")
+        print(f"📜 Generated {len(data.get('scenes', []))} scenes.")
+        return data
 
     print("⚠️ Falling back to curated high-retention space mystery plan.")
     return FALLBACK_PLANS[0]
 
 def director_select_best_clip(gemini_key, scene, candidates):
     """
-    Gemini 3.6 Flash acts as Lead Visual Director:
+    Gemini 3.5 Flash Lite acts as Lead Visual Director:
     Reviews candidate video clips and picks the #1 match for the scene's mood!
     """
     if not candidates:
@@ -292,7 +306,6 @@ def director_select_best_clip(gemini_key, scene, candidates):
             "author": c.get("user", {}).get("name")
         })
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={gemini_key}"
     prompt = f"""You are the Lead Visual Director for a cinematic space documentary Short.
 Scene Narration: "{scene.get('voice_line', '')}"
 Desired Visual Mood: "{scene.get('visual_vibe', '')}"
@@ -304,21 +317,12 @@ Select the best candidate clip index (0 to {len(candidate_summaries)-1}) that ha
 Output JSON:
 {{"selected_index": 0, "director_reason": "Brief reason for selection"}}"""
 
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"responseMimeType": "application/json"}
-    }
-
-    try:
-        res = requests.post(url, json=payload, timeout=15)
-        if res.status_code == 200:
-            decision = json.loads(res.json()['candidates'][0]['content']['parts'][0]['text'])
-            sel_idx = decision.get("selected_index", 0)
-            if 0 <= sel_idx < len(candidates):
-                print(f"🏆 Gemini Director selected candidate #{sel_idx}: {decision.get('director_reason')}")
-                return candidates[sel_idx]
-    except Exception as e:
-        print(f"Director selection notice: {e}, using top candidate.")
+    decision, used_model = call_gemini_json_api(gemini_key, prompt, timeout=12)
+    if decision:
+        sel_idx = decision.get("selected_index", 0)
+        if 0 <= sel_idx < len(candidates):
+            print(f"🏆 Gemini Director [{used_model}] selected candidate #{sel_idx}: {decision.get('director_reason')}")
+            return candidates[sel_idx]
 
     return candidates[0]
 
