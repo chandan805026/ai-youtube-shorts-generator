@@ -17,11 +17,16 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-_PK = b"TGdHWjJoMTRYQk9RZTl2dXEtZ3ptWnBVVDJXem96YnBsdEJEeURoRW1jbkRwSEoxeG9NYWFxUQ=="
+_PK = b"TGdHWjJoMTRYQk9RZTl2dXE0dmd6bVpwVVQyV3p2emJwbHRCRHlEaEVtY25EcEhKMXhvTWFhcVE="
 _GK = b"QVEuQWI4Uk42TEgwSzZWQzJVMUtpXzZGTEdheWV4ZEg4dDdsUUdGVkFFbW8ycGhaQjFoLUE="
 
-DEFAULT_PEXELS_KEY = os.environ.get("PEXELS_API_KEY") or base64.b64decode(b"TGdHWjJoMTRYQk9RZTl2dXEtZ3ptWnBVVDJXem96YnBsdEJEeURoRW1jbkRwSEoxeG9NYWFxUQ==").decode("utf-8")
-DEFAULT_GEMINI_KEY = os.environ.get("GEMINI_API_KEY") or base64.b64decode(b"QVEuQWI4Uk42TEgwSzZWQzJVMUtpXzZGTEdheWV4ZEg4dDdsUUdGVkFFbW8ycGhaQjFoLUE=").decode("utf-8")
+DEFAULT_PEXELS_KEY = (os.environ.get("PEXELS_API_KEY") or "").strip()
+if not DEFAULT_PEXELS_KEY:
+    DEFAULT_PEXELS_KEY = base64.b64decode(_PK).decode("utf-8")
+
+DEFAULT_GEMINI_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
+if not DEFAULT_GEMINI_KEY:
+    DEFAULT_GEMINI_KEY = base64.b64decode(_GK).decode("utf-8")
 
 BGM_TRACKS = {
     "space": "https://upload.wikimedia.org/wikipedia/commons/5/55/Dreamstate_Logic_-_Zero_Point_%28space_ambient%2C_dark_ambient%29.ogg",
