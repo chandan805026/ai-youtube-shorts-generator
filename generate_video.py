@@ -9,7 +9,6 @@ import re
 import urllib.parse
 import time
 
-# Default verified Pexels API Key
 DEFAULT_PEXELS_KEY = "LgGZ2h14XBOQe9vuq4vgzmZpUT2WzvzbpltBDyDhEmcnDpHJ1xoMaaqQ"
 
 def clean_voice_name(voice_input):
@@ -106,18 +105,15 @@ def fetch_pexels_video_clip(query, pexels_key, output_clip_path, duration):
         if r.status_code == 200:
             videos = r.json().get("videos", [])
             if videos:
-                # Find best video file
                 best_link = None
                 for v in videos:
                     for f in v.get("video_files", []):
-                        # Prefer HD portrait (height >= 1080 and height > width)
                         if f.get("height", 0) > f.get("width", 0):
                             best_link = f["link"]
                             break
                     if best_link:
                         break
                 
-                # If no strict portrait file, take any high resolution video
                 if not best_link:
                     for v in videos:
                         if v.get("video_files"):
@@ -125,13 +121,12 @@ def fetch_pexels_video_clip(query, pexels_key, output_clip_path, duration):
                             break
                             
                 if best_link:
-                    raw_dl = "temp/raw_download.mp4"
-                    print(f"📥 Downloading real moving footage from Pexels...")
+                    raw_dl = f"temp/raw_{clean_q[:10].replace(' ', '_')}.mp4"
+                    print(f"📥 Downloading real moving footage from Pexels for '{clean_q}'...")
                     res = requests.get(best_link, timeout=30)
                     with open(raw_dl, "wb") as f:
                         f.write(res.content)
                     
-                    # Process and crop into 1080x1920 portrait with exact duration
                     cmd = [
                         "ffmpeg", "-y",
                         "-stream_loop", "-1",
@@ -153,37 +148,40 @@ def fetch_pexels_video_clip(query, pexels_key, output_clip_path, duration):
 
 def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key, output_bg_path, output_thumb_path):
     """
-    Builds a dynamic real-footage video by cutting multiple real moving video clips from Pexels every 3-5 seconds!
+    Builds a dynamic real-footage video by cutting multiple real moving video clips from Pexels every 3.5-4.0 seconds!
     """
-    # Define smart sequential search queries based on the script and topic
-    queries = []
     lower_script = script_text.lower()
     
-    if "lion" in lower_script or "lion" in topic.lower():
+    if "space" in lower_script or "universe" in lower_script or "black hole" in lower_script or "space" in topic.lower() or "galaxy" in topic.lower():
+        queries = [
+            "galaxy stars space",
+            "earth from space orbit",
+            "supernova nebula cosmos",
+            "astronaut floating space",
+            "black hole universe"
+        ]
+    elif "lion" in lower_script or "lion" in topic.lower():
         queries = ["lion walking in wild", "dense tropical jungle", "wild animals in savanna", "lion face close up"]
-    elif "space" in lower_script or "black hole" in lower_script or "space" in topic.lower():
-        queries = ["galaxy stars in space", "black hole cosmos", "earth from space orbit", "nebula universe"]
     elif "ocean" in lower_script or "sea" in lower_script:
         queries = ["deep ocean waves", "underwater marine life", "ocean aerial view", "coral reef"]
     elif "tech" in lower_script or "ai" in lower_script or "future" in lower_script:
-        queries = ["cyberpunk futuristic city", "robot technology artificial intelligence", "digital cyber code network"]
+        queries = ["cyberpunk futuristic city", "robot technology artificial intelligence", "digital cyber code network", "futuristic technology"]
     else:
-        queries = [f"{topic}", f"{topic} cinematic", f"{topic} close up", f"{topic} landscape"]
+        queries = [f"{topic}", f"{topic} cinematic", f"{topic} close up", f"{topic} landscape", f"{topic} 4k"]
 
-    # Target 3-4 scenes
-    num_scenes = min(max(3, int(total_duration / 4.5)), len(queries))
+    # Target 4-5 fast-paced scenes (cutting every 3.5 to 4 seconds for high retention!)
+    num_scenes = min(max(4, int(total_duration / 3.8)), len(queries))
     scene_dur = total_duration / num_scenes
     selected_queries = queries[:num_scenes]
     
-    print(f"🎬 Creating {num_scenes} REAL MOVING video scenes from Pexels (each ~{scene_dur:.1f}s)...")
+    print(f"🎬 Creating {num_scenes} REAL MOVING video scenes from Pexels (cutting every ~{scene_dur:.1f}s)...")
     
     clip_files = []
     for i, q in enumerate(selected_queries):
         clip_path = f"temp/real_clip_{i}.mp4"
-        success = fetch_pexels_video_clip(q, pexels_key, clip_path, scene_dur + 0.2)
+        success = fetch_pexels_video_clip(q, pexels_key, clip_path, scene_dur + 0.15)
         if success:
             clip_files.append(clip_path)
-            # Capture first frame of first clip as thumbnail
             if i == 0:
                 cmd_thumb = [
                     "ffmpeg", "-y",
@@ -197,7 +195,6 @@ def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key,
     if not clip_files:
         raise Exception("Could not download clips from Pexels. Please check API key.")
         
-    # Concatenate all real moving clips into one continuous video
     concat_list = "temp/real_concat.txt"
     with open(concat_list, "w") as f:
         for c in clip_files:
@@ -212,7 +209,7 @@ def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key,
         output_bg_path
     ]
     subprocess.run(cmd_concat, check=True)
-    print("🎉 FULL REAL-FOOTAGE MULTI-SCENE BACKGROUND COMPLETE!")
+    print("🎉 FULL MULTI-SCENE REAL MOVING FOOTAGE COMPLETE!")
 
 def render_final_short(bg_path, audio_path, srt_path, duration, output_path, color_name="Yellow"):
     """
@@ -256,7 +253,7 @@ def main():
     parser = argparse.ArgumentParser(description="AI YouTube Shorts Real Video Generator")
     parser.add_argument("--script", type=str, required=True, help="Narration script text")
     parser.add_argument("--voice", type=str, default="en-US-ChristopherNeural", help="Edge TTS Voice name")
-    parser.add_argument("--topic", type=str, default="nature", help="Background visual topic")
+    parser.add_argument("--topic", type=str, default="space", help="Background visual topic")
     parser.add_argument("--color", type=str, default="Yellow", help="Subtitle highlight color")
     parser.add_argument("--pexels_key", type=str, default="", help="Pexels API key")
     parser.add_argument("--output", type=str, default="output/final_video.mp4", help="Output video path")
@@ -280,7 +277,7 @@ def main():
     # Step 2: Audio Duration
     duration = get_audio_duration(audio_path)
 
-    # Step 3: Multi-scene REAL MOVING VIDEO FOOTAGE from Pexels
+    # Step 3: Multi-scene REAL MOVING VIDEO FOOTAGE from Pexels (5 fast cuts)
     build_multi_scene_real_video(args.script, args.topic, duration, pexels_key, bg_video_path, args.thumb)
 
     # Step 4: Final Assembly & Burned Subtitles
