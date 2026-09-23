@@ -15,9 +15,9 @@ on:
         required: true
         default: true
       topic:
-        description: 'Mystery / Video Topic'
+        description: 'Mystery / Video Topic (Keep "auto" for Smart Anti-Repetition Vault)'
         required: false
-        default: 'deep space cosmic mystery'
+        default: 'auto'
       script:
         description: '(Optional) Custom Script text (Leave empty to let Gemini create)'
         required: false
@@ -75,14 +75,23 @@ jobs:
               --output "output/final_video.mp4" \
               --thumb "output/thumbnail.jpg"
           else
-            echo "🧠 Running in 100% Auto-Pilot mode with Gemini 3.6 Flash Director..."
+            echo "🧠 Running in 100% Auto-Pilot mode with Gemini 3.8/3.6 Flash Director & Anti-Repetition Vault..."
             python generate_video.py \
               --auto \
-              --voice "en-US-ChristopherNeural" \
-              --topic "${{ inputs.topic || 'deep space cosmic mystery' }}" \
+              --voice "${{ inputs.voice || 'en-US-ChristopherNeural' }}" \
+              --topic "${{ inputs.topic || 'auto' }}" \
               --output "output/final_video.mp4" \
               --thumb "output/thumbnail.jpg"
           fi
+
+      - name: 🧠 Persist Video History Memory Vault
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add history.json || true
+          git commit -m "Update video memory vault (anti-repetition) [skip ci]" || true
+          git push origin main || true
 
       - name: 🌐 Prepare Web Player (Anti-Cache)
         run: |
@@ -183,7 +192,7 @@ jobs:
 
       - name: 📢 Print Watch Online Link in Summary
         run: |
-          echo "## 🎉 Gemini 3.6 Flash Video Ready!" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 Gemini Hollywood Director Video Ready!" >> $GITHUB_STEP_SUMMARY
           echo "### 🌐 [Click Here to Watch Online (Anti-Cache)](https://chandan805026.github.io/ai-youtube-shorts-generator/?v=${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
 
       - name: 💾 Upload Video and Metadata as Artifact
@@ -194,4 +203,5 @@ jobs:
             output/final_video.mp4
             output/thumbnail.jpg
             output/metadata.json
+            history.json
           retention-days: 7
