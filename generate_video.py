@@ -415,12 +415,22 @@ VIRAL HOOK & PACING FORMULA (The "Don't Scroll" Blueprint):
    - Deliver an unsettling twist or an existential question that lingers in their mind.
    - Forces viewers to rewatch or debate in the comments.
 4. WORD COUNT CONSTRAINT:
-   - Target Word Count: EXACTLY 68 to 78 words!
-   - Spoken at a documentary pace, this yields EXACTLY 28-32 seconds of speech (the golden 90%+ retention zone).
-5. VISUAL DIRECTION FOR PEXELS:
-   - Provide 4 to 5 sequential scenes.
-   - For each scene, specify 'search_queries' with 2 precise Pexels search phrases (2-3 words, e.g. ['deep ocean darkness', 'underwater abyss submersible'] or ['cosmic black hole', 'galaxy collision void']).
-   - Ensure visuals match the eerie, dark cinematic tone.
+   - Target Word Count: EXACTLY 68 to 76 words!
+   - Spoken at a documentary pace, this yields EXACTLY 27-30 seconds of speech.
+5. FAST-PACED VIRAL SCENE STRUCTURE (CRITICAL FOR RETENTION):
+   - Provide EXACTLY 7 to 8 SEQUENTIAL SCENES (Micro-Shots)!
+   - Each scene voice_line must be 8 to 11 words (approx 3.0 to 3.8 seconds).
+   - ABSOLUTE LIMIT: No individual clip should stay on screen longer than 4.0 seconds!
+   - Fast, seamless visual transitions keep viewers completely glued to the screen.
+6. CINEMATIC PEXELS SEARCH QUERY ENGINEERING (Crucial for Video Quality):
+   - Pexels is a stock camera database: It cannot search abstract thoughts (e.g. 'paradox', 'time dilation', 'simulation glitch', 'mathematics', 'speed limit').
+   - You MUST convert every abstract concept into tangible, physical, camera-recordable cinematic visuals:
+     * E.g. For time dilation -> ['black hole event horizon', 'cosmic gravitational distortion 4k']
+     * E.g. For simulation glitch -> ['glowing digital code tunnel', 'cyber matrix particles dark 4k']
+     * E.g. For ocean mysteries -> ['deep sea submarine submersible abyss', 'underwater dark glowing marine abyss']
+     * E.g. For cosmic void -> ['dark cosmic void space', 'galaxy collision nebula explosion']
+   - Each scene MUST have 2 distinct physical visual queries (2-4 words each).
+   - Always use atmospheric keywords: dark, glowing, cinematic, 4k, abyss, nebula, deep sea.
 
 ⛔ STRICT ANTI-REPETITION CONSTRAINT:
 Do NOT duplicate any of these recently covered topics from our history:
@@ -430,11 +440,11 @@ REQUIRED JSON OUTPUT FORMAT:
 {{
   "title": "Shorts Title with emoji and #shorts (under 50 chars)",
   "hook_banner": "3-5 WORDS UPPERCASE FOR TOP BANNER (e.g. THE OCEAN IS HIDING THIS)",
-  "full_script": "The complete 68-78 word script combining all scenes smoothly.",
+  "full_script": "The complete 68-76 word script combining all 7-8 scenes smoothly.",
   "scenes": [
     {{
       "scene_id": 1,
-      "voice_line": "Sentence for scene 1 (12-16 words)",
+      "voice_line": "Sentence for scene 1 (8-11 words)",
       "visual_vibe": "Cinematic visual description",
       "search_queries": ["query 1", "query 2"]
     }}
@@ -448,15 +458,38 @@ Output valid pure JSON only without markdown formatting."""
         print(f"✨ Masterpiece Script written by: [{used_model}]")
         print(f"🎬 Title: {data.get('title')}")
         print(f"📌 Hook Banner: {data.get('hook_banner')}")
-        print(f"📜 Generated {len(data.get('scenes', []))} sequential scenes.")
+        print(f"📜 Generated {len(data.get('scenes', []))} fast-paced sequential scenes.")
         return data, active_topic
 
     print("⚠️ Falling back to curated high-retention space mystery plan.")
     return FALLBACK_PLANS[0], FALLBACK_PLANS[0].get("title")
 
+NEGATIVE_PEXELS_KEYWORDS = [
+    "smile", "smiling", "office", "laptop", "meeting", "business", "desk", 
+    "workout", "fitness", "cooking", "dance", "dancing", "happy", "woman talking", 
+    "man talking", "car driving", "traffic", "phone", "family", "kids", "baby", "shopping", "food"
+]
+
+def parse_pexels_clip_info(c, idx):
+    slug = c.get("url", "").strip("/").split("/")[-1]
+    title = re.sub(r'-\d+$', '', slug).replace('-', ' ').title()
+    if not title or title.isdigit():
+        title = "Cinematic Stock Footage"
+    w = c.get("width", 0)
+    h = c.get("height", 0)
+    res = "4K Portrait" if (h >= 2160 or w >= 2160) else ("1080p Portrait" if h >= w else "Landscape")
+    return {
+        "candidate_index": idx,
+        "visual_description": title,
+        "resolution": res,
+        "duration_seconds": c.get("duration", 0),
+        "color_tone": c.get("avg_color", "Dark")
+    }
+
 def fetch_pexels_candidates(queries, pexels_key, min_candidates=5):
     """
-    Step 2: Fetches at least 5 distinct candidate clips per scene with random page shuffling
+    Step 2: Fetches at least 5 distinct high-quality candidate clips per scene with random page shuffling.
+    Filters out off-topic everyday life footage and enforces portrait orientation.
     """
     headers = {"Authorization": pexels_key.strip()}
     candidates = []
@@ -464,9 +497,11 @@ def fetch_pexels_candidates(queries, pexels_key, min_candidates=5):
 
     for q in queries:
         clean_q = re.sub(r'[^a-zA-Z0-9\s]', '', q).strip()
+        if len(clean_q.split()) <= 1:
+            clean_q = f"{clean_q} dark cinematic 4k"
         encoded = urllib.parse.quote(clean_q)
         random_page = random.randint(1, 3)
-        url = f"https://api.pexels.com/videos/search?query={encoded}&orientation=portrait&per_page=8&page={random_page}"
+        url = f"https://api.pexels.com/videos/search?query={encoded}&orientation=portrait&per_page=10&page={random_page}"
         try:
             r = requests.get(url, headers=headers, timeout=15)
             if r.status_code == 200:
@@ -474,9 +509,22 @@ def fetch_pexels_candidates(queries, pexels_key, min_candidates=5):
                 random.shuffle(videos)
                 for v in videos:
                     vid = v.get("id")
-                    if vid and vid not in seen_ids:
-                        seen_ids.add(vid)
-                        candidates.append(v)
+                    if not vid or vid in seen_ids:
+                        continue
+                    
+                    # Ensure vertical or square
+                    w = v.get("width", 0)
+                    h = v.get("height", 0)
+                    if h < w:
+                        continue
+                        
+                    # Filter out negative everyday life keywords from slug
+                    slug = v.get("url", "").lower()
+                    if any(neg in slug for neg in NEGATIVE_PEXELS_KEYWORDS):
+                        continue
+                        
+                    seen_ids.add(vid)
+                    candidates.append(v)
             if len(candidates) >= min_candidates:
                 break
         except Exception as e:
@@ -484,18 +532,26 @@ def fetch_pexels_candidates(queries, pexels_key, min_candidates=5):
 
     # Fallback if fewer than min_candidates found
     if len(candidates) < min_candidates:
-        backup_queries = ["deep space stars 4k", "galaxy universe dark", "cosmic nebula mystery"]
+        backup_queries = ["deep space nebula 4k", "dark galaxy universe stars", "underwater abyss glowing deep sea"]
         for bq in backup_queries:
             random_page = random.randint(1, 4)
-            url = f"https://api.pexels.com/videos/search?query={urllib.parse.quote(bq)}&orientation=portrait&per_page=6&page={random_page}"
+            url = f"https://api.pexels.com/videos/search?query={urllib.parse.quote(bq)}&orientation=portrait&per_page=8&page={random_page}"
             try:
                 r = requests.get(url, headers=headers, timeout=15)
                 if r.status_code == 200:
                     for v in r.json().get("videos", []):
                         vid = v.get("id")
-                        if vid and vid not in seen_ids:
-                            seen_ids.add(vid)
-                            candidates.append(v)
+                        if not vid or vid in seen_ids:
+                            continue
+                        w = v.get("width", 0)
+                        h = v.get("height", 0)
+                        if h < w:
+                            continue
+                        slug = v.get("url", "").lower()
+                        if any(neg in slug for neg in NEGATIVE_PEXELS_KEYWORDS):
+                            continue
+                        seen_ids.add(vid)
+                        candidates.append(v)
                 if len(candidates) >= min_candidates:
                     break
             except Exception:
@@ -506,33 +562,33 @@ def fetch_pexels_candidates(queries, pexels_key, min_candidates=5):
 def assistant_director_select_clip(gemini_key, scene, candidates):
     """
     Step 3: Assistant Director (Gemini 3.5 Flash Lite - 500 RPD) screens 5 candidates,
-    rejects off-topic clips, and selects the single best visual.
+    evaluates rich visual descriptions and resolutions, and selects the absolute best match.
     """
     if not candidates:
         return None
     if len(candidates) == 1:
         return candidates[0]
 
-    candidate_summaries = []
-    for idx, c in enumerate(candidates[:5]):
-        candidate_summaries.append({
-            "candidate_index": idx,
-            "url": c.get("url"),
-            "tags": c.get("tags", []),
-            "duration": c.get("duration"),
-            "user": c.get("user", {}).get("name")
-        })
+    candidate_summaries = [parse_pexels_clip_info(c, idx) for idx, c in enumerate(candidates[:5])]
 
-    prompt = f"""You are the Assistant Visual Director. Screen these 5 video candidate options for this documentary scene.
-Scene Narration: "{scene.get('voice_line', '')}"
-Desired Visual Mood: "{scene.get('visual_vibe', '')}"
+    prompt = f"""You are the Master Visual Director for a high-retention documentary YouTube Short.
+Your mission: Screen these 5 candidate stock clips from Pexels and choose the SINGLE BEST visual for this exact scene.
 
-Candidate Clips (5 options):
+SCENE NARRATION: "{scene.get('voice_line', '')}"
+DESIRED VISUAL VIBE: "{scene.get('visual_vibe', '')}"
+
+CANDIDATE CLIPS (5 Options from Pexels):
 {json.dumps(candidate_summaries, indent=2)}
 
-Select the single best candidate index (0 to {len(candidate_summaries)-1}) that has the most cinematic, eerie, and accurate visual atmosphere.
+STRICT SELECTION CRITERIA:
+1. Direct Subject Match: Choose the clip whose visual description best depicts what is being narrated.
+2. Viral Atmosphere: Strongly prefer dark, moody, cinematic, awe-inspiring, high-contrast visuals (deep cosmos, abyssal ocean, glowing scientific anomalies).
+3. Rejection: Reject any clip that feels generic, bright daylight, commercial, goofy, or out of place.
+4. Resolution: Favor '4K Portrait' or '1080p Portrait'.
+
+Which candidate index (0 to {len(candidate_summaries)-1}) is the absolute highest quality and most viral match?
 Output valid pure JSON:
-{{"selected_index": 0, "director_reason": "Brief reason for selection"}}"""
+{{"selected_index": 0, "director_reason": "Specific 1-sentence reason why this visual best enhances viewer suspense"}}"""
 
     decision, used_model = call_gemini_json_api(gemini_key, prompt, DIRECTOR_MODELS, timeout=12)
     if decision:
@@ -546,19 +602,19 @@ Output valid pure JSON:
 def executive_producer_approve_timeline(gemini_key, script_plan, chosen_clips, sentence_timings, total_audio_duration):
     """
     Step 4: Executive Producer (Gemini 3.8 / 3.6 Flash) reviews the chosen clips and sentence timings,
-    ensuring video pacing matches emotional speech cadence and strictly targets 38-45 seconds!
+    ensuring rapid-cut pacing with NO CLIP EVER EXCEEDING 4.0 SECONDS!
     """
     chosen_summaries = []
     for idx, c in enumerate(chosen_clips):
+        info = parse_pexels_clip_info(c, idx)
         chosen_summaries.append({
             "scene_id": idx + 1,
-            "clip_id": c.get("id"),
-            "tags": c.get("tags", [])[:5],
+            "visual": info.get("visual_description"),
             "raw_duration": c.get("duration")
         })
 
     prompt = f"""You are the Executive Producer and Master Film Editor.
-Total Narration Audio Duration: {total_audio_duration:.2f} seconds.
+Total Narration Audio Duration: {total_audio_duration:.2f} seconds across {len(chosen_clips)} scenes.
 
 Speech Sentence Timings (from Voiceover):
 {json.dumps(sentence_timings, indent=2)}
@@ -566,17 +622,18 @@ Speech Sentence Timings (from Voiceover):
 Chosen Video Footage for each scene (Curated by Assistant Director):
 {json.dumps(chosen_summaries, indent=2)}
 
-Your task:
-1. Ensure the video pacing is punchy and transitions happen seamlessly at dramatic sentence pauses.
-2. Assign an exact cut duration for each clip so that the sum of all clip durations EQUALS EXACTLY {total_audio_duration:.2f} seconds.
-3. Provide a brief executive review note on why this pacing will hook viewers.
+STRICT SHORT-PACING RULES (Crucial for Viral Retention):
+1. FAST CUTS: NO CLIP SHOULD EVER BE LONG! Maximum duration for any clip is 4.0 SECONDS!
+2. Target each clip duration between 2.5s and 3.9s to keep the visual rhythm energetic and hypnotic.
+3. Every cut must land cleanly on a dramatic speech pause.
+4. The exact sum of all clip durations MUST EQUAL EXACTLY {total_audio_duration:.2f} seconds.
 
-Output strictly valid JSON:
+Output strictly valid pure JSON:
 {{
-  "executive_review": "Why this pacing maximizes retention",
+  "executive_review": "Why this rapid-cut pacing guarantees 90%+ completion rate",
   "approved_timeline": [
-    {{"scene_id": 1, "duration": 8.5}},
-    {{"scene_id": 2, "duration": 7.8}}
+    {{"scene_id": 1, "duration": 3.6}},
+    {{"scene_id": 2, "duration": 3.4}}
   ]
 }}"""
 
@@ -585,23 +642,29 @@ Output strictly valid JSON:
     if data and data.get("approved_timeline"):
         print(f"🎬 Executive Producer [{used_model}] approved master timeline: {data.get('executive_review')}")
         timeline_dict = {item.get("scene_id"): float(item.get("duration", 0)) for item in data.get("approved_timeline", [])}
+        
+        # Enforce hard clamp: ensure no single clip > 4.2 seconds and sum equals total_audio_duration
+        total_assigned = sum(timeline_dict.values())
+        if total_assigned > 0:
+            factor = total_audio_duration / total_assigned
+            timeline_dict = {sid: round(d * factor, 2) for sid, d in timeline_dict.items()}
         return timeline_dict
 
     print("Notice: Using intelligent sentence boundary duration mapping.")
-    # Safe fallback: calculate durations directly from sentence timings
     num_scenes = max(1, len(chosen_clips))
     avg_dur = total_audio_duration / num_scenes
     return {idx + 1: round(avg_dur, 2) for idx in range(num_scenes)}
 
 def download_and_standardize_clip(video_obj, output_path, duration):
-    # Find best portrait video file
+    # Find best portrait video file (prefer 1080p/4K over low-res 540p)
     best_link = None
-    for f in video_obj.get("video_files", []):
-        if f.get("height", 0) > f.get("width", 0):
-            best_link = f["link"]
-            break
-    if not best_link and video_obj.get("video_files"):
-        best_link = video_obj["video_files"][0]["link"]
+    portrait_files = [f for f in video_obj.get("video_files", []) if f.get("height", 0) >= f.get("width", 0)]
+    if portrait_files:
+        portrait_files.sort(key=lambda x: x.get("height", 0), reverse=True)
+        best_link = portrait_files[0]["link"]
+    elif video_obj.get("video_files"):
+        sorted_files = sorted(video_obj["video_files"], key=lambda x: x.get("height", 0), reverse=True)
+        best_link = sorted_files[0]["link"]
 
     if not best_link:
         return False
