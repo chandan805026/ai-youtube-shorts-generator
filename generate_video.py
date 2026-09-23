@@ -11,6 +11,14 @@ import time
 
 DEFAULT_PEXELS_KEY = "LgGZ2h14XBOQe9vuq4vgzmZpUT2WzvzbpltBDyDhEmcnDpHJ1xoMaaqQ"
 
+# Curated High-Quality Copyright-Free Cinematic Ambient Tracks
+BGM_TRACKS = {
+    "space": "https://upload.wikimedia.org/wikipedia/commons/5/55/Dreamstate_Logic_-_Zero_Point_%28space_ambient%2C_dark_ambient%29.ogg",
+    "mystery": "https://upload.wikimedia.org/wikipedia/commons/5/55/Dreamstate_Logic_-_Zero_Point_%28space_ambient%2C_dark_ambient%29.ogg",
+    "tech": "https://upload.wikimedia.org/wikipedia/commons/d/db/Terminus_Void_-_Inception_%28Dystopian_Cyberpunk_Space_Ambient_Music_similar_to_Blade_Runner_soundtrack_music%29.opus",
+    "nature": "https://upload.wikimedia.org/wikipedia/commons/8/81/Vastopia_-_Dark_Ambient_Music_for_Deep_Relaxation_and_Focus.ogg"
+}
+
 def clean_voice_name(voice_input):
     """Extract standard voice ID if friendly name was selected"""
     if " " in voice_input:
@@ -92,6 +100,31 @@ def get_audio_duration(audio_path):
         print(f"Warning: ffprobe failed ({e}), using default estimation.")
         return 20.0
 
+def fetch_bgm_track(topic, output_bgm_path):
+    """Downloads cinematic ambient background music matching the topic"""
+    topic_lower = topic.lower()
+    url = BGM_TRACKS.get("space")
+    for k in BGM_TRACKS:
+        if k in topic_lower:
+            url = BGM_TRACKS[k]
+            break
+            
+    print(f"🎵 Fetching cinematic background music from: {url[:60]}...")
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        r = requests.get(url, headers=headers, stream=True, timeout=20)
+        if r.status_code == 200:
+            with open(output_bgm_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1024*64):
+                    f.write(chunk)
+                    if f.tell() > 1024 * 1024 * 3: # 3MB is plenty
+                        break
+            print("✅ Background music downloaded!")
+            return True
+    except Exception as e:
+        print(f"BGM download failed: {e}")
+    return False
+
 def fetch_pexels_video_clip(query, pexels_key, output_clip_path, duration):
     """Searches Pexels for a real moving HD video clip, normalizes FPS to 30 to avoid freezing"""
     headers = {"Authorization": pexels_key.strip()}
@@ -127,7 +160,6 @@ def fetch_pexels_video_clip(query, pexels_key, output_clip_path, duration):
                     with open(raw_dl, "wb") as f:
                         f.write(res.content)
                     
-                    # Normalize: exact 1080x1920, exact 30fps, setsar=1 to eliminate any stuttering/glitching
                     cmd = [
                         "ffmpeg", "-y",
                         "-stream_loop", "-1",
@@ -206,7 +238,6 @@ def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key,
     if not clip_files:
         raise Exception("Could not download clips from Pexels. Please check API key.")
         
-    # Re-encode concat with filter_complex to eliminate any freezing / stutter between scenes
     inputs = []
     filter_str = ""
     for i, c in enumerate(clip_files):
@@ -228,12 +259,12 @@ def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key,
     subprocess.run(cmd_concat, check=True)
     print("🎉 FULL STUTTER-FREE MULTI-SCENE REAL MOVING FOOTAGE COMPLETE!")
 
-def render_final_short(bg_path, audio_path, srt_path, duration, output_path, color_name="Yellow"):
+def render_final_short_with_bgm(bg_path, audio_path, srt_path, bgm_path, duration, output_path, color_name="Yellow"):
     """
-    Assembles real moving footage, voiceover, and burns high-visibility bold yellow/white subtitles.
+    Assembles real footage, burns bold subtitles, and mixes Voiceover + Suspense BGM with smooth audio ducking!
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    print(f"🎬 Burning bold subtitles and syncing audio onto REAL footage (Duration: {duration:.2f}s)...")
+    print(f"🎬 Burning subtitles and mixing cinematic BGM with voice (Duration: {duration:.2f}s)...")
     
     color_map = {
         "Yellow": "&H0000FFFF",
@@ -246,28 +277,49 @@ def render_final_short(bg_path, audio_path, srt_path, duration, output_path, col
     escaped_srt = srt_path.replace("\\", "/").replace(":", "\\:")
     subtitle_style = f"Fontname=DejaVu Sans,Fontsize=22,PrimaryColour={primary_color},OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=2,Alignment=2,MarginV=160,Bold=1"
     
-    cmd = [
-        "ffmpeg", "-y",
-        "-stream_loop", "-1",
-        "-i", bg_path,
-        "-i", audio_path,
-        "-vf", f"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,subtitles={escaped_srt}:force_style='{subtitle_style}'",
-        "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "19",
-        "-c:a", "aac",
-        "-b:a", "192k",
-        "-t", str(duration + 0.2),
-        "-pix_fmt", "yuv420p",
-        "-shortest",
-        output_path
-    ]
-    
+    if bgm_path and os.path.exists(bgm_path):
+        fade_out_start = max(1.0, duration - 1.5)
+        # Mix voice at 1.0 volume, BGM at 0.18 volume with smooth fade-in and fade-out
+        audio_filter = f"[1:a]volume=1.0[voice];[2:a]volume=0.18,afade=t=in:ss=0:d=1,afade=t=out:st={fade_out_start}:d=1.5[bgm];[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        
+        cmd = [
+            "ffmpeg", "-y",
+            "-stream_loop", "-1", "-i", bg_path,
+            "-i", audio_path,
+            "-stream_loop", "-1", "-i", bgm_path,
+            "-filter_complex", f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,subtitles={escaped_srt}:force_style='{subtitle_style}'[vout];{audio_filter}",
+            "-map", "[vout]",
+            "-map", "[aout]",
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "19",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-t", str(duration + 0.2),
+            "-pix_fmt", "yuv420p",
+            output_path
+        ]
+    else:
+        cmd = [
+            "ffmpeg", "-y",
+            "-stream_loop", "-1", "-i", bg_path,
+            "-i", audio_path,
+            "-vf", f"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,subtitles={escaped_srt}:force_style='{subtitle_style}'",
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "19",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-t", str(duration + 0.2),
+            "-pix_fmt", "yuv420p",
+            output_path
+        ]
+        
     subprocess.run(cmd, check=True)
-    print(f"🎉 FINAL VIDEO READY! Saved to: {output_path}")
+    print(f"🎉 FINAL VIDEO WITH BGM READY! Saved to: {output_path}")
 
 def main():
-    parser = argparse.ArgumentParser(description="AI YouTube Shorts Real Video Generator")
+    parser = argparse.ArgumentParser(description="AI YouTube Shorts Real Video Generator with BGM")
     parser.add_argument("--script", type=str, required=True, help="Narration script text")
     parser.add_argument("--voice", type=str, default="en-US-ChristopherNeural", help="Edge TTS Voice name")
     parser.add_argument("--topic", type=str, default="space", help="Background visual topic")
@@ -287,6 +339,7 @@ def main():
     audio_path = "temp/voice.mp3"
     srt_path = "temp/subtitles.srt"
     bg_video_path = "temp/background.mp4"
+    bgm_path = "temp/bgm.ogg"
 
     # Step 1: Voice & punchy SRT Subtitles
     asyncio.run(generate_speech_and_subtitles(args.script, clean_voice, audio_path, srt_path))
@@ -294,11 +347,14 @@ def main():
     # Step 2: Audio Duration
     duration = get_audio_duration(audio_path)
 
-    # Step 3: Multi-scene REAL MOVING VIDEO FOOTAGE (Zero Stutter / Filter Complex Concat)
+    # Step 3: Fetch Cinematic Background Music
+    fetch_bgm_track(args.topic, bgm_path)
+
+    # Step 4: Multi-scene REAL MOVING VIDEO FOOTAGE (Filter Complex Concat)
     build_multi_scene_real_video(args.script, args.topic, duration, pexels_key, bg_video_path, args.thumb)
 
-    # Step 4: Final Assembly & Burned Subtitles
-    render_final_short(bg_video_path, audio_path, srt_path, duration, args.output, color_name=args.color)
+    # Step 5: Final Assembly with Burned Subtitles & Mixed BGM
+    render_final_short_with_bgm(bg_video_path, audio_path, srt_path, bgm_path, duration, args.output, color_name=args.color)
 
 if __name__ == "__main__":
     main()
