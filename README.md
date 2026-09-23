@@ -1,2 +1,51 @@
-# ai-youtube-shorts-generator
-100% Free AI YouTube Shorts Generator for US Audience running on GitHub Actions (Zero Laptop Load)
+# 🚀 AI YouTube Shorts Generator (100% Free & Cloud-Powered)
+
+यह टूल पूरी तरह **मुफ्त (Free)** है और आपके लैपटॉप पर **0% लोड** डालता है। सारा वीडियो जनरेशन और रेंडरिंग **GitHub Actions (Cloud)** के सुपरकंप्यूटर पर होता है।
+
+---
+
+## 🎯 मुख्य फीचर्स (Key Features):
+- **100% Free Cloud Compute:** आपके लैपटॉप की बैटरी या रैम का इस्तेमाल नहीं होता।
+- **Native American English Voiceover:** Microsoft Neural TTS (`en-US-ChristopherNeural`, `en-US-GuyNeural`) से बिल्कुल असली अमेरिकी एंकर जैसी आवाज़।
+- **Hindi Voiceover Option:** भारतीय दर्शकों के लिए `Madhur` और `Swara` आवाज़ें भी उपलब्ध हैं।
+- **Automatic Word-by-Word Subtitles:** Alex Hormozi / MrBeast स्टाइल के आकर्षक, बड़े और बोल्ड कैप्शन्स (Yellow/White with thick outline)।
+- **High-Definition Backgrounds (1080x1920):** 9:16 Vertical Shorts फॉर्मेट में बिना वॉटरमार्क वाले HD क्लिप्स।
+- **1-Click Download:** वीडियो बनने के बाद सीधे ब्राउज़र से `.mp4` फाइल डाउनलोड करें।
+
+---
+
+## 📖 वीडियो कैसे बनाएं? (Step-by-Step Guide):
+
+### 1. Actions टैब में जाएं
+* अपनी इस GitHub रिपॉजिटरी में ऊपर **Actions** टैब पर क्लिक करें।
+
+### 2. Workflow चुनें
+* बाईं तरफ **"Generate YouTube Short (Cloud Video Maker)"** पर क्लिक करें।
+
+### 3. Run Workflow पर क्लिक करें
+* दाईं तरफ नीले बटन **"Run workflow"** पर क्लिक करें।
+
+### 4. अपनी स्क्रिप्ट और सेटिंग्स भरें:
+* **Script:** अपनी लिखी हुई स्क्रिप्ट पेस्ट करें (या `sample_scripts.md` से कोई भी कॉपी करें)।
+* **Voice:** अपनी पसंद की आवाज़ चुनें (US ऑडियंस के लिए `en-US-ChristopherNeural` सबसे बेस्ट है)।
+* **Topic:** वीडियो का विषय चुनें (जैसे: `space`, `galaxy`, `dark mystery`, `technology`, `future city`)।
+* **Color:** सबटाइटल का रंग चुनें (`Yellow`, `White`, `Cyan`, आदि)।
+* **Run workflow** बटन दबा दें!
+
+---
+
+## 📥 वीडियो डाउनलोड कैसे करें?
+
+1. रन शुरू होते ही आपको एक प्रोसेस चलती दिखेगी (1-2 मिनट में हरी टिक ✅ हो जाएगी)।
+2. उस रन पर क्लिक करें।
+3. पेज के सबसे नीचे स्क्रॉल करें, वहाँ **Artifacts** सेक्शन में **`final_youtube_short`** दिखेगा।
+4. उसपर क्लिक करें—आपकी **`final_video.mp4`** आपके कंप्यूटर/फोन में डाउनलोड हो जाएगी!
+
+---
+
+## 🇺🇸 अमेरिका (USA) में वायरल करने के लिए जरूरी टिप्स:
+
+1. **अपलोड करने का समय:** भारतीय समय अनुसार **शाम 7:00 PM से रात 10:30 PM** के बीच अपलोड करें (इस समय अमेरिका में सुबह होती है)।
+2. **टाइटल और टैग्स:** 100% अंग्रेज़ी में रखें और US डॉलर सिंबल (`$`) या अमेरिकी संदर्भ का इस्तेमाल करें।
+3. **शुरुआती 3 सेकंड (Hook):** पहले 3 सेकंड में सस्पेंस या सवाल होना चाहिए ताकि लोग स्वाइप न करें।
+4. **लिंक शेयर न करें:** अपने भारतीय दोस्तों को लिंक न भेजें, YouTube के एल्गोरिदम को खुद अमेरिकी दर्शकों को खोजने दें।
