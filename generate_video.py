@@ -11,22 +11,89 @@ import time
 
 DEFAULT_PEXELS_KEY = "LgGZ2h14XBOQe9vuq4vgzmZpUT2WzvzbpltBDyDhEmcnDpHJ1xoMaaqQ"
 
-# Curated High-Quality Copyright-Free Cinematic Ambient Tracks
 BGM_TRACKS = {
     "space": "https://upload.wikimedia.org/wikipedia/commons/5/55/Dreamstate_Logic_-_Zero_Point_%28space_ambient%2C_dark_ambient%29.ogg",
     "mystery": "https://upload.wikimedia.org/wikipedia/commons/5/55/Dreamstate_Logic_-_Zero_Point_%28space_ambient%2C_dark_ambient%29.ogg",
+    "dark mystery": "https://upload.wikimedia.org/wikipedia/commons/5/55/Dreamstate_Logic_-_Zero_Point_%28space_ambient%2C_dark_ambient%29.ogg",
     "tech": "https://upload.wikimedia.org/wikipedia/commons/d/db/Terminus_Void_-_Inception_%28Dystopian_Cyberpunk_Space_Ambient_Music_similar_to_Blade_Runner_soundtrack_music%29.opus",
     "nature": "https://upload.wikimedia.org/wikipedia/commons/8/81/Vastopia_-_Dark_Ambient_Music_for_Deep_Relaxation_and_Focus.ogg"
 }
 
+POWER_WORDS = {
+    "TERRIFYING", "MASSIVE", "COLOSSAL", "DARKNESS", "GALAXIES", "ALIEN", "CIVILIZATION",
+    "EXPLODED", "VOID", "HARVESTING", "ERASING", "LURKING", "EXTINCT", "INFINITY",
+    "MILLION", "BILLION", "LIGHT-YEARS", "BLACK", "HOLE", "SILENT", "SHOCK", "SECRETS"
+}
+
 def clean_voice_name(voice_input):
-    """Extract standard voice ID if friendly name was selected"""
     if " " in voice_input:
         return voice_input.split(" ")[0].strip()
     return voice_input.strip()
 
+def format_ass_time(sec):
+    hrs = int(sec // 3600)
+    mins = int((sec % 3600) // 60)
+    secs = int(sec % 60)
+    cs = int(round((sec - int(sec)) * 100))
+    if cs >= 100:
+        secs += 1
+        cs = 0
+    return f"{hrs:d}:{mins:02d}:{secs:02d}.{cs:02d}"
+
+def generate_hormozi_ass_subtitles(cues, ass_path):
+    """
+    Creates eye-popping two-tone subtitles (Alex Hormozi style)
+    Active/Power words pop in Neon Green or Yellow, while base words are crisp White!
+    """
+    ass_header = """[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,DejaVu Sans,68,&H00FFFFFF,&H000000FF,&H00000000,&H90000000,-1,0,0,0,100,100,0,0,1,6,3,2,50,50,750,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+    dialogues = []
+    for s_time, e_time, text in cues:
+        words = text.split()
+        if not words:
+            continue
+            
+        # Find which word to highlight in Neon Green
+        # Priority: power words, digits, or the longest word
+        highlight_idx = -1
+        for idx, w in enumerate(words):
+            clean_w = re.sub(r'[^A-Z0-9]', '', w)
+            if clean_w in POWER_WORDS or clean_w.isdigit():
+                highlight_idx = idx
+                break
+        if highlight_idx == -1:
+            # Highlight the longest word
+            highlight_idx = max(range(len(words)), key=lambda i: len(words[i]))
+            
+        formatted_words = []
+        for idx, w in enumerate(words):
+            if idx == highlight_idx:
+                # Neon Green: &H0000FF00
+                formatted_words.append(f"{{\\c&H0000FF00&}}{w}{{\\c&H00FFFFFF&}}")
+            else:
+                formatted_words.append(w)
+                
+        styled_line = " ".join(formatted_words)
+        start_fmt = format_ass_time(s_time)
+        end_fmt = format_ass_time(e_time)
+        dialogues.append(f"Dialogue: 0,{start_fmt},{end_fmt},Default,,0,0,0,,{styled_line}")
+        
+    with open(ass_path, "w", encoding="utf-8") as f:
+        f.write(ass_header + "\n".join(dialogues) + "\n")
+    print(f"✅ Generated {len(dialogues)} Hormozi-style two-tone animated subtitle cues!")
+
 def split_sentence_into_cues(start_s, end_s, text, max_words=3):
-    """Splits a sentence into punchy 2-3 word subtitle cues with interpolated timings"""
     words = text.strip().split()
     if not words:
         return []
@@ -50,19 +117,7 @@ def split_sentence_into_cues(start_s, end_s, text, max_words=3):
         cues.append((c_start, c_end, ' '.join(c).upper()))
     return cues
 
-def format_srt_time(sec):
-    """Formats float seconds into SRT timestamp HH:MM:SS,mmm"""
-    hrs = int(sec // 3600)
-    mins = int((sec % 3600) // 60)
-    secs = int(sec % 60)
-    ms = int(round((sec - int(sec)) * 1000))
-    if ms >= 1000:
-        secs += 1
-        ms = 0
-    return f"{hrs:02d}:{mins:02d}:{secs:02d},{ms:03d}"
-
-async def generate_speech_and_subtitles(script_text, voice_id, audio_output_path, srt_output_path):
-    """Uses edge_tts to generate realistic audio and precise word-chunk SRT subtitles"""
+async def generate_speech_and_subtitles(script_text, voice_id, audio_output_path, ass_output_path):
     import edge_tts
     print(f"🎙️ Generating voiceover using voice: {voice_id}...")
     communicate = edge_tts.Communicate(script_text, voice_id)
@@ -78,15 +133,10 @@ async def generate_speech_and_subtitles(script_text, voice_id, audio_output_path
                 sentence_cues = split_sentence_into_cues(start_s, end_s, chunk["text"], max_words=3)
                 cues.extend(sentence_cues)
                 
-    with open(srt_output_path, "w", encoding="utf-8") as f:
-        for i, (s, e, t) in enumerate(cues):
-            f.write(f"{i+1}\n{format_srt_time(s)} --> {format_srt_time(e)}\n{t}\n\n")
-            
-    print(f"✅ Voiceover generated! ({len(cues)} punchy subtitle cues created)")
+    generate_hormozi_ass_subtitles(cues, ass_output_path)
     return len(cues)
 
 def get_audio_duration(audio_path):
-    """Gets exact duration of the audio file via ffprobe"""
     try:
         cmd = [
             "ffprobe", "-v", "error",
@@ -101,7 +151,6 @@ def get_audio_duration(audio_path):
         return 20.0
 
 def fetch_bgm_track(topic, output_bgm_path):
-    """Downloads cinematic ambient background music matching the topic"""
     topic_lower = topic.lower()
     url = BGM_TRACKS.get("space")
     for k in BGM_TRACKS:
@@ -117,7 +166,7 @@ def fetch_bgm_track(topic, output_bgm_path):
             with open(output_bgm_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=1024*64):
                     f.write(chunk)
-                    if f.tell() > 1024 * 1024 * 3: # 3MB is plenty
+                    if f.tell() > 1024 * 1024 * 3:
                         break
             print("✅ Background music downloaded!")
             return True
@@ -126,7 +175,6 @@ def fetch_bgm_track(topic, output_bgm_path):
     return False
 
 def fetch_pexels_video_clip(query, pexels_key, output_clip_path, duration):
-    """Searches Pexels for a real moving HD video clip, normalizes FPS to 30 to avoid freezing"""
     headers = {"Authorization": pexels_key.strip()}
     clean_q = re.sub(r'[^a-zA-Z0-9\s]', '', query).strip()
     encoded = urllib.parse.quote(clean_q)
@@ -181,13 +229,9 @@ def fetch_pexels_video_clip(query, pexels_key, output_clip_path, duration):
     return False
 
 def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key, output_bg_path, output_thumb_path):
-    """
-    Builds a dynamic real-footage video by cutting multiple real moving video clips from Pexels every 3.5-4.0 seconds.
-    Uses filter_complex concat to ensure 100% stutter-free smooth transitions.
-    """
     lower_script = script_text.lower()
     
-    if "void" in lower_script or "bootes" in lower_script or "mystery" in lower_script:
+    if "void" in lower_script or "bootes" in lower_script or "mystery" in lower_script or "dark mystery" in topic.lower():
         queries = [
             "telescope night sky stars",
             "dark space galaxy void",
@@ -212,7 +256,6 @@ def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key,
     else:
         queries = [f"{topic}", f"{topic} cinematic", f"{topic} close up", f"{topic} landscape", f"{topic} 4k"]
 
-    # Target 4-5 fast-paced scenes
     num_scenes = min(max(4, int(total_duration / 3.8)), len(queries))
     scene_dur = total_duration / num_scenes
     selected_queries = queries[:num_scenes]
@@ -259,35 +302,44 @@ def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key,
     subprocess.run(cmd_concat, check=True)
     print("🎉 FULL STUTTER-FREE MULTI-SCENE REAL MOVING FOOTAGE COMPLETE!")
 
-def render_final_short_with_bgm(bg_path, audio_path, srt_path, bgm_path, duration, output_path, color_name="Yellow"):
-    """
-    Assembles real footage, burns bold subtitles, and mixes Voiceover + Suspense BGM with smooth audio ducking!
-    """
+def get_hook_title(script_text, topic):
+    """Generates an engaging, clickable top banner title"""
+    lower = script_text.lower()
+    if "void" in lower or "bootes" in lower:
+        return "⚠️  THE BOOTES VOID MYSTERY  ⚠️"
+    elif "space" in lower or "black hole" in lower:
+        return "🌌  DEEP SPACE SECRETS  🌌"
+    elif "lion" in lower:
+        return "🦁  WILD JUNGLE STORIES  🦁"
+    elif "tech" in lower or "ai" in lower:
+        return "🤖  FUTURE TECH 2050  🤖"
+    return f"⚡  {topic.upper()}  ⚡"
+
+def render_final_short_with_bgm(bg_path, audio_path, ass_path, bgm_path, duration, output_path, hook_title):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    print(f"🎬 Burning subtitles and mixing cinematic BGM with voice (Duration: {duration:.2f}s)...")
+    print(f"🎬 Burning Hormozi subtitles, Top Hook Banner, and mixing loud cinematic BGM...")
     
-    color_map = {
-        "Yellow": "&H0000FFFF",
-        "White": "&H00FFFFFF",
-        "Cyan": "&H00FFFF00",
-        "Green": "&H0000FF00"
-    }
-    primary_color = color_map.get(color_name, "&H0000FFFF")
+    escaped_ass = ass_path.replace("\\", "/").replace(":", "\\:")
     
-    escaped_srt = srt_path.replace("\\", "/").replace(":", "\\:")
-    subtitle_style = f"Fontname=DejaVu Sans,Fontsize=22,PrimaryColour={primary_color},OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=2,Alignment=2,MarginV=160,Bold=1"
+    # Visual filter: Scale/crop 1080x1920 -> Burn two-tone ASS subtitles -> Add top header badge
+    v_filter = (
+        f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
+        f"ass={escaped_ass},"
+        f"drawtext=text='{hook_title}':font='DejaVu Sans':fontsize=36:fontcolor=white:bold=1:"
+        f"box=1:boxcolor=black@0.75:boxborderw=14:x=(w-text_w)/2:y=240[vout]"
+    )
     
     if bgm_path and os.path.exists(bgm_path):
         fade_out_start = max(1.0, duration - 1.5)
-        # Mix voice at 1.0 volume, BGM at 0.18 volume with smooth fade-in and fade-out
-        audio_filter = f"[1:a]volume=1.0[voice];[2:a]volume=0.18,afade=t=in:ss=0:d=1,afade=t=out:st={fade_out_start}:d=1.5[bgm];[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        # BGM volume boosted to 0.32 so it is clearly audible on mobile/laptop speakers!
+        audio_filter = f"[1:a]volume=1.0[voice];[2:a]volume=0.32,afade=t=in:ss=0:d=1,afade=t=out:st={fade_out_start}:d=1.5[bgm];[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
         
         cmd = [
             "ffmpeg", "-y",
             "-stream_loop", "-1", "-i", bg_path,
             "-i", audio_path,
             "-stream_loop", "-1", "-i", bgm_path,
-            "-filter_complex", f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,subtitles={escaped_srt}:force_style='{subtitle_style}'[vout];{audio_filter}",
+            "-filter_complex", f"{v_filter};{audio_filter}",
             "-map", "[vout]",
             "-map", "[aout]",
             "-c:v", "libx264",
@@ -304,7 +356,9 @@ def render_final_short_with_bgm(bg_path, audio_path, srt_path, bgm_path, duratio
             "ffmpeg", "-y",
             "-stream_loop", "-1", "-i", bg_path,
             "-i", audio_path,
-            "-vf", f"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,subtitles={escaped_srt}:force_style='{subtitle_style}'",
+            "-filter_complex", v_filter,
+            "-map", "[vout]",
+            "-map", "1:a",
             "-c:v", "libx264",
             "-preset", "fast",
             "-crf", "19",
@@ -316,10 +370,10 @@ def render_final_short_with_bgm(bg_path, audio_path, srt_path, bgm_path, duratio
         ]
         
     subprocess.run(cmd, check=True)
-    print(f"🎉 FINAL VIDEO WITH BGM READY! Saved to: {output_path}")
+    print(f"🎉 FINAL UPGRADED VIDEO READY! Saved to: {output_path}")
 
 def main():
-    parser = argparse.ArgumentParser(description="AI YouTube Shorts Real Video Generator with BGM")
+    parser = argparse.ArgumentParser(description="AI YouTube Shorts Real Video Generator with BGM & Hormozi Subtitles")
     parser.add_argument("--script", type=str, required=True, help="Narration script text")
     parser.add_argument("--voice", type=str, default="en-US-ChristopherNeural", help="Edge TTS Voice name")
     parser.add_argument("--topic", type=str, default="space", help="Background visual topic")
@@ -337,12 +391,12 @@ def main():
     os.makedirs(os.path.dirname(args.thumb), exist_ok=True)
 
     audio_path = "temp/voice.mp3"
-    srt_path = "temp/subtitles.srt"
+    ass_path = "temp/subtitles.ass"
     bg_video_path = "temp/background.mp4"
     bgm_path = "temp/bgm.ogg"
 
-    # Step 1: Voice & punchy SRT Subtitles
-    asyncio.run(generate_speech_and_subtitles(args.script, clean_voice, audio_path, srt_path))
+    # Step 1: Voice & Hormozi-style two-tone ASS Subtitles
+    asyncio.run(generate_speech_and_subtitles(args.script, clean_voice, audio_path, ass_path))
 
     # Step 2: Audio Duration
     duration = get_audio_duration(audio_path)
@@ -350,11 +404,12 @@ def main():
     # Step 3: Fetch Cinematic Background Music
     fetch_bgm_track(args.topic, bgm_path)
 
-    # Step 4: Multi-scene REAL MOVING VIDEO FOOTAGE (Filter Complex Concat)
+    # Step 4: Multi-scene REAL MOVING VIDEO FOOTAGE
     build_multi_scene_real_video(args.script, args.topic, duration, pexels_key, bg_video_path, args.thumb)
 
-    # Step 5: Final Assembly with Burned Subtitles & Mixed BGM
-    render_final_short_with_bgm(bg_video_path, audio_path, srt_path, bgm_path, duration, args.output, color_name=args.color)
+    # Step 5: Render with Top Hook Banner & Audible BGM
+    hook_title = get_hook_title(args.script, args.topic)
+    render_final_short_with_bgm(bg_video_path, audio_path, ass_path, bgm_path, duration, args.output, hook_title)
 
 if __name__ == "__main__":
     main()
