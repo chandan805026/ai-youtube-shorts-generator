@@ -93,7 +93,7 @@ def get_audio_duration(audio_path):
         return 20.0
 
 def fetch_pexels_video_clip(query, pexels_key, output_clip_path, duration):
-    """Searches Pexels for a real moving HD video clip and trims it to duration"""
+    """Searches Pexels for a real moving HD video clip, normalizes FPS to 30 to avoid freezing"""
     headers = {"Authorization": pexels_key.strip()}
     clean_q = re.sub(r'[^a-zA-Z0-9\s]', '', query).strip()
     encoded = urllib.parse.quote(clean_q)
@@ -121,17 +121,19 @@ def fetch_pexels_video_clip(query, pexels_key, output_clip_path, duration):
                             break
                             
                 if best_link:
-                    raw_dl = f"temp/raw_{clean_q[:10].replace(' ', '_')}.mp4"
+                    raw_dl = f"temp/raw_{clean_q[:8].replace(' ', '_')}.mp4"
                     print(f"📥 Downloading real moving footage from Pexels for '{clean_q}'...")
                     res = requests.get(best_link, timeout=30)
                     with open(raw_dl, "wb") as f:
                         f.write(res.content)
                     
+                    # Normalize: exact 1080x1920, exact 30fps, setsar=1 to eliminate any stuttering/glitching
                     cmd = [
                         "ffmpeg", "-y",
                         "-stream_loop", "-1",
                         "-i", raw_dl,
-                        "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920",
+                        "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30",
+                        "-r", "30",
                         "-t", str(duration),
                         "-c:v", "libx264",
                         "-preset", "veryfast",
@@ -140,7 +142,7 @@ def fetch_pexels_video_clip(query, pexels_key, output_clip_path, duration):
                         output_clip_path
                     ]
                     subprocess.run(cmd, check=True)
-                    print(f"✅ Real moving clip processed ({duration:.1f}s)!")
+                    print(f"✅ Real moving clip processed ({duration:.1f}s at 30fps)!")
                     return True
     except Exception as e:
         print(f"Pexels fetch error for '{clean_q}': {e}")
@@ -148,11 +150,20 @@ def fetch_pexels_video_clip(query, pexels_key, output_clip_path, duration):
 
 def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key, output_bg_path, output_thumb_path):
     """
-    Builds a dynamic real-footage video by cutting multiple real moving video clips from Pexels every 3.5-4.0 seconds!
+    Builds a dynamic real-footage video by cutting multiple real moving video clips from Pexels every 3.5-4.0 seconds.
+    Uses filter_complex concat to ensure 100% stutter-free smooth transitions.
     """
     lower_script = script_text.lower()
     
-    if "space" in lower_script or "universe" in lower_script or "black hole" in lower_script or "space" in topic.lower() or "galaxy" in topic.lower():
+    if "void" in lower_script or "bootes" in lower_script or "mystery" in lower_script:
+        queries = [
+            "telescope night sky stars",
+            "dark space galaxy void",
+            "spiral galaxy spinning space",
+            "futuristic sci fi technology",
+            "black hole space mystery"
+        ]
+    elif "space" in lower_script or "universe" in lower_script or "black hole" in lower_script or "space" in topic.lower():
         queries = [
             "galaxy stars space",
             "earth from space orbit",
@@ -169,17 +180,17 @@ def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key,
     else:
         queries = [f"{topic}", f"{topic} cinematic", f"{topic} close up", f"{topic} landscape", f"{topic} 4k"]
 
-    # Target 4-5 fast-paced scenes (cutting every 3.5 to 4 seconds for high retention!)
+    # Target 4-5 fast-paced scenes
     num_scenes = min(max(4, int(total_duration / 3.8)), len(queries))
     scene_dur = total_duration / num_scenes
     selected_queries = queries[:num_scenes]
     
-    print(f"🎬 Creating {num_scenes} REAL MOVING video scenes from Pexels (cutting every ~{scene_dur:.1f}s)...")
+    print(f"🎬 Creating {num_scenes} REAL MOVING video scenes (cutting every ~{scene_dur:.1f}s)...")
     
     clip_files = []
     for i, q in enumerate(selected_queries):
-        clip_path = f"temp/real_clip_{i}.mp4"
-        success = fetch_pexels_video_clip(q, pexels_key, clip_path, scene_dur + 0.15)
+        clip_path = f"temp/smooth_clip_{i}.mp4"
+        success = fetch_pexels_video_clip(q, pexels_key, clip_path, scene_dur + 0.1)
         if success:
             clip_files.append(clip_path)
             if i == 0:
@@ -195,21 +206,27 @@ def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key,
     if not clip_files:
         raise Exception("Could not download clips from Pexels. Please check API key.")
         
-    concat_list = "temp/real_concat.txt"
-    with open(concat_list, "w") as f:
-        for c in clip_files:
-            f.write(f"file '{os.path.abspath(c)}'\n")
-            
+    # Re-encode concat with filter_complex to eliminate any freezing / stutter between scenes
+    inputs = []
+    filter_str = ""
+    for i, c in enumerate(clip_files):
+        inputs.extend(["-i", c])
+        filter_str += f"[{i}:v]"
+    filter_str += f"concat=n={len(clip_files)}:v=1:a=0[v]"
+    
     cmd_concat = [
-        "ffmpeg", "-y",
-        "-f", "concat",
-        "-safe", "0",
-        "-i", concat_list,
-        "-c", "copy",
+        "ffmpeg", "-y"
+    ] + inputs + [
+        "-filter_complex", filter_str,
+        "-map", "[v]",
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-r", "30",
+        "-pix_fmt", "yuv420p",
         output_bg_path
     ]
     subprocess.run(cmd_concat, check=True)
-    print("🎉 FULL MULTI-SCENE REAL MOVING FOOTAGE COMPLETE!")
+    print("🎉 FULL STUTTER-FREE MULTI-SCENE REAL MOVING FOOTAGE COMPLETE!")
 
 def render_final_short(bg_path, audio_path, srt_path, duration, output_path, color_name="Yellow"):
     """
@@ -277,7 +294,7 @@ def main():
     # Step 2: Audio Duration
     duration = get_audio_duration(audio_path)
 
-    # Step 3: Multi-scene REAL MOVING VIDEO FOOTAGE from Pexels (5 fast cuts)
+    # Step 3: Multi-scene REAL MOVING VIDEO FOOTAGE (Zero Stutter / Filter Complex Concat)
     build_multi_scene_real_video(args.script, args.topic, duration, pexels_key, bg_video_path, args.thumb)
 
     # Step 4: Final Assembly & Burned Subtitles
