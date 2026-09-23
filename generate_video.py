@@ -272,38 +272,187 @@ def call_gemini_json_api(gemini_key, prompt, model_list, timeout=20):
             print(f"Notice: Model {model} failed ({e}), trying backup...")
     return None, None
 
-def generate_ai_director_plan(gemini_key, topic="deep space mystery"):
-    """
-    Step 1: Executive Producer (Gemini 3.8 Flash) composes a high-retention script strictly targeted for 38-45 seconds!
-    """
-    prompt = f"""You are the Executive Producer for a viral YouTube Shorts channel targeting American audiences.
-Create a suspenseful, mind-bending 38 to 44-second space mystery Short on the topic: '{topic}'.
-Script Rules:
-1. Target Word Count: 85 to 105 words (spoken at a dramatic, authentic documentary pace, this equals exactly 38-44 seconds).
-2. Hook (0-3s): Punchy, terrifying first sentence that stops scrolling instantly.
-3. 4 to 5 sequential scenes that build suspense to a chilling climax.
-4. Each scene must have:
-   - scene_id: 1, 2, ...
-   - voice_line: Narration line for this scene (15-20 words)
-   - visual_vibe: Detailed visual description of what must appear on screen
-   - search_queries: List of 2 Pexels search terms (2-3 words each, e.g. ['deep space galaxy', 'spiral vortex cosmic'])
-5. hook_banner: 3-5 word uppercase text for top banner (e.g. 'SCIENTISTS CANNOT EXPLAIN THIS')
-6. title: Catchy YouTube Shorts title with emoji and #shorts
-7. full_script: Complete voiceover script combining all scenes smoothly.
+MASTER_MYSTERY_VAULT = [
+    # 🌌 Deep Space Anomalies & Cosmic Horrors
+    "The Great Attractor: An invisible gravitational anomaly pulling our entire Milky Way and thousands of galaxies at 2 million km/h toward an unseen cosmic wall.",
+    "Boötes Void: The 330-million light-year abyss of pure nothingness where 2,000 galaxies should exist but completely vanished.",
+    "Strange Matter Stars: A hypothetical cosmic material denser than neutron stars that converts any normal matter it touches into strangelets, destroying whole planets.",
+    "False Vacuum Decay: The ultimate cosmic nightmare where a single quantum bubble could erase all laws of physics and atoms at the speed of light.",
+    "Dark Flow: A mysterious cosmic current dragging galaxy clusters outside the boundaries of our observable universe as if something colossal exists beyond.",
+    "The CMB Cold Spot: An unexplained 1.8 billion light-year freezing zone in cosmic background radiation, possibly a bruise from a colliding parallel universe.",
+    "Ghost Galaxies: Massive cosmic structures composed of 99.9% dark matter with zero visible stars, silently bending light around empty space.",
+    "Rogue Black Holes: Unseen stellar-mass black holes hurtling through interstellar space at supersonic speeds without emitting any light.",
+    "Supermassive Black Hole TON 618: An unimaginable cosmic monster with the mass of 66 billion suns, shining brighter than 140 trillion stars.",
+    "The Eridanus Supervoid: A terrifying expanse of empty space 1 billion light years wide where matter and cosmic temperatures drop to near absolute zero.",
+    "Cosmic Strings: Infinitely thin, universe-spanning tears in spacetime with the mass of mountain ranges per inch, capable of slicing planets in half.",
+    "Quasar 3C 273: An ancient active galactic nucleus consuming 1,000 Earths of matter every minute, spewing relativistic plasma jets 300,000 light years long.",
 
-Output valid, pure JSON without any markdown formatting or extra text."""
+    # 🌊 Deep Ocean & Subterranean Terrors
+    "The Bloop of 1997: An ultra-low frequency sound echoing 3,000 miles across the Pacific Ocean, louder than any known marine animal or volcanic event.",
+    "Mariana Trench Challenger Deep: Deep-sea hydrophones at 36,000 feet recording unexplained rhythmic metallic pulses from beneath the tectonic crust.",
+    "The Baltic Sea Monolith: A 200-foot disc-shaped submerged structure at 300 feet depth that inexplicably jams electrical navigation gear above it.",
+    "The Upsweep Sound: An unidentified deep ocean acoustic signal steadily rising from Antarctic waters every spring since 1991.",
+    "Lake Vostok Sealed Abyss: A massive Antarctic lake sealed beneath 2 miles of solid ice for 15 million years, harboring isolated alien-like microbes.",
+    "Point Nemo Spacecraft Graveyard: The oceanic pole of inaccessibility, furthest place from civilization, where hundreds of defunct space stations are buried.",
+    "The Bermuda Triangle Blue Holes: Hundreds of feet deep underwater caverns creating sudden massive whirlpool currents that swallow ships without debris.",
+    "Mariana Bioluminescent Sirens: Unclassified organisms surviving under 1,000 atmospheres of crushing pressure that communicate through mesmerizing light pulses.",
+    "The Dragon's Triangle (Devil's Sea): The sinister Pacific zone south of Tokyo where military vessels and cargo ships vanish from radar screens with no distress calls.",
+    "Challenger Deep Hydrothermal Sirens: Superheated 400-degree mineral chimneys hosting bizarre translucent creatures in pitch-black boiling acidic water.",
 
-    print(f"✍️ Executive Producer (Gemini 3.8 Flash) is composing a viral script for: '{topic}'...")
+    # ⏳ Quantum, Time & Reality Glitches
+    "The Quantum Delayed-Choice Experiment: How observing photons in the present physically rewrites what they did billions of years in the past.",
+    "Time Dilation at Black Hole Horizons: Why watching someone fall toward a singularity freezes their frozen image forever while they watch the universe die.",
+    "The Boltzmann Brain Paradox: In an infinite universe, a random disembodied consciousness fluctuating into existence in deep space is more likely than humanity.",
+    "Quantum Entanglement Spooky Action: Particles separated by billions of light years communicating states instantaneously, defying the cosmic speed limit.",
+    "The Simulation Refresh Rate Glitch: Why the speed of light is the strict universal speed limit, identical to maximum processing rendering limits in computer engines.",
+    "Closed Timelike Curves: Einstein's general relativity allowing spacetime to loop back on itself around rotating Kerr black holes, creating real time travel loops.",
+    "The Quantum Zeno Paradox: Continuously observing an unstable radioactive particle physically freezes it in time and prevents it from ever decaying.",
+    "The Grandfather Paradox and Many-Worlds: How altering past timelines branches reality into an infinite tree of divergent parallel universes.",
+
+    # 📡 Alien Megastructures & Cosmic Signals
+    "The Wow! Signal: The legendary 72-second narrow-band transmission detected in 1977 that matched interstellar alien beacon frequencies and never repeated.",
+    "KIC 8462852 (Tabby's Star): Erratic 22% drops in starlight that led astrophysicists to investigate whether an alien Dyson Swarm was orbiting the star.",
+    "The Matrioshka Brain: Hypothetical nested Dyson spheres capturing the entire energy output of a star to power a solar-system-scale artificial intelligence.",
+    "Oumuamua's Anomalous Acceleration: The reddish cigar-shaped interstellar visitor that accelerated away from the Sun with no cometary tail or outgassing.",
+    "The Fermi Paradox & The Great Filter: The terrifying mathematical reality that trillions of habitable worlds are dead and silent because an invisible filter destroys civilizations.",
+    "Fast Radio Bursts (FRBs): Millisecond-duration cosmic radio flashes discharging as much energy in a fraction of a second as our Sun emits in three days."
+]
+
+HISTORY_FILE = "history.json"
+
+def load_recent_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+def extract_key_ident(text):
+    if ":" in text:
+        return text.split(":")[0].strip().lower()
+    return " ".join(text.split()[:3]).lower()
+
+def get_untouched_mystery(history):
+    past_texts = []
+    for h in history:
+        past_texts.append(h.get("title", "").lower())
+        past_texts.append(h.get("topic", "").lower())
+        past_texts.append(h.get("hook_banner", "").lower())
+    full_past = " ".join(past_texts)
+
+    untouched = []
+    for mystery in MASTER_MYSTERY_VAULT:
+        ident = extract_key_ident(mystery)
+        # Extract meaningful keywords (length >= 4 and not generic stop-words)
+        key_words = [w for w in re.findall(r'\b[a-z0-9]{4,}\b', ident) if w not in ["deep", "space", "mystery", "cosmic", "ocean", "sound", "alien", "anomaly"]]
+        if not key_words:
+            key_words = [ident]
+        
+        already_used = any(kw in full_past for kw in key_words)
+        if not already_used:
+            untouched.append(mystery)
+
+    if untouched:
+        return random.choice(untouched)
+    
+    # If all items touched, return random from vault
+    return random.choice(MASTER_MYSTERY_VAULT)
+
+def save_to_history(title, topic, hook_banner):
+    history = load_recent_history()
+    history.append({
+        "date": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+        "title": title,
+        "topic": topic,
+        "hook_banner": hook_banner
+    })
+    # Strict Sliding Window: Keep only the last 35 entries to keep file < 4KB forever!
+    history = history[-35:]
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2)
+    print(f"🧠 Updated Memory Vault: Tracking {len(history)} recent unique topics (sliding window active).")
+
+def generate_ai_director_plan(gemini_key, requested_topic="auto"):
+    """
+    Step 1: Executive Producer (Gemini 3.8 Flash) composes an unforgettable viral script
+    strictly targeted for 30 seconds (68-78 words) with ZERO topic repetition!
+    """
+    recent_history = load_recent_history()
+    past_topics_desc = [f"- {h.get('title', '')} (Theme: {h.get('topic', '')})" for h in recent_history[-20:]]
+    past_topics_str = "\n".join(past_topics_desc) if past_topics_desc else "None yet (Brand new channel vault)"
+
+    # Determine active topic
+    is_auto = (
+        not requested_topic 
+        or requested_topic.strip().lower() in [
+            "auto", "deep space cosmic mystery", "deep space cosmic anomaly", 
+            "mystery", "space mystery", "default"
+        ]
+    )
+
+    if is_auto:
+        active_topic = get_untouched_mystery(recent_history)
+        print(f"🎯 Auto-Selected Untouched Mystery from Vault:\n   -> {active_topic}")
+    else:
+        active_topic = requested_topic.strip()
+        print(f"🎯 Using User-Specified Topic: '{active_topic}'")
+
+    prompt = f"""You are the Executive Producer for a viral YouTube Shorts channel targeting American audiences (Tier-1 High RPM).
+Your mission: Create an unscrollable, suspenseful 30-SECOND viral Short about this exact phenomenon:
+THEME: "{active_topic}"
+
+VIRAL HOOK & PACING FORMULA (The "Don't Scroll" Blueprint):
+1. HOOK (0-3 SECONDS):
+   - A shocking first sentence that immediately stops the user from scrolling.
+   - Start immediately inside the terror, anomaly, or impossible contradiction.
+   - STRICTLY FORBIDDEN: "Did you know?", "In this video", "Welcome back", "Today we talk about".
+2. TENSION ESCALATION (3-18 SECONDS):
+   - Deliver 2 to 3 chilling, scientifically documented facts about this phenomenon.
+   - Use vivid, atmospheric language that triggers cosmic dread or visceral fascination.
+3. CLIMAX / MIND-BENDING REVEAL (18-28 SECONDS):
+   - Deliver an unsettling twist or an existential question that lingers in their mind.
+   - Forces viewers to rewatch or debate in the comments.
+4. WORD COUNT CONSTRAINT:
+   - Target Word Count: EXACTLY 68 to 78 words!
+   - Spoken at a documentary pace, this yields EXACTLY 28-32 seconds of speech (the golden 90%+ retention zone).
+5. VISUAL DIRECTION FOR PEXELS:
+   - Provide 4 to 5 sequential scenes.
+   - For each scene, specify 'search_queries' with 2 precise Pexels search phrases (2-3 words, e.g. ['deep ocean darkness', 'underwater abyss submersible'] or ['cosmic black hole', 'galaxy collision void']).
+   - Ensure visuals match the eerie, dark cinematic tone.
+
+⛔ STRICT ANTI-REPETITION CONSTRAINT:
+Do NOT duplicate any of these recently covered topics from our history:
+{past_topics_str}
+
+REQUIRED JSON OUTPUT FORMAT:
+{{
+  "title": "Shorts Title with emoji and #shorts (under 50 chars)",
+  "hook_banner": "3-5 WORDS UPPERCASE FOR TOP BANNER (e.g. THE OCEAN IS HIDING THIS)",
+  "full_script": "The complete 68-78 word script combining all scenes smoothly.",
+  "scenes": [
+    {{
+      "scene_id": 1,
+      "voice_line": "Sentence for scene 1 (12-16 words)",
+      "visual_vibe": "Cinematic visual description",
+      "search_queries": ["query 1", "query 2"]
+    }}
+  ]
+}}
+Output valid pure JSON only without markdown formatting."""
+
+    print(f"✍️ Executive Producer (Gemini 3.8 Flash) is composing a fresh 30s script for: '{active_topic[:50]}...'")
     data, used_model = call_gemini_json_api(gemini_key, prompt, SCRIPT_MODELS, timeout=25)
     if data:
         print(f"✨ Masterpiece Script written by: [{used_model}]")
         print(f"🎬 Title: {data.get('title')}")
         print(f"📌 Hook Banner: {data.get('hook_banner')}")
         print(f"📜 Generated {len(data.get('scenes', []))} sequential scenes.")
-        return data
+        return data, active_topic
 
     print("⚠️ Falling back to curated high-retention space mystery plan.")
-    return FALLBACK_PLANS[0]
+    return FALLBACK_PLANS[0], FALLBACK_PLANS[0].get("title")
 
 def fetch_pexels_candidates(queries, pexels_key, min_candidates=5):
     """
@@ -634,17 +783,18 @@ def main():
 
     # Step 1: Screenplay Generation via Executive Producer (Gemini 3.8 / 3.6 Flash)
     if not args.script or args.script.strip() == "" or args.auto or args.script.lower() == "auto":
-        plan = generate_ai_director_plan(gemini_key, args.topic)
+        plan, active_topic = generate_ai_director_plan(gemini_key, args.topic)
         script_text = plan.get("full_script") or " ".join([s.get("voice_line", "") for s in plan.get("scenes", [])])
-        hook_title = plan.get("hook_banner", "DEEP SPACE MYSTERY")
+        hook_title = plan.get("hook_banner", "UNEXPLAINED MYSTERY")
         scenes = plan.get("scenes", [])
         
         # Save metadata for YouTube auto-uploader
         meta = {
-            "title": plan.get("title", f"Mysteries of Deep Space 🌌 #shorts"),
-            "description": f"{script_text}\n\n#shorts #space #mystery #cosmic #astronomy #science",
+            "title": plan.get("title", f"The Unexplained Cosmic Mystery 🌌 #shorts"),
+            "description": f"{script_text}\n\n#shorts #mystery #science #deepspace #ocean #quantum",
             "hook_banner": hook_title,
-            "tags": ["shorts", "space", "astronomy", "mystery", "science", "nasa", "universe"]
+            "topic": active_topic,
+            "tags": ["shorts", "mystery", "science", "deepspace", "ocean", "universe", "unexplained"]
         }
         with open("output/metadata.json", "w", encoding="utf-8") as f:
             json.dump(meta, f, indent=2)
@@ -652,6 +802,16 @@ def main():
     else:
         script_text = args.script
         hook_title = "DEEP SPACE MYSTERY"
+        active_topic = args.topic
+        meta = {
+            "title": f"{hook_title} 🌌 #shorts",
+            "description": f"{script_text}\n\n#shorts #mystery #science",
+            "hook_banner": hook_title,
+            "topic": active_topic,
+            "tags": ["shorts", "mystery", "science"]
+        }
+        with open("output/metadata.json", "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2)
         scenes = [
             {"scene_id": 1, "voice_line": script_text, "visual_vibe": args.topic, "search_queries": [args.topic, "space galaxy"]}
         ]
@@ -664,13 +824,16 @@ def main():
     print(f"⏱️ Exact narration duration measured: {duration:.2f} seconds")
 
     # Step 4: Fetch Cinematic Background Music
-    fetch_bgm_track(args.topic, bgm_path)
+    fetch_bgm_track(active_topic, bgm_path)
 
     # Step 5: Multi-scene Hollywood 2-Stage Directed Video Footage
     build_hollywood_directed_video(scenes, sentence_timings, duration, pexels_key, gemini_key, bg_video_path, args.thumb)
 
     # Step 6: Render with Top Hook Banner & Audible BGM
     render_final_short_with_bgm(bg_video_path, audio_path, ass_path, bgm_path, duration, args.output, hook_title)
+
+    # Step 7: Update Anti-Repetition History Memory Vault
+    save_to_history(meta.get("title", hook_title), active_topic, hook_title)
 
 if __name__ == "__main__":
     main()
