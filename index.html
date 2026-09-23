@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI YouTube Shorts Player</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0e12;
+      color: #f1f1f1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .container {
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      background: #181920;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+      border: 1px solid #282a36;
+    }
+    h1 {
+      font-size: 1.3rem;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+    p.subtitle {
+      font-size: 0.85rem;
+      color: #9da3af;
+      margin-bottom: 16px;
+    }
+    .video-wrapper {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      margin-bottom: 18px;
+    }
+    video {
+      width: 100%;
+      max-height: 70vh;
+      display: block;
+      border-radius: 16px;
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 10px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-download {
+      background: #e50914;
+      color: white;
+    }
+    .btn-download:hover {
+      background: #f40612;
+    }
+    .btn-create {
+      background: #2563eb;
+      color: white;
+    }
+    .btn-create:hover {
+      background: #1d4ed8;
+    }
+    .footer {
+      margin-top: 14px;
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>🎬 AI Video Preview</h1>
+    <p class="subtitle">Cloud Rendered via GitHub Actions • 1080x1920</p>
+
+    <div class="video-wrapper">
+      <video controls autoplay loop playsinline src="video.mp4" poster=""></video>
+    </div>
+
+    <div class="actions">
+      <a href="video.mp4" download="ai_youtube_short.mp4" class="btn btn-download">⬇️ Download Video (.mp4)</a>
+      <a href="https://github.com/chandan805026/ai-youtube-shorts-generator/actions" target="_blank" class="btn btn-create">⚡ Generate Another Video</a>
+    </div>
+
+    <p class="footer">Powered by Microsoft EdgeTTS • Zero Laptop Load</p>
+  </div>
+
+</body>
+</html>
