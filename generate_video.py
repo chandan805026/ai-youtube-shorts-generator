@@ -64,8 +64,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         if not words:
             continue
             
-        # Find which word to highlight in Neon Green
-        # Priority: power words, digits, or the longest word
         highlight_idx = -1
         for idx, w in enumerate(words):
             clean_w = re.sub(r'[^A-Z0-9]', '', w)
@@ -73,13 +71,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 highlight_idx = idx
                 break
         if highlight_idx == -1:
-            # Highlight the longest word
             highlight_idx = max(range(len(words)), key=lambda i: len(words[i]))
             
         formatted_words = []
         for idx, w in enumerate(words):
             if idx == highlight_idx:
-                # Neon Green: &H0000FF00
                 formatted_words.append(f"{{\\c&H0000FF00&}}{w}{{\\c&H00FFFFFF&}}")
             else:
                 formatted_words.append(w)
@@ -303,17 +299,16 @@ def build_multi_scene_real_video(script_text, topic, total_duration, pexels_key,
     print("🎉 FULL STUTTER-FREE MULTI-SCENE REAL MOVING FOOTAGE COMPLETE!")
 
 def get_hook_title(script_text, topic):
-    """Generates an engaging, clickable top banner title"""
     lower = script_text.lower()
     if "void" in lower or "bootes" in lower:
-        return "⚠️  THE BOOTES VOID MYSTERY  ⚠️"
+        return "THE BOOTES VOID MYSTERY"
     elif "space" in lower or "black hole" in lower:
-        return "🌌  DEEP SPACE SECRETS  🌌"
+        return "DEEP SPACE SECRETS"
     elif "lion" in lower:
-        return "🦁  WILD JUNGLE STORIES  🦁"
+        return "WILD JUNGLE STORIES"
     elif "tech" in lower or "ai" in lower:
-        return "🤖  FUTURE TECH 2050  🤖"
-    return f"⚡  {topic.upper()}  ⚡"
+        return "FUTURE TECH 2050"
+    return f"{topic.upper()} FACTS"
 
 def render_final_short_with_bgm(bg_path, audio_path, ass_path, bgm_path, duration, output_path, hook_title):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -321,18 +316,17 @@ def render_final_short_with_bgm(bg_path, audio_path, ass_path, bgm_path, duratio
     
     escaped_ass = ass_path.replace("\\", "/").replace(":", "\\:")
     
-    # Visual filter: Scale/crop 1080x1920 -> Burn two-tone ASS subtitles -> Add top header badge
+    # Safe drawtext filter without bold=1 flag
     v_filter = (
         f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
         f"ass={escaped_ass},"
-        f"drawtext=text='{hook_title}':font='DejaVu Sans':fontsize=36:fontcolor=white:bold=1:"
-        f"box=1:boxcolor=black@0.75:boxborderw=14:x=(w-text_w)/2:y=240[vout]"
+        f"drawtext=text='{hook_title}':font='DejaVu Sans':fontsize=38:fontcolor=white:"
+        f"box=1:boxcolor=black@0.75:boxborderw=16:x=(w-text_w)/2:y=240[vout]"
     )
     
     if bgm_path and os.path.exists(bgm_path):
         fade_out_start = max(1.0, duration - 1.5)
-        # BGM volume boosted to 0.32 so it is clearly audible on mobile/laptop speakers!
-        audio_filter = f"[1:a]volume=1.0[voice];[2:a]volume=0.32,afade=t=in:ss=0:d=1,afade=t=out:st={fade_out_start}:d=1.5[bgm];[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        audio_filter = f"[1:a]volume=1.0[voice];[2:a]volume=0.35,afade=t=in:ss=0:d=1,afade=t=out:st={fade_out_start}:d=1.5[bgm];[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
         
         cmd = [
             "ffmpeg", "-y",
