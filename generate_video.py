@@ -467,7 +467,8 @@ Output valid pure JSON only without markdown formatting."""
 NEGATIVE_PEXELS_KEYWORDS = [
     "smile", "smiling", "office", "laptop", "meeting", "business", "desk", 
     "workout", "fitness", "cooking", "dance", "dancing", "happy", "woman talking", 
-    "man talking", "car driving", "traffic", "phone", "family", "kids", "baby", "shopping", "food"
+    "man talking", "car driving", "traffic", "phone", "family", "kids", "baby", "shopping", "food",
+    "diver", "scuba", "swimming", "snorkeling", "coral", "reef", "beach", "pool", "sunlight"
 ]
 
 def parse_pexels_clip_info(c, idx):
@@ -692,28 +693,33 @@ def download_and_standardize_clip(video_obj, output_path, duration):
         os.remove(raw_path)
     return True
 
-def generate_ai_scene_visual(prompt, output_jpg, retries=2):
+def generate_ai_scene_visual(prompt, output_jpg, retries=3):
     """
-    Generates a 9:16 vertical 1080x1920 8K photorealistic cinematic visual via Pollinations Sana engine.
+    Generates a 9:16 vertical 1080x1920 8K photorealistic cinematic visual via Pollinations Sana/Flux engine.
     """
     clean_p = re.sub(r'[^a-zA-Z0-9\s,.-]', '', prompt).strip()
-    encoded = urllib.parse.quote(clean_p)
-    seed = random.randint(1000, 999999)
-    url = f"https://image.pollinations.ai/prompt/{encoded}?model=sana&width=1080&height=1920&nologo=true&seed={seed}"
+    words = clean_p.split()[:25]
+    short_prompt = " ".join(words)
+    encoded = urllib.parse.quote(short_prompt)
+    model_options = ["sana", "flux", ""]
     for attempt in range(retries):
+        model_param = f"&model={model_options[attempt % len(model_options)]}" if model_options[attempt % len(model_options)] else ""
+        seed = random.randint(1000, 999999)
+        url = f"https://image.pollinations.ai/prompt/{encoded}?width=1080&height=1920&nologo=true&seed={seed}{model_param}"
         try:
-            r = requests.get(url, timeout=35)
+            r = requests.get(url, timeout=30)
             if r.status_code == 200 and len(r.content) > 10000:
                 with open(output_jpg, "wb") as f:
                     f.write(r.content)
-                print(f"🎨 Generated 8K Photorealistic AI Scene: {output_jpg} ({len(r.content)} bytes)")
+                used_m = model_options[attempt % len(model_options)] or "default"
+                print(f"🎨 Generated 8K AI Visual [{used_m}]: {output_jpg} ({len(r.content)} bytes)")
                 return True
             else:
                 print(f"Notice: AI visual status {r.status_code}, retrying...")
-                time.sleep(2)
+                time.sleep(1.5)
         except Exception as e:
             print(f"Notice: AI visual attempt {attempt+1} failed ({e}), retrying...")
-            time.sleep(2)
+            time.sleep(1.5)
     return False
 
 def convert_image_to_cinematic_clip(image_path, output_clip_path, duration):
