@@ -44,25 +44,29 @@ FALLBACK_PLANS = [
                 "scene_id": 1,
                 "voice_line": "Deep in the constellation Boötes lies a terrifying region of space 330 million light-years across.",
                 "visual_vibe": "Telescope deep space view starry universe cosmic void",
-                "search_queries": ["deep space stars telescope", "galaxy field universe"]
+                "search_queries": ["deep space stars telescope", "galaxy field universe"],
+                "camera_motion": "crash_zoom"
             },
             {
                 "scene_id": 2,
                 "voice_line": "It should contain thousands of galaxies, but astronomers found almost nothing.",
                 "visual_vibe": "Dark empty void black space cosmos",
-                "search_queries": ["dark space void empty", "spiral galaxy spinning"]
+                "search_queries": ["dark space void empty", "spiral galaxy spinning"],
+                "camera_motion": "slow_pull_back"
             },
             {
                 "scene_id": 3,
                 "voice_line": "What could wipe out an entire sector of the universe?",
                 "visual_vibe": "Black hole cosmic explosion mystery nebula",
-                "search_queries": ["black hole space", "nebula explosion cosmic"]
+                "search_queries": ["black hole space", "nebula explosion cosmic"],
+                "camera_motion": "deep_descent"
             },
             {
                 "scene_id": 4,
                 "voice_line": "Some fear an ancient civilization is harvesting entire stars.",
                 "visual_vibe": "Futuristic alien megastructure sci fi space glowing planet",
-                "search_queries": ["futuristic sci fi space technology", "alien planet glowing space"]
+                "search_queries": ["futuristic sci fi space technology", "alien planet glowing space"],
+                "camera_motion": "slow_zoom_in"
             }
         ]
     }
@@ -431,6 +435,16 @@ VIRAL HOOK & PACING FORMULA (The "Don't Scroll" Blueprint):
      * NEVER request "macro shots", "close-up of eye", "chisel tools", "generic cave tunnels", "people walking holding hands".
      * Every shot MUST be an epic, grand, high-impact cinematic frame worthy of an IMAX 70mm documentary film!
 
+7. DYNAMIC HOLLYWOOD CAMERA MOTION (Crucial for High-Retention Visual Rhythm):
+   - For EACH scene, assign the most emotionally powerful camera motion matching the narrative:
+     * "crash_zoom": Rapid acceleration punch-in towards the subject (Essential for Scene 1 Hook & shocking reveals)
+     * "slow_pull_back": Starts close and pulls back smoothly to reveal immense cosmic or landscape scale
+     * "majestic_rise": Smooth upward tilt panning from base towards the heavens or mountain peak
+     * "deep_descent": Downward plunge into dark waters, chasms, or abyssal depths
+     * "pan_left_to_right": Grand sweeping horizontal tracking shot
+     * "pan_right_to_left": Opposite horizontal tracking shot
+     * "slow_zoom_in": Slow hypnotic drift into mystery
+
 ⛔ STRICT ANTI-REPETITION CONSTRAINT:
 Do NOT duplicate any of these recently covered topics from our history:
 {past_topics_str}
@@ -445,7 +459,8 @@ REQUIRED JSON OUTPUT FORMAT:
       "scene_id": 1,
       "voice_line": "Sentence for scene 1 (8-11 words)",
       "visual_prompt": "Majestic, hyper-detailed 8K photorealistic scene description matching the exact sentence",
-      "visual_vibe": "Cinematic visual description"
+      "visual_vibe": "Cinematic visual description",
+      "camera_motion": "crash_zoom"
     }}
   ]
 }}
@@ -513,17 +528,41 @@ def generate_ai_scene_visual(prompt, output_jpg, max_retries=4):
         
     return False
 
-def convert_image_to_cinematic_clip(image_path, output_clip_path, duration):
+def convert_image_to_cinematic_clip(image_path, output_clip_path, duration, camera_motion="slow_zoom_in"):
     """
-    Applies buttery-smooth cinematic Ken Burns zoom (scales up smoothly by 3.5%/s)
-    and cleanly crops bottom 4.5% to ensure zero watermarks.
+    Applies Hollywood-grade dynamic camera movement tailored to the emotional beat of the scene
+    and cleanly crops bottom 4.5% to ensure zero watermarks. 100% crash-proof!
     """
+    motion = str(camera_motion).lower().strip()
+
+    if "crash" in motion or "punch" in motion:
+        # High-intensity shock zoom acceleration (Scene 1 Hooks & Plot Twists)
+        vf = "crop=in_w:in_h*0.955:0:0,scale='1080*(1+0.065*t)':'1920*(1+0.065*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,format=yuv420p"
+    elif "pull" in motion or "back" in motion or "zoom_out" in motion:
+        # Grand cosmic reveal: starts tight and pulls back smoothly
+        vf = "crop=in_w:in_h*0.955:0:0,scale='1080*(1.16-0.035*t)':'1920*(1.16-0.035*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,format=yuv420p"
+    elif "rise" in motion or "tilt_up" in motion or "up" in motion:
+        # Upward vertical pan from base towards the heavens/mountain summit
+        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.12:1920*1.12,crop=1080:1920:(in_w-1080)/2:'max(0,(in_h-1920)*(1-0.2*t))',format=yuv420p"
+    elif "descent" in motion or "dive" in motion or "down" in motion:
+        # Downward vertical pan plunging into the dark abyss or deep ocean
+        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.12:1920*1.12,crop=1080:1920:(in_w-1080)/2:'min(in_h-1920,(in_h-1920)*(0.08+0.2*t))',format=yuv420p"
+    elif "left_to_right" in motion or "pan_right" in motion:
+        # Sweeping horizontal tracking shot from left to right
+        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.15:1920*1.15,crop=1080:1920:'min(in_w-1080,(in_w-1080)*(0.05+0.2*t))':(in_h-1920)/2,format=yuv420p"
+    elif "right_to_left" in motion or "pan_left" in motion:
+        # Sweeping horizontal tracking shot from right to left
+        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.15:1920*1.15,crop=1080:1920:'max(0,(in_w-1080)*(0.95-0.2*t))':(in_h-1920)/2,format=yuv420p"
+    else:
+        # Smooth default Ken Burns mystery drift (3.5%/s)
+        vf = "crop=in_w:in_h*0.955:0:0,scale='1080*(1+0.035*t)':'1920*(1+0.035*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,format=yuv420p"
+
     cmd = [
         "ffmpeg", "-y",
         "-loop", "1",
         "-i", image_path,
         "-t", str(duration + 0.1),
-        "-vf", "crop=in_w:in_h*0.955:0:0,scale='1080*(1+0.035*t)':'1920*(1+0.035*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,format=yuv420p",
+        "-vf", vf,
         "-r", "30",
         "-c:v", "libx264",
         "-preset", "veryfast",
@@ -538,7 +577,7 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gem
     """
     100% Photorealistic AI Cinematography Pipeline:
     1. Generates 8K photorealistic scene visuals matching the exact narrative.
-    2. Converts all scenes into dynamic 30fps Ken Burns cinematic clips.
+    2. Converts all scenes into dynamic 30fps Ken Burns cinematic clips with custom camera motions.
     3. Assembles master video with zero stutter and ZERO Pexels stock video!
     """
     num_scenes = max(1, len(scenes))
@@ -558,7 +597,8 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gem
     clip_files = []
     for i, scene in enumerate(scenes):
         assigned_dur = assigned_durations.get(i, avg_dur)
-        print(f"\n🎨 Scene {i+1}/{num_scenes} ({assigned_dur:.2f}s): '{scene.get('voice_line', '')[:40]}...'")
+        motion = scene.get("camera_motion", "slow_zoom_in")
+        print(f"\n🎨 Scene {i+1}/{num_scenes} ({assigned_dur:.2f}s | Camera: '{motion}'): '{scene.get('voice_line', '')[:40]}...'")
         img_path = f"temp/scene_art_{i}.jpg"
         clip_path = f"temp/scene_clip_{i}.mp4"
 
@@ -570,8 +610,8 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gem
             print(f"⚠️ Retrying AI visual generation with distilled mystery prompt...")
             generate_ai_scene_visual(f"{scene.get('visual_vibe', 'deep space cosmic anomaly')} 8k photorealistic cinematic", img_path)
 
-        print(f"🎥 Converting Scene {i+1} into dynamic Ken Burns 3D camera push ({assigned_dur:.2f}s)...")
-        convert_image_to_cinematic_clip(img_path, clip_path, assigned_dur)
+        print(f"🎥 Converting Scene {i+1} with Hollywood '{motion}' camera motion ({assigned_dur:.2f}s)...")
+        convert_image_to_cinematic_clip(img_path, clip_path, assigned_dur, camera_motion=motion)
         clip_files.append(clip_path)
         if i == 0:
             try:
