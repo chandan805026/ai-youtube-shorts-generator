@@ -424,16 +424,29 @@ VIRAL HOOK & PACING FORMULA (The "Don't Scroll" Blueprint):
    - Each scene voice_line must be 8 to 11 words (approx 3.0 to 3.8 seconds).
    - ABSOLUTE LIMIT: No individual clip should stay on screen longer than 4.0 seconds!
    - Fast, seamless visual transitions keep viewers completely glued to the screen.
-6. 8K PHOTOREALISTIC VISUAL ART DIRECTION (Crucial for UK & Global High-RPM Retention):
-   - For EACH scene, write a hyper-detailed visual_prompt describing the EXACT central entity narrated in that sentence.
-   - 1:1 AUDIO-VISUAL SYNCHRONIZATION (MANDATORY):
-     * If narration mentions Mount Kailash / Mountains: "Towering snow-capped pyramid peak of Mount Kailash surrounded by sacred Himalayan mists, golden sunrise god rays, cinematic 8k National Geographic photography"
-     * If narration mentions Lord Shiva / Deities: "Lord Shiva in deep serene cosmic meditation on Himalayan mountain peak, glowing blue aura, crescent moon, sacred trishul, starry cosmic cosmos, 8k cinematic IMAX"
-     * If narration mentions Time Warping / Instruments: "Antique brass nautical compass with spinning needle floating above glowing snowy Himalayan mountain peaks, time distortion, 8k cinematic"
-     * If narration mentions Deep Space / Anomalies: "Supermassive black hole orange plasma accretion disk warping spacetime, pitch black cosmos, 8k cinematic"
-   - STRICTLY FORBIDDEN IN PROMPTS:
-     * NEVER request "macro shots", "close-up of eye", "chisel tools", "generic cave tunnels", "people walking holding hands".
-     * Every shot MUST be an epic, grand, high-impact cinematic frame worthy of an IMAX 70mm documentary film!
+6. 8K PHOTOREALISTIC VISUAL ART DIRECTION (CRITICAL: ZERO VISUAL REPETITION):
+   - ⛔ THE CARDINAL ANTI-MONOTONY RULE:
+     * Viewers swipe away instantly if multiple scenes look similar or repetitive!
+     * NEVER generate multiple scenes with the same shape, background, or motif.
+     * STRICTLY FORBIDDEN: NEVER make multiple scenes showing a glowing orb, ring, or sphere in empty black space. At absolute most, ONE single cosmic sphere is permitted across the entire video.
+     * EVERY scene must have a completely distinct visual environment, perspective, and subject!
+
+   - 🎭 MANDATORY SCENE-BY-SCENE PERSPECTIVE & SCALE ROTATION (Each scene MUST be a distinct shot type):
+     * Scene 1 (Hook / Vista): Colossal establishing wide shot (e.g. planetary horizon, misty sacred peak, ocean abyss, massive alien megastructure under dramatic lighting).
+     * Scene 2 (Scale / Human or Explorer POV): Tangible explorer or human scale (e.g. expedition crew in thermal suits on ice cliff, astronomer silhouette in futuristic observatory bay, deep-sea submarine headlights piercing dark depths).
+     * Scene 3 (Artifact / Intricate Mechanism): Detailed tactile relic or technology (e.g. spinning antique brass compass, carved glowing stone runes, high-tech radar console flashing red warnings, intricate crystalline quantum core).
+     * Scene 4 (Dynamic Phenomenon / Environmental Force): Atmospheric storm, churning ocean whirlpool, roaring geomagnetic auroral curtains, rivers of molten stellar fire, or violent lightning rift.
+     * Scene 5 (Interior Architecture / Subterranean Depth): Grand interior depth (e.g. endless megalithic basalt temple corridor, colossal geometric mainframe vault, deep underwater cavern).
+     * Scene 6 (Cosmic / Transcendent Scale): Universe-scale perspective (e.g. swirling galaxy cluster, gravitational spacetime warping, ancient celestial alignment).
+     * Scene 7 (Chilling Reveal / Climax): Haunting silhouette, awakening robotic monolith, or mysterious titan entity emerging from shadows.
+
+   - 🎨 MANDATORY CONTRASTING COLOR PALETTES (Every scene MUST switch dominant color temperature):
+     * Scene 1: Warm Amber / Golden Sunrise / Molten Bronze
+     * Scene 2: Glacial Cyan / Deep Oceanic Teal / Icy Blue
+     * Scene 3: Eerie Crimson / Obsidian Black / Volcanic Glow
+     * Scene 4: Bioluminescent Emerald / Radioactive Neon Green
+     * Scene 5: Amethyst Violet / Cosmic Starlight Silver / Royal Indigo
+     * Ensure neighboring scenes have completely contrasting colors!
 
 7. DYNAMIC HOLLYWOOD CAMERA MOTION (Crucial for High-Retention Visual Rhythm):
    - For EACH scene, assign the most emotionally powerful camera motion matching the narrative:
@@ -457,8 +470,10 @@ REQUIRED JSON OUTPUT FORMAT:
   "scenes": [
     {{
       "scene_id": 1,
+      "shot_type": "establishing_vista",
+      "color_palette": "golden_amber",
       "voice_line": "Sentence for scene 1 (8-11 words)",
-      "visual_prompt": "Majestic, hyper-detailed 8K photorealistic scene description matching the exact sentence",
+      "visual_prompt": "Majestic, hyper-detailed 8K photorealistic scene description matching the exact sentence and shot type",
       "visual_vibe": "Cinematic visual description",
       "camera_motion": "crash_zoom"
     }}
@@ -488,11 +503,11 @@ def generate_ai_scene_visual(prompt, output_jpg, max_retries=4):
     
     for attempt in range(max_retries):
         if attempt == 0:
-            active_prompt = " ".join(words[:24])
+            active_prompt = " ".join(words[:32])
         elif attempt == 1:
-            active_prompt = " ".join(words[:16]) + " 8k photorealistic IMAX cinematic film lighting"
+            active_prompt = " ".join(words[:20]) + " 8k photorealistic IMAX cinematic film lighting"
         elif attempt == 2:
-            active_prompt = " ".join(words[:10]) + " epic majestic 8k cinematic masterpiece photorealistic"
+            active_prompt = " ".join(words[:12]) + " epic majestic 8k cinematic masterpiece photorealistic"
         else:
             active_prompt = " ".join(words[:6]) + " majestic 8k cinematic photorealistic National Geographic"
 
@@ -608,7 +623,8 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gem
 
         if not ai_success:
             print(f"⚠️ Retrying AI visual generation with distilled mystery prompt...")
-            generate_ai_scene_visual(f"{scene.get('visual_vibe', 'deep space cosmic anomaly')} 8k photorealistic cinematic", img_path)
+            fallback_vibe = scene.get('visual_vibe') or f"{scene.get('shot_type', 'cinematic vista')} {scene.get('color_palette', 'dramatic lighting')}"
+            generate_ai_scene_visual(f"{fallback_vibe} {scene.get('voice_line', '')} 8k cinematic photorealistic", img_path)
 
         print(f"🎥 Converting Scene {i+1} with Hollywood '{motion}' camera motion ({assigned_dur:.2f}s)...")
         convert_image_to_cinematic_clip(img_path, clip_path, assigned_dur, camera_motion=motion)
