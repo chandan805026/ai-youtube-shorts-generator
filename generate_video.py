@@ -18,12 +18,7 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 # Fallback obfuscated keys (to comply with GitHub Secret Scanning)
-_PK = b"TGdHWjJoMTRYQk9RZTl2dXE0dmd6bVpwVVQyV3p2emJwbHRCRHlEaEVtY25EcEhKMXhvTWFhcVE="
 _GK = b"QVEuQWI4Uk42S0JEMFhIQjJnM1JlM3VMVVVVd1NHdDdRLUkyZkVxcnJ5bnNpTWpkNGNEanc="
-
-DEFAULT_PEXELS_KEY = (os.environ.get("PEXELS_API_KEY") or "").strip()
-if not DEFAULT_PEXELS_KEY:
-    DEFAULT_PEXELS_KEY = base64.b64decode(_PK).decode("utf-8")
 
 DEFAULT_GEMINI_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
 if not DEFAULT_GEMINI_KEY:
@@ -464,274 +459,67 @@ Output valid pure JSON only without markdown formatting."""
     print("⚠️ Falling back to curated high-retention space mystery plan.")
     return FALLBACK_PLANS[0], FALLBACK_PLANS[0].get("title")
 
-NEGATIVE_PEXELS_KEYWORDS = [
-    "smile", "smiling", "office", "laptop", "meeting", "business", "desk", 
-    "workout", "fitness", "cooking", "dance", "dancing", "happy", "woman talking", 
-    "man talking", "car driving", "traffic", "phone", "family", "kids", "baby", "shopping", "food",
-    "diver", "scuba", "swimming", "snorkeling", "coral", "reef", "beach", "pool", "sunlight"
-]
-
-def parse_pexels_clip_info(c, idx):
-    slug = c.get("url", "").strip("/").split("/")[-1]
-    title = re.sub(r'-\d+$', '', slug).replace('-', ' ').title()
-    if not title or title.isdigit():
-        title = "Cinematic Stock Footage"
-    w = c.get("width", 0)
-    h = c.get("height", 0)
-    res = "4K Portrait" if (h >= 2160 or w >= 2160) else ("1080p Portrait" if h >= w else "Landscape")
-    return {
-        "candidate_index": idx,
-        "visual_description": title,
-        "resolution": res,
-        "duration_seconds": c.get("duration", 0),
-        "color_tone": c.get("avg_color", "Dark")
-    }
-
-def fetch_pexels_candidates(queries, pexels_key, min_candidates=5):
+def generate_ai_scene_visual(prompt, output_jpg, max_retries=4):
     """
-    Step 2: Fetches at least 5 distinct high-quality candidate clips per scene with random page shuffling.
-    Filters out off-topic everyday life footage and enforces portrait orientation.
-    """
-    headers = {"Authorization": pexels_key.strip()}
-    candidates = []
-    seen_ids = set()
-
-    for q in queries:
-        clean_q = re.sub(r'[^a-zA-Z0-9\s]', '', q).strip()
-        if len(clean_q.split()) <= 1:
-            clean_q = f"{clean_q} dark cinematic 4k"
-        encoded = urllib.parse.quote(clean_q)
-        random_page = random.randint(1, 3)
-        url = f"https://api.pexels.com/videos/search?query={encoded}&orientation=portrait&per_page=10&page={random_page}"
-        try:
-            r = requests.get(url, headers=headers, timeout=15)
-            if r.status_code == 200:
-                videos = r.json().get("videos", [])
-                random.shuffle(videos)
-                for v in videos:
-                    vid = v.get("id")
-                    if not vid or vid in seen_ids:
-                        continue
-                    
-                    # Ensure vertical or square
-                    w = v.get("width", 0)
-                    h = v.get("height", 0)
-                    if h < w:
-                        continue
-                        
-                    # Filter out negative everyday life keywords from slug
-                    slug = v.get("url", "").lower()
-                    if any(neg in slug for neg in NEGATIVE_PEXELS_KEYWORDS):
-                        continue
-                        
-                    seen_ids.add(vid)
-                    candidates.append(v)
-            if len(candidates) >= min_candidates:
-                break
-        except Exception as e:
-            print(f"Pexels search error for '{q}': {e}")
-
-    # Fallback if fewer than min_candidates found
-    if len(candidates) < min_candidates:
-        backup_queries = ["deep space nebula 4k", "dark galaxy universe stars", "underwater abyss glowing deep sea"]
-        for bq in backup_queries:
-            random_page = random.randint(1, 4)
-            url = f"https://api.pexels.com/videos/search?query={urllib.parse.quote(bq)}&orientation=portrait&per_page=8&page={random_page}"
-            try:
-                r = requests.get(url, headers=headers, timeout=15)
-                if r.status_code == 200:
-                    for v in r.json().get("videos", []):
-                        vid = v.get("id")
-                        if not vid or vid in seen_ids:
-                            continue
-                        w = v.get("width", 0)
-                        h = v.get("height", 0)
-                        if h < w:
-                            continue
-                        slug = v.get("url", "").lower()
-                        if any(neg in slug for neg in NEGATIVE_PEXELS_KEYWORDS):
-                            continue
-                        seen_ids.add(vid)
-                        candidates.append(v)
-                if len(candidates) >= min_candidates:
-                    break
-            except Exception:
-                pass
-
-    return candidates
-
-def assistant_director_select_clip(gemini_key, scene, candidates):
-    """
-    Step 3: Assistant Director (Gemini 3.5 Flash Lite - 500 RPD) screens 5 candidates,
-    evaluates rich visual descriptions and resolutions, and selects the absolute best match.
-    """
-    if not candidates:
-        return None
-    if len(candidates) == 1:
-        return candidates[0]
-
-    candidate_summaries = [parse_pexels_clip_info(c, idx) for idx, c in enumerate(candidates[:5])]
-
-    prompt = f"""You are the Master Visual Director for a high-retention documentary YouTube Short.
-Your mission: Screen these 5 candidate stock clips from Pexels and choose the SINGLE BEST visual for this exact scene.
-
-SCENE NARRATION: "{scene.get('voice_line', '')}"
-DESIRED VISUAL VIBE: "{scene.get('visual_vibe', '')}"
-
-CANDIDATE CLIPS (5 Options from Pexels):
-{json.dumps(candidate_summaries, indent=2)}
-
-STRICT SELECTION CRITERIA:
-1. Direct Subject Match: Choose the clip whose visual description best depicts what is being narrated.
-2. Viral Atmosphere: Strongly prefer dark, moody, cinematic, awe-inspiring, high-contrast visuals (deep cosmos, abyssal ocean, glowing scientific anomalies).
-3. Rejection: Reject any clip that feels generic, bright daylight, commercial, goofy, or out of place.
-4. Resolution: Favor '4K Portrait' or '1080p Portrait'.
-
-Which candidate index (0 to {len(candidate_summaries)-1}) is the absolute highest quality and most viral match?
-Output valid pure JSON:
-{{"selected_index": 0, "director_reason": "Specific 1-sentence reason why this visual best enhances viewer suspense"}}"""
-
-    decision, used_model = call_gemini_json_api(gemini_key, prompt, DIRECTOR_MODELS, timeout=12)
-    if decision:
-        sel_idx = decision.get("selected_index", 0)
-        if 0 <= sel_idx < len(candidates):
-            print(f"🎬 Assistant Director [{used_model}] selected candidate #{sel_idx}: {decision.get('director_reason')}")
-            return candidates[sel_idx]
-
-    return candidates[0]
-
-def executive_producer_approve_timeline(gemini_key, script_plan, chosen_clips, sentence_timings, total_audio_duration):
-    """
-    Step 4: Executive Producer (Gemini 3.8 / 3.6 Flash) reviews the chosen clips and sentence timings,
-    ensuring rapid-cut pacing with NO CLIP EVER EXCEEDING 4.0 SECONDS!
-    """
-    chosen_summaries = []
-    for idx, c in enumerate(chosen_clips):
-        info = parse_pexels_clip_info(c, idx)
-        chosen_summaries.append({
-            "scene_id": idx + 1,
-            "visual": info.get("visual_description"),
-            "raw_duration": c.get("duration")
-        })
-
-    prompt = f"""You are the Executive Producer and Master Film Editor.
-Total Narration Audio Duration: {total_audio_duration:.2f} seconds across {len(chosen_clips)} scenes.
-
-Speech Sentence Timings (from Voiceover):
-{json.dumps(sentence_timings, indent=2)}
-
-Chosen Video Footage for each scene (Curated by Assistant Director):
-{json.dumps(chosen_summaries, indent=2)}
-
-STRICT SHORT-PACING RULES (Crucial for Viral Retention):
-1. FAST CUTS: NO CLIP SHOULD EVER BE LONG! Maximum duration for any clip is 4.0 SECONDS!
-2. Target each clip duration between 2.5s and 3.9s to keep the visual rhythm energetic and hypnotic.
-3. Every cut must land cleanly on a dramatic speech pause.
-4. The exact sum of all clip durations MUST EQUAL EXACTLY {total_audio_duration:.2f} seconds.
-
-Output strictly valid pure JSON:
-{{
-  "executive_review": "Why this rapid-cut pacing guarantees 90%+ completion rate",
-  "approved_timeline": [
-    {{"scene_id": 1, "duration": 3.6}},
-    {{"scene_id": 2, "duration": 3.4}}
-  ]
-}}"""
-
-    print("👑 Executive Producer (Gemini 3.8 Flash) is reviewing the final timeline and cut sheet...")
-    data, used_model = call_gemini_json_api(gemini_key, prompt, SCRIPT_MODELS, timeout=20)
-    if data and data.get("approved_timeline"):
-        print(f"🎬 Executive Producer [{used_model}] approved master timeline: {data.get('executive_review')}")
-        timeline_dict = {item.get("scene_id"): float(item.get("duration", 0)) for item in data.get("approved_timeline", [])}
-        
-        # Enforce hard clamp: ensure no single clip > 4.2 seconds and sum equals total_audio_duration
-        total_assigned = sum(timeline_dict.values())
-        if total_assigned > 0:
-            factor = total_audio_duration / total_assigned
-            timeline_dict = {sid: round(d * factor, 2) for sid, d in timeline_dict.items()}
-        return timeline_dict
-
-    print("Notice: Using intelligent sentence boundary duration mapping.")
-    num_scenes = max(1, len(chosen_clips))
-    avg_dur = total_audio_duration / num_scenes
-    return {idx + 1: round(avg_dur, 2) for idx in range(num_scenes)}
-
-def download_and_standardize_clip(video_obj, output_path, duration):
-    # Find best portrait video file (prefer 1080p/4K over low-res 540p)
-    best_link = None
-    portrait_files = [f for f in video_obj.get("video_files", []) if f.get("height", 0) >= f.get("width", 0)]
-    if portrait_files:
-        portrait_files.sort(key=lambda x: x.get("height", 0), reverse=True)
-        best_link = portrait_files[0]["link"]
-    elif video_obj.get("video_files"):
-        sorted_files = sorted(video_obj["video_files"], key=lambda x: x.get("height", 0), reverse=True)
-        best_link = sorted_files[0]["link"]
-
-    if not best_link:
-        return False
-
-    raw_path = f"temp/raw_clip_{int(time.time()*1000)%10000}.mp4"
-    res = requests.get(best_link, timeout=30)
-    with open(raw_path, "wb") as f:
-        f.write(res.content)
-
-    cmd = [
-        "ffmpeg", "-y",
-        "-stream_loop", "-1",
-        "-i", raw_path,
-        "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30",
-        "-r", "30",
-        "-t", str(duration),
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-pix_fmt", "yuv420p",
-        "-an",
-        output_path
-    ]
-    subprocess.run(cmd, check=True)
-    if os.path.exists(raw_path):
-        os.remove(raw_path)
-    return True
-
-def generate_ai_scene_visual(prompt, output_jpg, retries=3):
-    """
-    Generates a 9:16 vertical 1080x1920 8K photorealistic cinematic visual via Pollinations Sana/Flux engine.
+    Generates a 9:16 vertical 768x1344 8K photorealistic cinematic visual via Sana diffusion engine.
+    Uses resilient curl + python requests fallback with exponential backoff and prompt distillation.
     """
     clean_p = re.sub(r'[^a-zA-Z0-9\s,.-]', '', prompt).strip()
-    words = clean_p.split()[:25]
-    short_prompt = " ".join(words)
-    encoded = urllib.parse.quote(short_prompt)
-    model_options = ["sana", "flux", ""]
-    for attempt in range(retries):
-        model_param = f"&model={model_options[attempt % len(model_options)]}" if model_options[attempt % len(model_options)] else ""
+    words = clean_p.split()
+    
+    for attempt in range(max_retries):
+        if attempt == 0:
+            active_prompt = " ".join(words[:24])
+        elif attempt == 1:
+            active_prompt = " ".join(words[:14]) + " 8k photorealistic dark cinematic lighting volumetric"
+        elif attempt == 2:
+            active_prompt = " ".join(words[:8]) + " dark cosmic mystery 8k cinematic photorealistic"
+        else:
+            active_prompt = "alien cosmic mystery anomaly 8k photorealistic cinematic"
+
+        encoded = urllib.parse.quote(active_prompt)
         seed = random.randint(1000, 999999)
-        url = f"https://image.pollinations.ai/prompt/{encoded}?width=1080&height=1920&nologo=true&seed={seed}{model_param}"
+        url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1344&nologo=true&seed={seed}&model=sana"
+        
+        print(f"🎨 Generating 8K AI Visual [Attempt {attempt+1}/{max_retries}]: '{active_prompt[:45]}...'")
+        
+        # Method 1: curl (fast, immune to urllib3 IPv6 SSL handshake stalls)
         try:
-            r = requests.get(url, timeout=30)
+            cmd = ["curl", "-s", "-L", "--max-time", "25", url, "-o", output_jpg]
+            subprocess.run(cmd, capture_output=True, timeout=30)
+            if os.path.exists(output_jpg) and os.path.getsize(output_jpg) > 10000:
+                print(f"✅ Generated 8K AI Visual (curl): {output_jpg} ({os.path.getsize(output_jpg)} bytes)")
+                return True
+        except Exception:
+            pass
+
+        # Method 2: requests with browser User-Agent
+        try:
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            r = requests.get(url, headers=headers, timeout=25)
             if r.status_code == 200 and len(r.content) > 10000:
                 with open(output_jpg, "wb") as f:
                     f.write(r.content)
-                used_m = model_options[attempt % len(model_options)] or "default"
-                print(f"🎨 Generated 8K AI Visual [{used_m}]: {output_jpg} ({len(r.content)} bytes)")
+                print(f"✅ Generated 8K AI Visual (requests): {output_jpg} ({len(r.content)} bytes)")
                 return True
-            else:
-                print(f"Notice: AI visual status {r.status_code}, retrying...")
-                time.sleep(1.5)
-        except Exception as e:
-            print(f"Notice: AI visual attempt {attempt+1} failed ({e}), retrying...")
-            time.sleep(1.5)
+        except Exception:
+            pass
+
+        time.sleep(2 * (attempt + 1))
+        
     return False
 
 def convert_image_to_cinematic_clip(image_path, output_clip_path, duration):
     """
-    Applies buttery-smooth cinematic Ken Burns zoom (scales up smoothly by 3.5%/s to push into focal point)
+    Applies buttery-smooth cinematic Ken Burns zoom (scales up smoothly by 3.5%/s)
+    and cleanly crops bottom 4.5% to ensure zero watermarks.
     """
     cmd = [
         "ffmpeg", "-y",
         "-loop", "1",
         "-i", image_path,
         "-t", str(duration + 0.1),
-        "-vf", "scale='1080*(1+0.035*t)':'1920*(1+0.035*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,format=yuv420p",
+        "-vf", "crop=in_w:in_h*0.955:0:0,scale='1080*(1+0.035*t)':'1920*(1+0.035*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,format=yuv420p",
         "-r", "30",
         "-c:v", "libx264",
         "-preset", "veryfast",
@@ -742,17 +530,15 @@ def convert_image_to_cinematic_clip(image_path, output_clip_path, duration):
     subprocess.run(cmd, check=True)
     return True
 
-def build_hollywood_directed_video(scenes, sentence_timings, total_duration, pexels_key, gemini_key, output_bg_path, output_thumb_path):
+def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gemini_key, output_bg_path, output_thumb_path):
     """
-    Executes the Next-Gen AI Cinematography Pipeline:
+    100% Photorealistic AI Cinematography Pipeline:
     1. Generates 8K photorealistic scene visuals matching the exact narrative.
-    2. Fallback to Pexels stock footage if any visual fails.
-    3. Converts all scenes into dynamic 30fps Ken Burns cinematic clips.
-    4. Executive Producer cut-sheet timing approval.
-    5. Assembles master video with zero stutter.
+    2. Converts all scenes into dynamic 30fps Ken Burns cinematic clips.
+    3. Assembles master video with zero stutter and ZERO Pexels stock video!
     """
     num_scenes = max(1, len(scenes))
-    print(f"\n🎬 --- STAGE 1: Generating 8K Photorealistic Visuals ({num_scenes} scenes) ---")
+    print(f"\n🎬 --- STAGE 1: Generating 100% Photorealistic AI Visuals ({num_scenes} scenes) ---")
 
     # Step 1: Assign timeline durations from sentence_timings or fallback
     avg_dur = total_duration / num_scenes
@@ -760,7 +546,7 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, pex
     for i in range(num_scenes):
         if i < len(sentence_timings):
             st = sentence_timings[i]
-            d = st.get("end", 0) - st.get("start", 0)
+            d = st.get("duration", st.get("end_s", 0) - st.get("start_s", 0))
             assigned_durations[i] = max(2.5, min(4.2, d)) if d > 0 else avg_dur
         else:
             assigned_durations[i] = avg_dur
@@ -772,29 +558,23 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, pex
         img_path = f"temp/scene_art_{i}.jpg"
         clip_path = f"temp/scene_clip_{i}.mp4"
 
-        # Attempt 1: 8K Photorealistic AI Visual
+        # 100% Photorealistic AI Visual Generation
         vis_prompt = scene.get("visual_prompt") or f"{scene.get('voice_line')} 8k photorealistic dark cinematic lighting"
         ai_success = generate_ai_scene_visual(vis_prompt, img_path)
 
-        if ai_success:
-            print(f"🎥 Converting Scene {i+1} into dynamic Ken Burns 3D camera push ({assigned_dur:.2f}s)...")
-            convert_image_to_cinematic_clip(img_path, clip_path, assigned_dur)
-            clip_files.append(clip_path)
-            if i == 0:
-                try:
-                    import shutil
-                    shutil.copyfile(img_path, output_thumb_path)
-                except Exception:
-                    pass
-        else:
-            # Fallback to Pexels stock video
-            print(f"⚠️ Falling back to Pexels stock video for Scene {i+1}...")
-            queries = scene.get("search_queries", ["deep ocean darkness"])
-            candidates = fetch_pexels_candidates(queries, pexels_key, min_candidates=5)
-            chosen = assistant_director_select_clip(gemini_key, scene, candidates) if candidates else None
-            if chosen:
-                download_and_standardize_clip(chosen, clip_path, assigned_dur)
-                clip_files.append(clip_path)
+        if not ai_success:
+            print(f"⚠️ Retrying AI visual generation with distilled mystery prompt...")
+            generate_ai_scene_visual(f"{scene.get('visual_vibe', 'deep space cosmic anomaly')} 8k photorealistic cinematic", img_path)
+
+        print(f"🎥 Converting Scene {i+1} into dynamic Ken Burns 3D camera push ({assigned_dur:.2f}s)...")
+        convert_image_to_cinematic_clip(img_path, clip_path, assigned_dur)
+        clip_files.append(clip_path)
+        if i == 0:
+            try:
+                import shutil
+                shutil.copyfile(img_path, output_thumb_path)
+            except Exception:
+                pass
 
     if not clip_files:
         raise Exception("Could not generate any scene clips.")
@@ -819,7 +599,7 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, pex
         output_bg_path
     ]
     subprocess.run(cmd_concat, check=True)
-    print("🎉 FULL STUTTER-FREE HOLLYWOOD DIRECTED VIDEO COMPLETE!")
+    print("🎉 FULL 100% PHOTOREALISTIC AI DIRECTED VIDEO COMPLETE!")
 
 def render_final_short_with_bgm(bg_path, audio_path, ass_path, bgm_path, duration, output_path, hook_title):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -891,8 +671,8 @@ def main():
     args = parser.parse_args()
 
     clean_voice = clean_voice_name(args.voice)
-    pexels_key = args.pexels_key.strip() if args.pexels_key and args.pexels_key.strip() else DEFAULT_PEXELS_KEY
     gemini_key = args.gemini_key.strip() if args.gemini_key and args.gemini_key.strip() else DEFAULT_GEMINI_KEY
+    print("✨ 100% Photorealistic AI Visual Mode Active (Pexels disabled).")
 
     os.makedirs("temp", exist_ok=True)
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
@@ -948,8 +728,8 @@ def main():
     # Step 4: Fetch Cinematic Background Music
     fetch_bgm_track(active_topic, bgm_path)
 
-    # Step 5: Multi-scene Hollywood 2-Stage Directed Video Footage
-    build_hollywood_directed_video(scenes, sentence_timings, duration, pexels_key, gemini_key, bg_video_path, args.thumb)
+    # Step 5: Multi-scene Hollywood Directed 100% AI Video Footage
+    build_hollywood_directed_video(scenes, sentence_timings, duration, gemini_key, bg_video_path, args.thumb)
 
     # Step 6: Render with Top Hook Banner & Audible BGM
     render_final_short_with_bgm(bg_video_path, audio_path, ass_path, bgm_path, duration, args.output, hook_title)
