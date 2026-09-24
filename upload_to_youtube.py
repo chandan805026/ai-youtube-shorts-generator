@@ -28,7 +28,7 @@ def get_authenticated_service(client_id, client_secret, refresh_token):
         token_uri="https://oauth2.googleapis.com/token",
         client_id=client_id,
         client_secret=client_secret,
-        scopes=["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube"]
+        scopes=["https://www.googleapis.com/auth/youtube.upload"]
     )
     return build("youtube", "v3", credentials=creds)
 
