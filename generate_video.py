@@ -38,34 +38,62 @@ FALLBACK_PLANS = [
     {
         "title": "The Void That Swallowed 2,000 Galaxies 🌌 #shorts",
         "hook_banner": "TERRIFYING HOLE IN SPACE",
-        "full_script": "Deep in the constellation Boötes lies a terrifying region of space 330 million light-years across. It should contain thousands of galaxies, but astronomers found almost nothing. What could wipe out an entire sector of the universe? Some fear an ancient civilization is harvesting entire stars.",
+        "full_script": "Deep in space lies a 330 million light-year abyss of pure nothingness. Two thousand galaxies should exist here, but astronomers found absolute silence. What could erase an entire sector of our cosmos? Some believe a colossal Type-3 civilization is devouring entire solar systems. Others warn this growing void is slowly expanding toward us.",
         "scenes": [
             {
                 "scene_id": 1,
-                "voice_line": "Deep in the constellation Boötes lies a terrifying region of space 330 million light-years across.",
-                "visual_vibe": "Telescope deep space view starry universe cosmic void",
-                "search_queries": ["deep space stars telescope", "galaxy field universe"],
+                "shot_type": "establishing_vista",
+                "color_palette": "golden_amber",
+                "voice_line": "Deep in space lies a 330 million light-year abyss of pure nothingness.",
+                "visual_prompt": "Colossal cosmic void surrounded by faint golden star clusters and nebulae, 8k cinematic IMAX",
                 "camera_motion": "crash_zoom"
             },
             {
                 "scene_id": 2,
-                "voice_line": "It should contain thousands of galaxies, but astronomers found almost nothing.",
-                "visual_vibe": "Dark empty void black space cosmos",
-                "search_queries": ["dark space void empty", "spiral galaxy spinning"],
+                "shot_type": "human_scale_pov",
+                "color_palette": "glacial_cyan",
+                "voice_line": "Two thousand galaxies should exist here, but astronomers found absolute silence.",
+                "visual_prompt": "Astronomer silhouette standing inside high-tech observatory observation deck looking at panoramic starry window, glowing cyan holographic maps, 8k cinematic",
                 "camera_motion": "slow_pull_back"
             },
             {
                 "scene_id": 3,
-                "voice_line": "What could wipe out an entire sector of the universe?",
-                "visual_vibe": "Black hole cosmic explosion mystery nebula",
-                "search_queries": ["black hole space", "nebula explosion cosmic"],
-                "camera_motion": "deep_descent"
+                "shot_type": "tactile_relic_detail",
+                "color_palette": "warm_bronze",
+                "voice_line": "Ancient radio telescopes scanning the sector pick up zero electromagnetic signals.",
+                "visual_prompt": "Detailed vintage observatory brass radio telescope dial spinning erratically, warm atmospheric amber light, 8k cinematic",
+                "camera_motion": "majestic_rise"
             },
             {
                 "scene_id": 4,
-                "voice_line": "Some fear an ancient civilization is harvesting entire stars.",
-                "visual_vibe": "Futuristic alien megastructure sci fi space glowing planet",
-                "search_queries": ["futuristic sci fi space technology", "alien planet glowing space"],
+                "shot_type": "environmental_force",
+                "color_palette": "eerie_crimson",
+                "voice_line": "What could erase an entire sector of our universe?",
+                "visual_prompt": "Violent cosmic shockwave tearing through glowing crimson accretion dust in deep cosmos, 8k National Geographic",
+                "camera_motion": "deep_descent"
+            },
+            {
+                "scene_id": 5,
+                "shot_type": "interior_depth",
+                "color_palette": "bioluminescent_emerald",
+                "voice_line": "Some believe a colossal Type-3 civilization is devouring entire solar systems.",
+                "visual_prompt": "Massive alien megastructure interior corridor with glowing emerald data channels stretching to infinity, 8k cinematic",
+                "camera_motion": "pan_left_to_right"
+            },
+            {
+                "scene_id": 6,
+                "shot_type": "cosmic_climax",
+                "color_palette": "amethyst_violet",
+                "voice_line": "Harvesting every star to power a colossal superintelligence.",
+                "visual_prompt": "Colossal gravitational vortex bending violet starlight around empty cosmic abyss, 8k cinematic masterpiece",
+                "camera_motion": "pan_right_to_left"
+            },
+            {
+                "scene_id": 7,
+                "shot_type": "chilling_reveal",
+                "color_palette": "obsidian_crimson",
+                "voice_line": "Others warn this growing void is slowly expanding toward us.",
+                "visual_prompt": "Eerie dark titan silhouette looming against distant burning red stars in silent cosmos, 8k cinematic",
                 "camera_motion": "slow_zoom_in"
             }
         ]
@@ -231,10 +259,10 @@ def fetch_bgm_track(topic, output_bgm_path):
 # =========================================================================
 
 SCRIPT_MODELS = [
-    "gemini-3.8-flash",       # Top priority: Google's newest flagship for mind-bending scripts
+    "gemini-3.5-flash-lite",  # Proven rock-solid & ultra-fast (500 RPD)
+    "gemini-3.8-flash",       # High-tier Google flagship
     "gemini-3.6-flash",       # High-tier backup
-    "gemini-3.5-flash-lite",  # 500 RPD backup
-    "gemini-3.1-flash-lite"   # 500 RPD backup
+    "gemini-3.1-flash-lite"   # Emergency backup
 ]
 
 DIRECTOR_MODELS = [
@@ -481,8 +509,8 @@ REQUIRED JSON OUTPUT FORMAT:
 }}
 Output valid pure JSON only without markdown formatting."""
 
-    print(f"✍️ Executive Producer (Gemini 3.8 Flash) is composing a fresh 30s script for: '{active_topic[:50]}...'")
-    data, used_model = call_gemini_json_api(gemini_key, prompt, SCRIPT_MODELS, timeout=25)
+    print(f"✍️ Executive Producer (Gemini 3.5 Flash Lite) is composing a fresh 30s script for: '{active_topic[:50]}...'")
+    data, used_model = call_gemini_json_api(gemini_key, prompt, SCRIPT_MODELS, timeout=65)
     if data:
         print(f"✨ Masterpiece Script written by: [{used_model}]")
         print(f"🎬 Title: {data.get('title')}")
