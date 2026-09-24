@@ -418,13 +418,16 @@ VIRAL HOOK & PACING FORMULA (The "Don't Scroll" Blueprint):
    - Each scene voice_line must be 8 to 11 words (approx 3.0 to 3.8 seconds).
    - ABSOLUTE LIMIT: No individual clip should stay on screen longer than 4.0 seconds!
    - Fast, seamless visual transitions keep viewers completely glued to the screen.
-6. 8K PHOTOREALISTIC VISUAL ART DIRECTION (Crucial for Video Quality):
-   - For EACH scene, write a hyper-detailed, photorealistic visual_prompt describing the exact camera shot for an 8K AI image renderer.
-   - Describe exact physical subjects, lighting, materials, and camera perspective:
-     * Deep Ocean: "Armored titanium submersible yellow xenon headlights illuminating pitch-black ocean floor at 36,000 feet, marine snow, jagged trench rocks, 8k, photorealistic, cinematic volumetric lighting"
-     * Space/Cosmic: "Accretion disk of a supermassive black hole bending surrounding starlight, glowing orange relativistic plasma vortex, pitch black cosmos, 8k cinematic"
-   - Every visual_prompt MUST match the exact sentence being spoken in that scene!
-   - Also provide 2 backup physical 'search_queries' for stock search.
+6. 8K PHOTOREALISTIC VISUAL ART DIRECTION (Crucial for UK & Global High-RPM Retention):
+   - For EACH scene, write a hyper-detailed visual_prompt describing the EXACT central entity narrated in that sentence.
+   - 1:1 AUDIO-VISUAL SYNCHRONIZATION (MANDATORY):
+     * If narration mentions Mount Kailash / Mountains: "Towering snow-capped pyramid peak of Mount Kailash surrounded by sacred Himalayan mists, golden sunrise god rays, cinematic 8k National Geographic photography"
+     * If narration mentions Lord Shiva / Deities: "Lord Shiva in deep serene cosmic meditation on Himalayan mountain peak, glowing blue aura, crescent moon, sacred trishul, starry cosmic cosmos, 8k cinematic IMAX"
+     * If narration mentions Time Warping / Instruments: "Antique brass nautical compass with spinning needle floating above glowing snowy Himalayan mountain peaks, time distortion, 8k cinematic"
+     * If narration mentions Deep Space / Anomalies: "Supermassive black hole orange plasma accretion disk warping spacetime, pitch black cosmos, 8k cinematic"
+   - STRICTLY FORBIDDEN IN PROMPTS:
+     * NEVER request "macro shots", "close-up of eye", "chisel tools", "generic cave tunnels", "people walking holding hands".
+     * Every shot MUST be an epic, grand, high-impact cinematic frame worthy of an IMAX 70mm documentary film!
 
 ⛔ STRICT ANTI-REPETITION CONSTRAINT:
 Do NOT duplicate any of these recently covered topics from our history:
@@ -433,15 +436,14 @@ Do NOT duplicate any of these recently covered topics from our history:
 REQUIRED JSON OUTPUT FORMAT:
 {{
   "title": "Shorts Title with emoji and #shorts (under 50 chars)",
-  "hook_banner": "3-5 WORDS UPPERCASE FOR TOP BANNER (e.g. THE OCEAN IS HIDING THIS)",
+  "hook_banner": "3-5 WORDS UPPERCASE FOR TOP BANNER (e.g. UNTOUCHED BY TIME)",
   "full_script": "The complete 68-76 word script combining all 7-8 scenes smoothly.",
   "scenes": [
     {{
       "scene_id": 1,
       "voice_line": "Sentence for scene 1 (8-11 words)",
-      "visual_prompt": "Hyper-detailed 8K photorealistic scene description for AI image generation",
-      "visual_vibe": "Cinematic visual description",
-      "search_queries": ["query 1", "query 2"]
+      "visual_prompt": "Majestic, hyper-detailed 8K photorealistic scene description matching the exact sentence",
+      "visual_vibe": "Cinematic visual description"
     }}
   ]
 }}
@@ -471,11 +473,11 @@ def generate_ai_scene_visual(prompt, output_jpg, max_retries=4):
         if attempt == 0:
             active_prompt = " ".join(words[:24])
         elif attempt == 1:
-            active_prompt = " ".join(words[:14]) + " 8k photorealistic dark cinematic lighting volumetric"
+            active_prompt = " ".join(words[:16]) + " 8k photorealistic IMAX cinematic film lighting"
         elif attempt == 2:
-            active_prompt = " ".join(words[:8]) + " dark cosmic mystery 8k cinematic photorealistic"
+            active_prompt = " ".join(words[:10]) + " epic majestic 8k cinematic masterpiece photorealistic"
         else:
-            active_prompt = "alien cosmic mystery anomaly 8k photorealistic cinematic"
+            active_prompt = " ".join(words[:6]) + " majestic 8k cinematic photorealistic National Geographic"
 
         encoded = urllib.parse.quote(active_prompt)
         seed = random.randint(1000, 999999)
