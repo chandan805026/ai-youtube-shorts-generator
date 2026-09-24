@@ -306,7 +306,14 @@ MASTER_MYSTERY_VAULT = [
     "The Matrioshka Brain: Hypothetical nested Dyson spheres capturing the entire energy output of a star to power a solar-system-scale artificial intelligence.",
     "Oumuamua's Anomalous Acceleration: The reddish cigar-shaped interstellar visitor that accelerated away from the Sun with no cometary tail or outgassing.",
     "The Fermi Paradox & The Great Filter: The terrifying mathematical reality that trillions of habitable worlds are dead and silent because an invisible filter destroys civilizations.",
-    "Fast Radio Bursts (FRBs): Millisecond-duration cosmic radio flashes discharging as much energy in a fraction of a second as our Sun emits in three days."
+    "Fast Radio Bursts (FRBs): Millisecond-duration cosmic radio flashes discharging as much energy in a fraction of a second as our Sun emits in three days.",
+
+    # 🏔️ Ancient Sacred Enigmas & Lost Civilizations
+    "Mount Kailash Cosmic Axis: The 22,000-foot unclimbed pyramid peak aligned with cardinal directions where climbers age decades in days and magnetic compasses spin uncontrollably.",
+    "The Submerged City of Dwarka: 9,000-year-old geometric stone ruins found 120 feet deep in the Arabian Sea, predating mainstream human civilization history.",
+    "Kailasa Temple Ellora: A colossal 100-foot multi-story megalithic temple carved top-down out of 200,000 tons of solid basalt rock with technology that defies modern engineering.",
+    "The Vedic Vimanas: Ancient Sanskrit texts describing advanced mercury-vortex flying crafts capable of instantaneous directional changes and interplanetary travel.",
+    "Ram Setu Floating Stones: A 48-kilometer ancient oceanic causeway visible from NASA satellites composed of porous stones that naturally float on seawater."
 ]
 
 HISTORY_FILE = "history.json"
