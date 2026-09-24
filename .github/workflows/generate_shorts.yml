@@ -101,9 +101,9 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin main || true
           git add history.json || true
           git commit -m "Update video memory vault (anti-repetition) [skip ci]" || true
+          git pull --rebase origin main || true
           git push origin main || true
 
       - name: 🌐 Prepare Web Player (Anti-Cache)
