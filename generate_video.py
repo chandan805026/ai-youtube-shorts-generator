@@ -17,12 +17,7 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-# Fallback obfuscated keys (to comply with GitHub Secret Scanning)
-_GK = b"QVEuQWI4Uk42S0JEMFhIQjJnM1JlM3VMVVVVd1NHdDdRLUkyZkVxcnJ5bnNpTWpkNGNEanc="
-
 DEFAULT_GEMINI_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
-if not DEFAULT_GEMINI_KEY:
-    DEFAULT_GEMINI_KEY = base64.b64decode(_GK).decode("utf-8")
 
 BGM_TRACKS = {
     "space": "https://upload.wikimedia.org/wikipedia/commons/5/55/Dreamstate_Logic_-_Zero_Point_%28space_ambient%2C_dark_ambient%29.ogg",
