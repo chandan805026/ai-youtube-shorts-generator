@@ -34,6 +34,20 @@ on:
           - 'en-US-EricNeural'
           - 'hi-IN-MadhurNeural'
           - 'hi-IN-SwaraNeural'
+      upload_to_youtube:
+        description: '📺 Auto-Upload to Cosmic Vault on YouTube'
+        type: boolean
+        required: true
+        default: true
+      privacy:
+        description: 'YouTube Privacy Status'
+        required: true
+        default: 'public'
+        type: choice
+        options:
+          - 'public'
+          - 'unlisted'
+          - 'private'
 
 permissions:
   contents: write
@@ -181,6 +195,20 @@ jobs:
           </body>
           </html>
           EOF
+
+      - name: 📺 Auto-Upload to Cosmic Vault (YouTube Shorts)
+        if: ${{ inputs.upload_to_youtube != false }}
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: |
+          echo "🚀 Running YouTube Auto-Uploader for Cosmic Vault..."
+          python upload_to_youtube.py \
+            --video "output/final_video.mp4" \
+            --thumb "output/thumbnail.jpg" \
+            --meta "output/metadata.json" \
+            --privacy "${{ inputs.privacy || 'public' }}" || echo "⚠️ YouTube upload notice: see logs for details."
 
       - name: 🚀 Publish Live to GitHub Pages (Anti-Cache)
         uses: peaceiris/actions-gh-pages@v4
