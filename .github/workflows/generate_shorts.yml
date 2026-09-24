@@ -61,10 +61,9 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 🚀 Run AI Video Generator with Gemini 3.6 Flash Director
+      - name: 🚀 Run 100% Photorealistic AI Video Generator with Gemini 3.8 Flash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: |
           if [ "${{ inputs.auto_pilot }}" = "false" ] && [ -n "${{ inputs.script }}" ]; then
             echo "🎬 Running in Custom Script mode..."
