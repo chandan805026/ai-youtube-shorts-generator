@@ -37,55 +37,39 @@ if sys.stdout.encoding != 'utf-8':
 # ==========================================
 VIRAL_VAULT = [
     {
-        "id": "vault_kid_cookie_heist",
-        "category": "cute_kids",
-        "title": "Bro Really Thought Nobody Saw Him 💀 #shorts",
-        "hook_banner": "CAUGHT IN 4K 😂",
-        "description": "A cheeky toddler attempts a stealth mission to steal a chocolate cookie from the kitchen counter. When he hears footsteps, he freezes in place, flashes an angelic innocent smile, and pretends he was just doing morning stretches.",
-        "fallback_script": "Bro really thought he had the stealth of a secret agent! Look at him reaching for that cookie like it's a mission impossible heist. But the second he hears mom walking in? Total freeze frame! Look at that innocent face! He really tried to play it off like a morning stretch! You can't even be mad at that! 😂",
-        "local_fallback": "assets/vault/starter_comedy.mp4",
+        "id": "vault_douyin_viral_1",
+        "category": "douyin_comedy",
+        "title": "Chinese TikTok Really Hits Different 💀 #shorts",
+        "hook_banner": "MILLION VIEWS ON DOUYIN 😂",
+        "description": "A viral Douyin comedy short where an unexpected slapstick reaction and comedic face turn a normal moment into pure comedy gold.",
+        "fallback_script": "Ain't no way Chinese TikTok just did that! Look at bro trying to keep a straight face before disaster strikes. The reaction at the end is pure comedy gold! You can't even make this stuff up! 💀",
+        "local_fallback": "assets/vault/douyin_viral_1.mp4",
         "cdn_urls": [
-            "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4",
-            "https://www.w3schools.com/html/mov_bbb.mp4"
+            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_viral_1.mp4"
         ]
     },
     {
-        "id": "vault_cat_side_eye",
-        "category": "funny_pets",
-        "title": "Bro Is Deeply Offended By This Food 💀 #shorts",
-        "hook_banner": "THE AUDACITY 😂",
-        "description": "A dramatic cat stares at diet kibble in his food bowl, gives his owner the most judgmental bombastic side-eye, raises one paw, and slowly knocks the bowl off the table without blinking.",
-        "fallback_script": "Ain't no way this cat just did that! The owner gave him diet food and look at the disrespect in those eyes! That is a pure bombastic side-eye. He looks directly at the camera, raises one paw, and says not in my house! Bro sent that bowl straight to the shadow realm! Cats really think they pay the rent! 💀",
-        "local_fallback": "assets/vault/starter_comedy.mp4",
+        "id": "vault_douyin_viral_2",
+        "category": "asian_comedy",
+        "title": "Bro Woke Up And Chose Violence 🥁💀 #shorts",
+        "hook_banner": "MAIN CHARACTER ENERGY 😂",
+        "description": "An epic viral Chinese meme drum moment with dramatic focus, unexpected comedic timing, and hilarious intensity.",
+        "fallback_script": "Bro really thought he was in Fast and Furious! Look at that intense focus right before the beat drops. The confidence is on another level! Ten out of ten for style! 😂",
+        "local_fallback": "assets/vault/douyin_viral_2.mp4",
         "cdn_urls": [
-            "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4",
-            "https://www.w3schools.com/html/mov_bbb.mp4"
+            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_viral_2.mp4"
         ]
     },
     {
-        "id": "vault_puppy_drift_fail",
-        "category": "funny_pets",
-        "title": "When The 3 AM Zoomies Hit Hard 🏎️💨 #shorts",
-        "hook_banner": "TOKYO DRIFT FAILS 😭",
-        "description": "An excited puppy gets midnight zoomies, charges down the hallway at full speed, attempts to drift on the slippery wooden floor, loses all traction, and slides right into an empty laundry basket.",
-        "fallback_script": "Tell me why dogs get possessed at 3 AM! This little guy decided he was in Fast and Furious! He hits the corner at full speed, tries to drift on the hardwood floor, and completely loses grip! But wait for the landing... straight into the basket! Ten out of ten for style! Bro wasn't even embarrassed! 😂",
-        "local_fallback": "assets/vault/starter_comedy.mp4",
+        "id": "vault_douyin_viral_3",
+        "category": "douyin_comedy",
+        "title": "Bro Experienced Heartbreak In 4K 🚗😭 #shorts",
+        "hook_banner": "BRO IS GOING THROUGH IT 💀",
+        "description": "The legendary trending Chinese meme where someone dramatically weeps in the car with maximum emotional exaggeration and funny tearful face.",
+        "fallback_script": "Bro is fighting for his life right now! Look at the tears pouring down in 4K! What song was playing in that car to make him this emotional?! Give this man an Oscar right now! 💀",
+        "local_fallback": "assets/vault/douyin_viral_3.mp4",
         "cdn_urls": [
-            "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4",
-            "https://www.w3schools.com/html/mov_bbb.mp4"
-        ]
-    },
-    {
-        "id": "vault_baby_sour_lemon",
-        "category": "cute_kids",
-        "title": "Bro Experienced His First Betrayal 🍋💀 #shorts",
-        "hook_banner": "HE TRUSTED THEM 😭",
-        "description": "A baby eagerly takes a slice of lemon handed by dad expecting candy, takes a big bite, gets hit with the sour shockwave, makes a hilarious scrunchy face, shakes his whole body, and then immediately tries it again.",
-        "fallback_script": "Bro really trusted his parents with his whole heart! Look at that excited smile thinking it's candy! Then the sourness hits his soul! His whole face just collapsed in 4K! But wait, why is he going back for seconds?! That's when you know curiosity is dangerous! He will remember this betrayal forever! 💀",
-        "local_fallback": "assets/vault/starter_comedy.mp4",
-        "cdn_urls": [
-            "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4",
-            "https://www.w3schools.com/html/mov_bbb.mp4"
+            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_viral_3.mp4"
         ]
     },
     {
@@ -94,11 +78,10 @@ VIRAL_VAULT = [
         "title": "Bro Tried To Look Smooth And Failed 💀 #shorts",
         "hook_banner": "ACT NATURAL 😂",
         "description": "A stylish guy tries to do a smooth slow-motion pose while crossing a pedestrian bridge to impress someone walking by, trips over a tiny bump, does an awkward windmill arm recovery, and acts like it was totally intentional.",
-        "fallback_script": "Bro was trying so hard to be the main character! He practiced that smooth walk for three hours in the mirror. But the pavement had other plans! One tiny stumble and the arms started flying like a helicopter! And look how he immediately acts like nothing happened. Yeah, I always stretch like this. Respect the confidence! 😂",
+        "fallback_script": "Bro was trying so hard to be the main character! He practiced that smooth walk for three hours in the mirror. But the pavement had other plans! One tiny stumble and the arms started flying like a helicopter! And look how he immediately acts like nothing happened. Respect the confidence! 😂",
         "local_fallback": "assets/vault/starter_comedy.mp4",
         "cdn_urls": [
-            "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4",
-            "https://www.w3schools.com/html/mov_bbb.mp4"
+            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/starter_comedy.mp4"
         ]
     }
 ]
@@ -261,10 +244,10 @@ def ingest_video_dual_route(video_url, topic, history_file="history.json"):
 # ==========================================
 # 3. GEMINI BABA MULTIMODAL COMEDY DIRECTOR
 # ==========================================
-def direct_comedy_with_gemini(clip_description, topic, custom_script="", fallback_meta=None):
+def direct_comedy_with_gemini(clip_description, topic, custom_script="", fallback_meta=None, target_duration=20.0):
     """
     Directs the short in American meme/commentary style:
-    - Writes energetic, hilarious voiceover commentary (18-24s).
+    - Writes energetic, hilarious voiceover commentary matched dynamically to video duration.
     - Writes high-retention Title with emojis & #shorts.
     - Writes 3-5 word ALL CAPS Top Hook Banner.
     """
@@ -277,6 +260,13 @@ def direct_comedy_with_gemini(clip_description, topic, custom_script="", fallbac
             "description": "Hilarious viral comedy moment! #shorts #viral #funny #comedy",
             "tags": "shorts, funny, comedy, viral, meme, hilarious"
         }
+
+    # Calculate optimal word count for target duration (speech pace ~2.7 words/sec at +12% speed)
+    safe_audio_dur = max(6.0, target_duration - 1.0)
+    word_target = int(safe_audio_dur * 2.7)
+    word_min = max(14, word_target - 4)
+    word_max = word_target + 4
+    print(f"🎯 Calibrated Commentary Target: {safe_audio_dur:.1f}s speech ({word_min}-{word_max} words)")
 
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if gemini_key:
@@ -292,13 +282,14 @@ def direct_comedy_with_gemini(clip_description, topic, custom_script="", fallbac
 Analyze this viral comedy clip:
 - Scenario: {clip_description}
 - Genre/Niche: {topic}
+- Target Video Duration: {target_duration:.1f} seconds
 
 Provide JSON with:
 1. "title": Catchy viral YouTube Shorts title under 60 characters with funny emojis and #shorts.
 2. "hook_banner": 3-5 words ALL CAPS punchy top banner (e.g., 'HE WAS CAUGHT IN 4K 😂', 'BRO REALLY THOUGHT 💀').
-3. "script": Fast, hilarious English voiceover commentary (45 to 65 words, 18-22 seconds when spoken at 1.1x speed). 
-   Must hook viewer in first 2 seconds, narrate the funny action, and hit a hilarious punchline right at the end!
-4. "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy.
+3. "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words (takes {safe_audio_dur:.1f}s spoken at 1.12x speed). 
+   Must hook viewer in first 2 seconds, narrate the funny action, and deliver the punchline right at the end!
+4. "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy #asianmemes.
 5. "tags": 8-10 comma-separated keywords.
 
 Output ONLY raw JSON. No markdown ticks, no backticks.
@@ -389,6 +380,31 @@ def seconds_to_ass_time(sec):
     cs = int((sec - int(sec)) * 100)
     return f"{h:01d}:{m:02d}:{s:02d}.{cs:02d}"
 
+def strip_emojis(text):
+    """Remove emojis, symbols, and pictographs so Edge TTS doesn't speak their names."""
+    if not text:
+        return ""
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # emoticons
+        "\U0001F300-\U0001F5FF"  # symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # transport & map symbols
+        "\U0001F1E0-\U0001F1FF"  # flags
+        "\U00002702-\U000027B0"  # dingbats
+        "\U000024C2-\U0001F251"  # enclosed characters
+        "\U0001F900-\U0001F9FF"  # supplemental symbols & pictographs (🤣, 💀)
+        "\U0001FA70-\U0001FAFF"  # symbols and pictographs extended-A
+        "\U00002600-\U000026FF"  # misc symbols
+        "\U00002B50"              # star
+        "\U0000200D"              # zero-width joiner
+        "\U0000FE0F"              # variation selector
+        "]+",
+        flags=re.UNICODE
+    )
+    cleaned = emoji_pattern.sub('', text)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    return cleaned
+
 def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
     """
     Generates Microsoft Edge TTS speech with +12% meme pace,
@@ -397,12 +413,14 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
     os.makedirs(os.path.dirname(output_audio) or ".", exist_ok=True)
     vtt_file = output_audio.replace(".mp3", ".vtt")
     
+    clean_spoken_text = strip_emojis(script_text)
+    print(f"🎙️ Cleaned TTS Voiceover Text (no emojis spoken):\n   {clean_spoken_text}")
     print(f"🎙️ Generating voiceover with voice: {voice} at +12% speed...")
     cmd = [
         sys.executable, "-m", "edge_tts",
         "--voice", voice,
         "--rate", "+12%",
-        "--text", script_text,
+        "--text", clean_spoken_text,
         "--write-media", output_audio,
         "--write-subtitles", vtt_file
     ]
@@ -542,7 +560,17 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
 
     narration_dur = get_media_duration(narration_audio)
     target_dur = narration_dur + 0.6
-    print(f"⏱️ Target Video Duration: {target_dur:.2f}s (Narration: {narration_dur:.2f}s)")
+    src_dur = get_media_duration(input_video)
+    print(f"⏱️ Video Sync: Source={src_dur:.2f}s | Narration={narration_dur:.2f}s | Target Short={target_dur:.2f}s")
+
+    # Dynamic speed scaling: If source video duration is close to target duration,
+    # calibrate PTS so the entire clip plays once from start to finish with zero awkward looping!
+    if src_dur > 0 and 0.70 <= (target_dur / src_dur) <= 1.35:
+        pts_scale = target_dur / src_dur
+        speed_filter = f"setpts={pts_scale:.4f}*PTS"
+        print(f"⚡ Dynamic Video Speed Scaling: {speed_filter} (100% synced, zero looping)")
+    else:
+        speed_filter = "setpts=0.97*PTS"
 
     # 1. Synthesize background music
     bgm_path = "temp/comedy_bgm.wav"
@@ -556,16 +584,16 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
     # Video filters:
     # 1. hflip -> mirror image
     # 2. scale & crop to 1080:1920
-    # 3. 106% zoom
-    # 4. setpts=0.97*PTS (1.03x speed)
+    # 3. 106% dynamic zoom
+    # 4. dynamic speed match (setpts)
     # 5. drawbox + drawtext for hook banner
     # 6. subtitles filter for ASS
     filter_complex = (
-        f"[0:v]hflip,loop=loop=-1:size=3000:start=0,"
+        f"[0:v]hflip,"
         f"scale=1080:1920:force_original_aspect_ratio=increase,"
         f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
         f"scale=1.06*iw:1.06*ih,crop=1080:1920,"
-        f"setpts=0.97*PTS,"
+        f"{speed_filter},"
         f"drawbox=x=(iw-860)/2:y=110:w=860:h=90:color=black@0.75:t=fill,"
         f"drawtext=text='{clean_hook}':fontsize=40:fontcolor=yellow:x=(w-text_w)/2:y=132,"
         f"subtitles='{ass_escaped}'[outv];"
@@ -666,12 +694,17 @@ def main():
     )
     print(f"📹 Acquired video via: {route_used.upper()}")
 
+    # 1.1 Probe Video Duration for Perfect Timing
+    src_dur = get_media_duration(raw_video)
+    print(f"⏱️ Source Video Duration: {src_dur:.2f}s")
+
     # 2. Gemini Baba Multimodal / Script Direction
     director_output = direct_comedy_with_gemini(
         clip_description=raw_desc,
         topic=args.topic,
         custom_script=args.script,
-        fallback_meta=vault_meta
+        fallback_meta=vault_meta,
+        target_duration=src_dur
     )
     
     print("\n🎭 --- DIRECTED SHORT DETAILS ---")

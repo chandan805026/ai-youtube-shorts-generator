@@ -55,7 +55,7 @@ def upload_video_to_youtube(video_path, thumb_path, meta_path, privacy_status="p
         except Exception as e:
             print(f"⚠️ Could not load {meta_path}: {e}")
 
-    raw_title = metadata.get("title", "The Unexplained Cosmic Enigma 🌌 #shorts")
+    raw_title = metadata.get("title", "Bro Really Thought Nobody Saw Him 💀 #shorts")
     # YouTube titles are capped at 100 characters
     if len(raw_title) > 95:
         title = raw_title[:90].strip() + "... #shorts"
@@ -63,21 +63,30 @@ def upload_video_to_youtube(video_path, thumb_path, meta_path, privacy_status="p
         title = raw_title
 
     description = metadata.get("description", "")
-    description += "\n\n🌌 Welcome to Cosmic Vault.\nWe explore the deepest mysteries of space, ancient wonders, and the unexplained.\n\nSubscribe for daily mind-bending documentary Shorts!\n#shorts #cosmicvault #mystery #space #science #history #unexplained"
+    description += "\n\n🔥 Welcome to Viral Asian Meme & Comedy Shorts Studio!\nBringing you the funniest Asian slapstick clips, cute kid reactions, and hilarious meme commentary daily.\n\nSubscribe for daily laughs!\n#shorts #funny #comedy #viral #meme #asianmemes #trynottolaugh"
 
-    tags = metadata.get("tags", ["shorts", "mystery", "science", "deep space", "cosmic vault"])
-    if "Cosmic Vault" not in tags:
-        tags.append("Cosmic Vault")
+    meta_tags = metadata.get("tags", "")
+    if isinstance(meta_tags, str):
+        tags = [t.strip() for t in meta_tags.split(",") if t.strip()]
+    elif isinstance(meta_tags, list):
+        tags = meta_tags
+    else:
+        tags = []
+    
+    default_tags = ["shorts", "funny", "comedy", "meme", "viral", "asian memes", "try not to laugh", "humor", "douyin funny"]
+    for t in default_tags:
+        if t not in tags:
+            tags.append(t)
 
-    print(f"🚀 Initializing YouTube Uploader for Cosmic Vault...")
+    print(f"🚀 Initializing YouTube Uploader for Viral Comedy Shorts...")
     youtube = get_authenticated_service(client_id, client_secret, refresh_token)
 
     body = {
         "snippet": {
             "title": title,
             "description": description.strip(),
-            "tags": tags,
-            "categoryId": "28"  # Science & Technology
+            "tags": tags[:15],
+            "categoryId": "23"  # 23 = Comedy (YouTube Category ID)
         },
         "status": {
             "privacyStatus": privacy_status,
