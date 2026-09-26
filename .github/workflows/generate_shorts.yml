@@ -197,7 +197,7 @@ jobs:
           EOF
 
       - name: 📺 Auto-Upload to Cosmic Vault (YouTube Shorts)
-        if: ${{ github.event_name == 'schedule' || inputs.upload_to_youtube != false }}
+        if: ${{ github.event_name == 'schedule' || (inputs.upload_to_youtube == true || inputs.upload_to_youtube == 'true') }}
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
