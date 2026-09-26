@@ -37,6 +37,30 @@ if sys.stdout.encoding != 'utf-8':
 # ==========================================
 VIRAL_VAULT = [
     {
+        "id": "vault_douyin_hd_prank",
+        "category": "douyin_comedy",
+        "title": "Bro Tried To Prank His Best Friend And Paid In 4K 💀 #shorts",
+        "hook_banner": "INSTANT KARMA 😂",
+        "description": "A hilarious 27-second high-definition viral Douyin bestfriend prank where an elaborate setup backfires immediately with hysterical facial expressions and instant comedy karma.",
+        "fallback_script": "Bro really spent two hours setting up this master prank! Look at that smug smile thinking he has the ultimate plan. But the universe said not today! The exact second it backfires, his whole soul leaves his body in 4K! You can't even make this level of instant karma up! Ten out of ten comedy gold! 💀",
+        "local_fallback": "assets/vault/douyin_hd_prank.mp4",
+        "cdn_urls": [
+            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_hd_prank.mp4"
+        ]
+    },
+    {
+        "id": "vault_douyin_hd_bad_luck",
+        "category": "douyin_comedy",
+        "title": "When The Universe Personally Hates You 😭💀 #shorts",
+        "hook_banner": "UNLUCKIEST BRO ALIVE 😂",
+        "description": "A viral 24-second high-definition Asian comedy skit showing the most ridiculously unlucky series of events happening to one guy trying to mind his own business.",
+        "fallback_script": "Tell me why bro woke up on the wrong side of the entire solar system! Every single step he takes triggers a new disaster. Look at his face, he has completely given up on life! That is the look of a man who knows luck has permanently left the chat! Respect for still standing! 😭",
+        "local_fallback": "assets/vault/douyin_hd_bad_luck.mp4",
+        "cdn_urls": [
+            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_hd_bad_luck.mp4"
+        ]
+    },
+    {
         "id": "vault_douyin_viral_1",
         "category": "douyin_comedy",
         "title": "Chinese TikTok Really Hits Different 💀 #shorts",
@@ -590,9 +614,9 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
     # 6. subtitles filter for ASS
     filter_complex = (
         f"[0:v]hflip,"
-        f"scale=1080:1920:force_original_aspect_ratio=increase,"
+        f"scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
         f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
-        f"scale=1.06*iw:1.06*ih,crop=1080:1920,"
+        f"scale=1.06*iw:1.06*ih:flags=lanczos,crop=1080:1920,"
         f"{speed_filter},"
         f"drawbox=x=(iw-860)/2:y=110:w=860:h=90:color=black@0.75:t=fill,"
         f"drawtext=text='{clean_hook}':fontsize=40:fontcolor=yellow:x=(w-text_w)/2:y=132,"
@@ -611,11 +635,11 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
         "-map", "[outv]",
         "-map", "[outa]",
         "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "22",
+        "-preset", "medium",
+        "-crf", "18",
         "-pix_fmt", "yuv420p",
         "-c:a", "aac",
-        "-b:a", "192k",
+        "-b:a", "256k",
         "-t", f"{target_dur:.2f}",
         output_video
     ]
@@ -627,7 +651,7 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
         print("🔄 Falling back to simplified filtergraph (subtitles only)...")
         # Simplified fallback filter if drawbox/drawtext hits font issues
         simpler_filter = (
-            f"[0:v]hflip,scale=1080:1920:force_original_aspect_ratio=increase,"
+            f"[0:v]hflip,scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
             f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
             f"subtitles='{ass_escaped}'[outv];"
             f"[1:a]volume=1.0[voice];"
@@ -643,11 +667,11 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
             "-map", "[outv]",
             "-map", "[outa]",
             "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "22",
+            "-preset", "medium",
+            "-crf", "18",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac",
-            "-b:a", "192k",
+            "-b:a", "256k",
             "-t", f"{target_dur:.2f}",
             output_video
         ]
