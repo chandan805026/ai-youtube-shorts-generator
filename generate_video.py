@@ -532,53 +532,51 @@ Output valid pure JSON only without markdown formatting."""
     print("⚠️ Falling back to curated high-retention space mystery plan.")
     return FALLBACK_PLANS[0], FALLBACK_PLANS[0].get("title")
 
-def generate_ai_scene_visual(prompt, output_jpg, max_retries=4):
+def generate_ai_scene_visual(prompt, output_jpg, max_retries=2):
     """
-    Generates a 9:16 vertical 768x1344 8K photorealistic cinematic visual via Sana diffusion engine.
-    Uses resilient curl + python requests fallback with exponential backoff and prompt distillation.
+    Generates a 9:16 vertical 768x1344 8K photorealistic cinematic visual via Sana/Flux diffusion engine.
+    Fast 15s timeout with immediate fallback.
     """
     clean_p = re.sub(r'[^a-zA-Z0-9\s,.-]', '', prompt).strip()
     words = clean_p.split()
     
     for attempt in range(max_retries):
         if attempt == 0:
-            active_prompt = " ".join(words[:32])
-        elif attempt == 1:
-            active_prompt = " ".join(words[:20]) + " 8k photorealistic IMAX cinematic film lighting"
-        elif attempt == 2:
-            active_prompt = " ".join(words[:12]) + " epic majestic 8k cinematic masterpiece photorealistic"
+            active_prompt = " ".join(words[:24]) + " 8k photorealistic IMAX cinematic film lighting"
+            model = "sana"
         else:
-            active_prompt = " ".join(words[:6]) + " majestic 8k cinematic photorealistic National Geographic"
+            active_prompt = " ".join(words[:14]) + " 8k cinematic photorealistic dark atmospheric"
+            model = "flux"
 
         encoded = urllib.parse.quote(active_prompt)
         seed = random.randint(1000, 999999)
-        url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1344&nologo=true&seed={seed}&model=sana"
+        url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1344&nologo=true&seed={seed}&model={model}"
         
-        print(f"🎨 Generating 8K AI Visual [Attempt {attempt+1}/{max_retries}]: '{active_prompt[:45]}...'")
+        print(f"🎨 Generating AI Visual [{model.upper()} | Attempt {attempt+1}/{max_retries}]: '{active_prompt[:45]}...'")
         
-        # Method 1: curl (fast, immune to urllib3 IPv6 SSL handshake stalls)
+        # Method 1: curl (fast, max 15s)
         try:
-            cmd = ["curl", "-s", "-L", "--max-time", "25", url, "-o", output_jpg]
-            subprocess.run(cmd, capture_output=True, timeout=30)
+            cmd = ["curl", "-s", "-L", "--max-time", "15", url, "-o", output_jpg]
+            subprocess.run(cmd, capture_output=True, timeout=18)
             if os.path.exists(output_jpg) and os.path.getsize(output_jpg) > 10000:
-                print(f"✅ Generated 8K AI Visual (curl): {output_jpg} ({os.path.getsize(output_jpg)} bytes)")
+                print(f"✅ Generated AI Visual (curl): {output_jpg} ({os.path.getsize(output_jpg)} bytes)")
                 return True
         except Exception:
             pass
 
-        # Method 2: requests with browser User-Agent
+        # Method 2: requests with browser User-Agent (max 15s)
         try:
             headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-            r = requests.get(url, headers=headers, timeout=25)
+            r = requests.get(url, headers=headers, timeout=15)
             if r.status_code == 200 and len(r.content) > 10000:
                 with open(output_jpg, "wb") as f:
                     f.write(r.content)
-                print(f"✅ Generated 8K AI Visual (requests): {output_jpg} ({len(r.content)} bytes)")
+                print(f"✅ Generated AI Visual (requests): {output_jpg} ({len(r.content)} bytes)")
                 return True
         except Exception:
             pass
 
-        time.sleep(2 * (attempt + 1))
+        time.sleep(1)
         
     return False
 
@@ -665,6 +663,11 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gem
             fallback_vibe = scene.get('visual_vibe') or f"{scene.get('shot_type', 'cinematic vista')} {scene.get('color_palette', 'dramatic lighting')}"
             generate_ai_scene_visual(f"{fallback_vibe} {scene.get('voice_line', '')} 8k cinematic photorealistic", img_path)
 
+        if not os.path.exists(img_path) or os.path.getsize(img_path) < 1000:
+            if i > 0 and os.path.exists(f"temp/scene_art_{i-1}.jpg"):
+                import shutil
+                shutil.copyfile(f"temp/scene_art_{i-1}.jpg", img_path)
+
         print(f"🎥 Converting Scene {i+1} with Hollywood '{motion}' camera motion ({assigned_dur:.2f}s)...")
         convert_image_to_cinematic_clip(img_path, clip_path, assigned_dur, camera_motion=motion)
         clip_files.append(clip_path)
@@ -735,100 +738,47 @@ def render_final_short_with_bgm(bg_path, audio_path, ass_path, bgm_path, duratio
         f"box=1:boxcolor=black@0.82:boxborderw=18:x=(w-text_w)/2:y=220[vout]"
     )
     
-    boom_path = "temp/boom.wav"
-    has_boom = generate_sub_bass_boom(boom_path)
     fade_out_start = max(1.0, duration - 1.5)
-
     if bgm_path and os.path.exists(bgm_path):
-        if has_boom and os.path.exists(boom_path):
-            audio_filter = (
-                f"[1:a]volume=1.05[voice];"
-                f"[2:a]volume=0.32,afade=t=in:ss=0:d=0.8,afade=t=out:st={fade_out_start}:d=1.5[bgm];"
-                f"[3:a]volume=1.2[boom];"
-                f"[voice][bgm][boom]amix=inputs=3:duration=first:dropout_transition=2[aout]"
-            )
-            cmd = [
-                "ffmpeg", "-y",
-                "-stream_loop", "-1", "-i", bg_path,
-                "-i", audio_path,
-                "-stream_loop", "-1", "-i", bgm_path,
-                "-i", boom_path,
-                "-filter_complex", f"{v_filter};{audio_filter}",
-                "-map", "[vout]",
-                "-map", "[aout]",
-                "-c:v", "libx264",
-                "-preset", "fast",
-                "-crf", "19",
-                "-c:a", "aac",
-                "-b:a", "192k",
-                "-t", str(duration + 0.2),
-                "-pix_fmt", "yuv420p",
-                output_path
-            ]
-        else:
-            audio_filter = (
-                f"[1:a]volume=1.05[voice];"
-                f"[2:a]volume=0.32,afade=t=in:ss=0:d=0.8,afade=t=out:st={fade_out_start}:d=1.5[bgm];"
-                f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
-            )
-            cmd = [
-                "ffmpeg", "-y",
-                "-stream_loop", "-1", "-i", bg_path,
-                "-i", audio_path,
-                "-stream_loop", "-1", "-i", bgm_path,
-                "-filter_complex", f"{v_filter};{audio_filter}",
-                "-map", "[vout]",
-                "-map", "[aout]",
-                "-c:v", "libx264",
-                "-preset", "fast",
-                "-crf", "19",
-                "-c:a", "aac",
-                "-b:a", "192k",
-                "-t", str(duration + 0.2),
-                "-pix_fmt", "yuv420p",
-                output_path
-            ]
+        audio_filter = (
+            f"[1:a]volume=1.1[voice];"
+            f"[2:a]volume=0.32,afade=t=in:ss=0:d=0.8,afade=t=out:st={fade_out_start}:d=1.5[bgm];"
+            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        )
+        cmd = [
+            "ffmpeg", "-y",
+            "-stream_loop", "-1", "-i", bg_path,
+            "-i", audio_path,
+            "-stream_loop", "-1", "-i", bgm_path,
+            "-filter_complex", f"{v_filter};{audio_filter}",
+            "-map", "[vout]",
+            "-map", "[aout]",
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-crf", "20",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-t", str(duration + 0.2),
+            "-pix_fmt", "yuv420p",
+            output_path
+        ]
     else:
-        if has_boom and os.path.exists(boom_path):
-            audio_filter = (
-                f"[1:a]volume=1.05[voice];"
-                f"[2:a]volume=1.2[boom];"
-                f"[voice][boom]amix=inputs=2:duration=first:dropout_transition=2[aout]"
-            )
-            cmd = [
-                "ffmpeg", "-y",
-                "-stream_loop", "-1", "-i", bg_path,
-                "-i", audio_path,
-                "-i", boom_path,
-                "-filter_complex", f"{v_filter};{audio_filter}",
-                "-map", "[vout]",
-                "-map", "[aout]",
-                "-c:v", "libx264",
-                "-preset", "fast",
-                "-crf", "19",
-                "-c:a", "aac",
-                "-b:a", "192k",
-                "-t", str(duration + 0.2),
-                "-pix_fmt", "yuv420p",
-                output_path
-            ]
-        else:
-            cmd = [
-                "ffmpeg", "-y",
-                "-stream_loop", "-1", "-i", bg_path,
-                "-i", audio_path,
-                "-filter_complex", v_filter,
-                "-map", "[vout]",
-                "-map", "1:a",
-                "-c:v", "libx264",
-                "-preset", "fast",
-                "-crf", "19",
-                "-c:a", "aac",
-                "-b:a", "192k",
-                "-t", str(duration + 0.2),
-                "-pix_fmt", "yuv420p",
-                output_path
-            ]
+        cmd = [
+            "ffmpeg", "-y",
+            "-stream_loop", "-1", "-i", bg_path,
+            "-i", audio_path,
+            "-filter_complex", v_filter,
+            "-map", "[vout]",
+            "-map", "1:a",
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-crf", "20",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-t", str(duration + 0.2),
+            "-pix_fmt", "yuv420p",
+            output_path
+        ]
         
     subprocess.run(cmd, check=True)
     print(f"🎉 FINAL UPGRADED VIDEO READY! Saved to: {output_path}")
