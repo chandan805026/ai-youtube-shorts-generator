@@ -1,4 +1,4 @@
-name: Generate YouTube Short (Cloud Video Maker)
+name: Generate Viral Meme Comedy Short (100% Cloud Studio)
 
 on:
   schedule:
@@ -9,36 +9,35 @@ on:
     - cron: '30 22 * * *'
   workflow_dispatch:
     inputs:
-      auto_pilot:
-        description: '🤖 Auto-Pilot Mode (Gemini 3.6 Flash writes script & directs)'
-        type: boolean
-        required: true
-        default: true
-      topic:
-        description: 'Mystery / Video Topic (Keep "auto" for Smart Anti-Repetition Vault)'
-        required: false
-        default: 'auto'
-      script:
-        description: '(Optional) Custom Script text (Leave empty to let Gemini create)'
+      video_url:
+        description: '🔗 Video Link (Douyin, TikTok, Kuaishou, or MP4 URL - Leave blank for Auto-Pilot Vault)'
         required: false
         default: ''
-      voice:
-        description: 'Select Voiceover Voice'
+      topic:
+        description: 'Video Category (cute kids, funny pets, asian street comedy, auto)'
         required: false
-        default: 'en-US-ChristopherNeural'
+        default: 'auto'
+      voice:
+        description: 'Select Voiceover Voice (American Meme Style)'
+        required: false
+        default: 'en-US-GuyNeural'
         type: choice
         options:
-          - 'en-US-ChristopherNeural'
           - 'en-US-GuyNeural'
+          - 'en-US-ChristopherNeural'
           - 'en-US-JennyNeural'
           - 'en-US-EricNeural'
           - 'hi-IN-MadhurNeural'
           - 'hi-IN-SwaraNeural'
+      script:
+        description: '(Optional) Custom commentary script (Leave empty to let Gemini Baba write)'
+        required: false
+        default: ''
       upload_to_youtube:
-        description: '📺 Auto-Upload to Cosmic Vault on YouTube'
+        description: '📺 Auto-Upload to YouTube Shorts (Keep false for Web Player preview)'
         type: boolean
         required: true
-        default: true
+        default: false
       privacy:
         description: 'YouTube Privacy Status'
         required: true
@@ -75,28 +74,20 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 🚀 Run 100% Photorealistic AI Video Generator with Gemini 3.8 Flash
+      - name: 🔥 Run Viral Meme Shorts Studio (Dual-Route Ingestion + Gemini Baba + FFmpeg)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          if [ "${{ inputs.auto_pilot }}" = "false" ] && [ -n "${{ inputs.script }}" ]; then
-            echo "🎬 Running in Custom Script mode..."
-            python generate_video.py \
-              --script "${{ inputs.script }}" \
-              --voice "${{ inputs.voice || 'en-US-ChristopherNeural' }}" \
-              --topic "${{ inputs.topic || 'deep space mystery' }}" \
-              --output "output/final_video.mp4" \
-              --thumb "output/thumbnail.jpg"
-          else
-            echo "🧠 Running in 100% Auto-Pilot mode with Gemini 3.8/3.6 Flash Director & Anti-Repetition Vault..."
-            python generate_video.py \
-              --auto \
-              --voice "${{ inputs.voice || 'en-US-ChristopherNeural' }}" \
-              --topic "${{ inputs.topic || 'auto' }}" \
-              --output "output/final_video.mp4" \
-              --thumb "output/thumbnail.jpg"
-          fi
+          echo "🚀 Starting Viral Asian Meme Studio..."
+          python generate_video.py \
+            --auto \
+            --video_url "${{ inputs.video_url || '' }}" \
+            --topic "${{ inputs.topic || 'auto' }}" \
+            --voice "${{ inputs.voice || 'en-US-GuyNeural' }}" \
+            --script "${{ inputs.script || '' }}" \
+            --output "output/final_video.mp4" \
+            --thumb "output/thumbnail.jpg"
 
       - name: 🧠 Persist Video History Memory Vault
         run: |
@@ -116,9 +107,9 @@ jobs:
           RUN_ID="${{ github.run_id }}"
           
           # Read video title from metadata if available
-          VIDEO_TITLE="AI Space Mystery Short"
+          VIDEO_TITLE="Viral Meme Comedy Short"
           if [ -f "output/metadata.json" ]; then
-            VIDEO_TITLE=$(python -c "import json; print(json.load(open('output/metadata.json')).get('title', 'AI Space Mystery Short'))")
+            VIDEO_TITLE=$(python -c "import json; print(json.load(open('output/metadata.json')).get('title', 'Viral Meme Comedy Short'))")
           fi
           
           cat << EOF > web/index.html
@@ -183,7 +174,7 @@ jobs:
           <body>
             <div class="container">
               <h1>${VIDEO_TITLE}</h1>
-              <p class="subtitle">✅ Directed by Gemini 3.6 Flash • ${BUILD_TIME}</p>
+              <p class="subtitle">🔥 Directed by Gemini Baba • High RPM Viral Shorts • ${BUILD_TIME}</p>
               <div class="video-wrapper">
                 <video controls autoplay loop playsinline poster="thumbnail.jpg?v=${RUN_ID}" src="video.mp4?v=${RUN_ID}"></video>
               </div>
@@ -220,7 +211,7 @@ jobs:
 
       - name: 📢 Print Watch Online Link in Summary
         run: |
-          echo "## 🎉 Gemini Hollywood Director Video Ready!" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 Viral Meme Comedy Short Ready!" >> $GITHUB_STEP_SUMMARY
           echo "### 🌐 [Click Here to Watch Online (Anti-Cache)](https://chandan805026.github.io/ai-youtube-shorts-generator/?v=${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
 
       - name: 💾 Upload Video and Metadata as Artifact
