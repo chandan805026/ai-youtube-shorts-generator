@@ -433,11 +433,19 @@ def generate_ai_director_plan(gemini_key, requested_topic="auto"):
 Your mission: Create an unscrollable, suspenseful 30-SECOND viral Short about this exact phenomenon:
 THEME: "{active_topic}"
 
-VIRAL HOOK & PACING FORMULA (The "Don't Scroll" Blueprint):
-1. HOOK (0-3 SECONDS):
-   - A shocking first sentence that immediately stops the user from scrolling.
-   - Start immediately inside the terror, anomaly, or impossible contradiction.
-   - STRICTLY FORBIDDEN: "Did you know?", "In this video", "Welcome back", "Today we talk about".
+VIRAL HOOK & PACING FORMULA (The American High-RPM "Don't Scroll" Blueprint):
+1. SCENE 1 HOOK (THE 0-3 SECOND THUMB-STOPPER - CRITICAL):
+   - The opening 8-11 words MUST be an explosive psychological PATTERN INTERRUPT!
+   - ⛔ STRICTLY FORBIDDEN OPENINGS (Instant Swipe-Away):
+     * NEVER start with slow geographical, astronomical, or scenery exposition:
+       FORBIDDEN: "Deep in the constellation Boötes...", "In the Pacific ocean...", "In 1997, scientists detected...", "Mount Kailash is a 22,000-foot mountain...", "Space is full of mysterious things...", "Deep under the Antarctic ice...".
+   - ✅ MANDATORY SHOCK OPENINGS (Use one of these 4 high-retention psychological triggers):
+     * Trigger A (The Impossible Paradox): "Albert Einstein spent his final years terrified of this one glitch..." / "Physicists just proved the universe is actively faking its own reality..."
+     * Trigger B (Classified / Censored Discovery): "What deep-sea hydrophones recorded at 36,000 feet forced oceanographers to cut the audio..." / "NASA telescopes pointed at this sector detected something they refuse to explain..."
+     * Trigger C (Direct Threat / Existential Stake): "If you look at the night sky tonight, two thousand galaxies are already gone..." / "Do not assume the dark void above your head is silent..."
+     * Trigger D (Sacred Ancient Anomaly): "This 9,000-year-old submerged monolith was built with technology modern engineers cannot explain..."
+   - The Scene 1 voice_line MUST violently freeze the viewer's thumb in the first 1.2 seconds!
+   - The `hook_banner` MUST be an unscrollable 3-4 word curiosity trap in CAPITAL LETTERS (e.g. "PHYSICS IS BROKEN", "NASA CUT THE AUDIO", "2,000 GALAXIES GONE", "DO NOT LOOK AWAY", "IMPOSSIBLE GLITCH").
 2. TENSION ESCALATION (3-18 SECONDS):
    - Deliver 2 to 3 chilling, scientifically documented facts about this phenomenon.
    - Use vivid, atmospheric language that triggers cosmic dread or visceral fascination.
@@ -695,17 +703,25 @@ def render_final_short_with_bgm(bg_path, audio_path, ass_path, bgm_path, duratio
     
     escaped_ass = ass_path.replace("\\", "/").replace(":", "\\:")
     
-    # Safe drawtext filter without bold=1 flag
+    # Ultra-eye-catching Yellow hook banner with high-contrast background box
     v_filter = (
         f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
         f"ass={escaped_ass},"
-        f"drawtext=text='{hook_title}':font='DejaVu Sans':fontsize=38:fontcolor=white:"
-        f"box=1:boxcolor=black@0.75:boxborderw=16:x=(w-text_w)/2:y=240[vout]"
+        f"drawtext=text='{hook_title}':font='DejaVu Sans':fontsize=42:fontcolor=yellow:"
+        f"box=1:boxcolor=black@0.82:boxborderw=18:x=(w-text_w)/2:y=220[vout]"
     )
     
+    # Second 0.0 Cinematic Sub-Bass Impact Boom (72Hz to 28Hz frequency sweep with smooth decay)
+    boom_filter = "aevalsrc=expr='sin(2*PI*(72-28*t)*t)*exp(-2.2*t)*1.8':s=48000:d=1.5[boom]"
+    fade_out_start = max(1.0, duration - 1.5)
+
     if bgm_path and os.path.exists(bgm_path):
-        fade_out_start = max(1.0, duration - 1.5)
-        audio_filter = f"[1:a]volume=1.0[voice];[2:a]volume=0.35,afade=t=in:ss=0:d=1,afade=t=out:st={fade_out_start}:d=1.5[bgm];[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        audio_filter = (
+            f"{boom_filter};"
+            f"[1:a]volume=1.05[voice];"
+            f"[2:a]volume=0.32,afade=t=in:ss=0:d=0.8,afade=t=out:st={fade_out_start}:d=1.5[bgm];"
+            f"[voice][bgm][boom]amix=inputs=3:duration=first:dropout_transition=2[aout]"
+        )
         
         cmd = [
             "ffmpeg", "-y",
@@ -725,13 +741,18 @@ def render_final_short_with_bgm(bg_path, audio_path, ass_path, bgm_path, duratio
             output_path
         ]
     else:
+        audio_filter = (
+            f"{boom_filter};"
+            f"[1:a]volume=1.05[voice];"
+            f"[voice][boom]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        )
         cmd = [
             "ffmpeg", "-y",
             "-stream_loop", "-1", "-i", bg_path,
             "-i", audio_path,
-            "-filter_complex", v_filter,
+            "-filter_complex", f"{v_filter};{audio_filter}",
             "-map", "[vout]",
-            "-map", "1:a",
+            "-map", "[aout]",
             "-c:v", "libx264",
             "-preset", "fast",
             "-crf", "19",
