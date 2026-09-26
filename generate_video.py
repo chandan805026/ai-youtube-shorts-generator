@@ -10,6 +10,9 @@ import urllib.parse
 import time
 import random
 import base64
+import wave
+import math
+import struct
 
 if sys.stdout.encoding != 'utf-8':
     try:
@@ -697,71 +700,135 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gem
     subprocess.run(cmd_concat, check=True)
     print("🎉 FULL 100% PHOTOREALISTIC AI DIRECTED VIDEO COMPLETE!")
 
+def generate_sub_bass_boom(output_path="temp/boom.wav", duration=1.5, sample_rate=48000):
+    try:
+        num_samples = int(duration * sample_rate)
+        with wave.open(output_path, "w") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            frames = []
+            for i in range(num_samples):
+                t = i / sample_rate
+                freq = 72 - 28 * (t / duration)
+                decay = math.exp(-2.5 * t)
+                sample = int(32767 * 0.85 * decay * math.sin(2 * math.pi * freq * t))
+                frames.append(struct.pack("<h", max(-32767, min(32767, sample))))
+            wav_file.writeframes(b"".join(frames))
+        return True
+    except Exception as e:
+        print(f"Warning: sub-bass boom skipped ({e})")
+        return False
+
 def render_final_short_with_bgm(bg_path, audio_path, ass_path, bgm_path, duration, output_path, hook_title):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     print(f"🎬 Burning Hormozi subtitles, Top Hook Banner, and mixing loud cinematic BGM...")
     
     escaped_ass = ass_path.replace("\\", "/").replace(":", "\\:")
     
+    safe_hook = re.sub(r"['\":\\]", "", str(hook_title)).strip().upper()
     # Ultra-eye-catching Yellow hook banner with high-contrast background box
     v_filter = (
         f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
         f"ass={escaped_ass},"
-        f"drawtext=text='{hook_title}':font='DejaVu Sans':fontsize=42:fontcolor=yellow:"
+        f"drawtext=text='{safe_hook}':font='DejaVu Sans':fontsize=42:fontcolor=yellow:"
         f"box=1:boxcolor=black@0.82:boxborderw=18:x=(w-text_w)/2:y=220[vout]"
     )
     
-    # Second 0.0 Cinematic Sub-Bass Impact Boom (72Hz to 28Hz frequency sweep with smooth decay)
-    boom_filter = "aevalsrc=expr='sin(2*PI*(72-28*t)*t)*exp(-2.2*t)*1.8':s=48000:d=1.5[boom]"
+    boom_path = "temp/boom.wav"
+    has_boom = generate_sub_bass_boom(boom_path)
     fade_out_start = max(1.0, duration - 1.5)
 
     if bgm_path and os.path.exists(bgm_path):
-        audio_filter = (
-            f"{boom_filter};"
-            f"[1:a]volume=1.05[voice];"
-            f"[2:a]volume=0.32,afade=t=in:ss=0:d=0.8,afade=t=out:st={fade_out_start}:d=1.5[bgm];"
-            f"[voice][bgm][boom]amix=inputs=3:duration=first:dropout_transition=2[aout]"
-        )
-        
-        cmd = [
-            "ffmpeg", "-y",
-            "-stream_loop", "-1", "-i", bg_path,
-            "-i", audio_path,
-            "-stream_loop", "-1", "-i", bgm_path,
-            "-filter_complex", f"{v_filter};{audio_filter}",
-            "-map", "[vout]",
-            "-map", "[aout]",
-            "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "19",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-t", str(duration + 0.2),
-            "-pix_fmt", "yuv420p",
-            output_path
-        ]
+        if has_boom and os.path.exists(boom_path):
+            audio_filter = (
+                f"[1:a]volume=1.05[voice];"
+                f"[2:a]volume=0.32,afade=t=in:ss=0:d=0.8,afade=t=out:st={fade_out_start}:d=1.5[bgm];"
+                f"[3:a]volume=1.2[boom];"
+                f"[voice][bgm][boom]amix=inputs=3:duration=first:dropout_transition=2[aout]"
+            )
+            cmd = [
+                "ffmpeg", "-y",
+                "-stream_loop", "-1", "-i", bg_path,
+                "-i", audio_path,
+                "-stream_loop", "-1", "-i", bgm_path,
+                "-i", boom_path,
+                "-filter_complex", f"{v_filter};{audio_filter}",
+                "-map", "[vout]",
+                "-map", "[aout]",
+                "-c:v", "libx264",
+                "-preset", "fast",
+                "-crf", "19",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-t", str(duration + 0.2),
+                "-pix_fmt", "yuv420p",
+                output_path
+            ]
+        else:
+            audio_filter = (
+                f"[1:a]volume=1.05[voice];"
+                f"[2:a]volume=0.32,afade=t=in:ss=0:d=0.8,afade=t=out:st={fade_out_start}:d=1.5[bgm];"
+                f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+            )
+            cmd = [
+                "ffmpeg", "-y",
+                "-stream_loop", "-1", "-i", bg_path,
+                "-i", audio_path,
+                "-stream_loop", "-1", "-i", bgm_path,
+                "-filter_complex", f"{v_filter};{audio_filter}",
+                "-map", "[vout]",
+                "-map", "[aout]",
+                "-c:v", "libx264",
+                "-preset", "fast",
+                "-crf", "19",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-t", str(duration + 0.2),
+                "-pix_fmt", "yuv420p",
+                output_path
+            ]
     else:
-        audio_filter = (
-            f"{boom_filter};"
-            f"[1:a]volume=1.05[voice];"
-            f"[voice][boom]amix=inputs=2:duration=first:dropout_transition=2[aout]"
-        )
-        cmd = [
-            "ffmpeg", "-y",
-            "-stream_loop", "-1", "-i", bg_path,
-            "-i", audio_path,
-            "-filter_complex", f"{v_filter};{audio_filter}",
-            "-map", "[vout]",
-            "-map", "[aout]",
-            "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "19",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-t", str(duration + 0.2),
-            "-pix_fmt", "yuv420p",
-            output_path
-        ]
+        if has_boom and os.path.exists(boom_path):
+            audio_filter = (
+                f"[1:a]volume=1.05[voice];"
+                f"[2:a]volume=1.2[boom];"
+                f"[voice][boom]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+            )
+            cmd = [
+                "ffmpeg", "-y",
+                "-stream_loop", "-1", "-i", bg_path,
+                "-i", audio_path,
+                "-i", boom_path,
+                "-filter_complex", f"{v_filter};{audio_filter}",
+                "-map", "[vout]",
+                "-map", "[aout]",
+                "-c:v", "libx264",
+                "-preset", "fast",
+                "-crf", "19",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-t", str(duration + 0.2),
+                "-pix_fmt", "yuv420p",
+                output_path
+            ]
+        else:
+            cmd = [
+                "ffmpeg", "-y",
+                "-stream_loop", "-1", "-i", bg_path,
+                "-i", audio_path,
+                "-filter_complex", v_filter,
+                "-map", "[vout]",
+                "-map", "1:a",
+                "-c:v", "libx264",
+                "-preset", "fast",
+                "-crf", "19",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-t", str(duration + 0.2),
+                "-pix_fmt", "yuv420p",
+                output_path
+            ]
         
     subprocess.run(cmd, check=True)
     print(f"🎉 FINAL UPGRADED VIDEO READY! Saved to: {output_path}")
