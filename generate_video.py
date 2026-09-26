@@ -688,13 +688,23 @@ def build_hollywood_directed_video(scenes, scene_durations, total_duration, gemi
         vis_prompt = scene.get("visual_prompt") or f"{scene.get('voice_line')} 8k photorealistic dark cinematic lighting"
         download_scene_safely(vis_prompt, img_path, scene_id=i, total_scenes=num_scenes)
 
-        # Failsafe verification
+        # Failsafe verification (Zero random stock photos allowed!)
         if not os.path.exists(img_path) or os.path.getsize(img_path) < 1000:
-            unique_seed = (i + 1) * 179 + random.randint(10, 80)
-            url_fallback = f"https://picsum.photos/seed/{unique_seed}/768/1344"
-            r = requests.get(url_fallback, timeout=8)
-            with open(img_path, "wb") as f:
-                f.write(r.content)
+            if i > 0 and os.path.exists(f"temp/scene_art_{i-1}.jpg"):
+                import shutil
+                shutil.copyfile(f"temp/scene_art_{i-1}.jpg", img_path)
+                print(f"🔄 Reused previous thematic scene visual for continuity in Scene {i+1}")
+            else:
+                try:
+                    short_p = urllib.parse.quote(vis_prompt[:80])
+                    seed = random.randint(1000, 99999)
+                    url_fb = f"https://image.pollinations.ai/prompt/{short_p}?nologo=true&seed={seed}"
+                    r = requests.get(url_fb, headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
+                    if r.status_code == 200 and len(r.content) > 5000:
+                        with open(img_path, "wb") as f:
+                            f.write(r.content)
+                except Exception:
+                    pass
 
         if i == 0:
             try:
