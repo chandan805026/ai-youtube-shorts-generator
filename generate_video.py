@@ -455,8 +455,8 @@ VIRAL HOOK & PACING FORMULA (The American High-RPM "Don't Scroll" Blueprint):
    - Target Word Count: EXACTLY 75 to 85 words!
    - Spoken at a documentary pace, this yields EXACTLY 30-35 seconds of speech.
 5. FAST-PACED VIRAL SCENE STRUCTURE (CRITICAL FOR RETENTION):
-   - Provide EXACTLY 10 SEQUENTIAL SCENES (Micro-Shots)!
-   - Each scene voice_line must be 7 to 9 words (approx 3.0 to 3.5 seconds).
+   - Provide a dynamic sequence of 8 to 14 SEQUENTIAL SCENES (Micro-Shots) matching story beats!
+   - Each scene voice_line must be 6 to 9 words (approx 2.5 to 3.5 seconds).
    - Fast, seamless visual transitions keep viewers completely glued to the screen.
 6. 8K PHOTOREALISTIC VISUAL ART DIRECTION (FLUX.1 PHOTOGRAPHER SPECIFICATIONS):
    - ⛔ THE CARDINAL ANTI-MONOTONY RULE:
