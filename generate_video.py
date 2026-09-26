@@ -852,9 +852,22 @@ def main():
         }
         with open("output/metadata.json", "w", encoding="utf-8") as f:
             json.dump(meta, f, indent=2)
-        scenes = [
-            {"scene_id": 1, "voice_line": script_text, "visual_vibe": args.topic, "search_queries": [args.topic, "space galaxy"]}
-        ]
+        # Split custom script into multiple distinct scenes (1 per sentence)
+        raw_sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', script_text) if s.strip()]
+        if not raw_sentences:
+            raw_sentences = [script_text]
+        
+        camera_motions = ["crash_zoom", "slow_pull_back", "majestic_rise", "deep_descent", "pan_right", "pan_left", "slow_zoom_in"]
+        scenes = []
+        for idx, sent in enumerate(raw_sentences):
+            motion = camera_motions[idx % len(camera_motions)]
+            scenes.append({
+                "scene_id": idx + 1,
+                "voice_line": sent,
+                "visual_prompt": f"{sent}, photorealistic, authentic documentary film style, 8k, dramatic lighting",
+                "camera_motion": motion
+            })
+        print(f"🎬 Split custom script into {len(scenes)} distinct multi-scene visual shots!")
 
     # Step 2: Voice & Hormozi-style two-tone ASS Subtitles + Ground Truth Sentence Timings
     sentence_timings = asyncio.run(generate_speech_and_subtitles(script_text, clean_voice, audio_path, ass_path))
