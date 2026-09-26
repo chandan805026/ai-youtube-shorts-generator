@@ -257,9 +257,9 @@ def fetch_bgm_track(topic, output_bgm_path):
     return False
 
 # =========================================================================
-# 🧠 DUAL-SPECIALIST ARCHITECTURE:
-# 1. ✍️ Executive Producer : Gemini 3.8 Flash (Deep viral storytelling & timeline approval)
-# 2. 🎬 Assistant Director  : Gemini 3.5 Flash Lite (Screens 5 candidates per scene - 500 RPD)
+# 🧠 TWO-STAGE AI PIPELINE:
+# 1. ✍️ Executive Storyboard Director : Gemini 3.5 / 3.8 Flash (10-Scene Script & FLUX Visuals)
+# 2. 🎨 AI Cinematographer          : FLUX.1 Schnell via Hugging Face (Sequential Verified Queue)
 # =========================================================================
 
 SCRIPT_MODELS = [
@@ -267,11 +267,6 @@ SCRIPT_MODELS = [
     "gemini-3.8-flash",       # High-tier Google flagship
     "gemini-3.6-flash",       # High-tier backup
     "gemini-3.1-flash-lite"   # Emergency backup
-]
-
-DIRECTOR_MODELS = [
-    "gemini-3.5-flash-lite",  # Top priority: 500 RPD for lightning-fast clip curation
-    "gemini-3.1-flash-lite"   # 500 RPD backup
 ]
 
 def call_gemini_json_api(gemini_key, prompt, model_list, timeout=35):
@@ -457,46 +452,31 @@ VIRAL HOOK & PACING FORMULA (The American High-RPM "Don't Scroll" Blueprint):
    - Deliver an unsettling twist or an existential question that lingers in their mind.
    - Forces viewers to rewatch or debate in the comments.
 4. WORD COUNT CONSTRAINT:
-   - Target Word Count: EXACTLY 68 to 76 words!
-   - Spoken at a documentary pace, this yields EXACTLY 27-30 seconds of speech.
+   - Target Word Count: EXACTLY 75 to 85 words!
+   - Spoken at a documentary pace, this yields EXACTLY 30-35 seconds of speech.
 5. FAST-PACED VIRAL SCENE STRUCTURE (CRITICAL FOR RETENTION):
-   - Provide EXACTLY 7 to 8 SEQUENTIAL SCENES (Micro-Shots)!
-   - Each scene voice_line must be 8 to 11 words (approx 3.0 to 3.8 seconds).
-   - ABSOLUTE LIMIT: No individual clip should stay on screen longer than 4.0 seconds!
+   - Provide EXACTLY 10 SEQUENTIAL SCENES (Micro-Shots)!
+   - Each scene voice_line must be 7 to 9 words (approx 3.0 to 3.5 seconds).
    - Fast, seamless visual transitions keep viewers completely glued to the screen.
-6. 8K PHOTOREALISTIC VISUAL ART DIRECTION (CRITICAL: ZERO VISUAL REPETITION):
+6. 8K PHOTOREALISTIC VISUAL ART DIRECTION (FLUX.1 PHOTOGRAPHER SPECIFICATIONS):
    - ⛔ THE CARDINAL ANTI-MONOTONY RULE:
      * Viewers swipe away instantly if multiple scenes look similar or repetitive!
      * NEVER generate multiple scenes with the same shape, background, or motif.
-     * STRICTLY FORBIDDEN: NEVER make multiple scenes showing a glowing orb, ring, or sphere in empty black space. At absolute most, ONE single cosmic sphere is permitted across the entire video.
      * EVERY scene must have a completely distinct visual environment, perspective, and subject!
+   - 🎭 MANDATORY SCENE-BY-SCENE PERSPECTIVE & SCALE ROTATION (10 Distinct Shots):
+     * Scene 1 (Hook / Vista): Colossal establishing wide shot under dramatic lighting.
+     * Scene 2 (Scale / Explorer POV): Human or instrument perspective in harsh environment.
+     * Scene 3 (Artifact / Intricate Mechanism): Detailed tactile device, sensor, or glowing relic.
+     * Scene 4 (Dynamic Force): Atmospheric storm, energy vortex, or churning natural force.
+     * Scene 5 (Interior Architecture): Deep cavern, high-tech command deck, or abandoned structure.
+     * Scene 6 (Threat / Shadow): Towering silhouette, thermal signature, or unknown entity.
+     * Scene 7 (Cosmic / Macro Scale): Celestial alignment, gravitational distortion, or planetary horizon.
+     * Scene 8 (Evidence / Clue): Physical footprint, torn metal, frozen dial, or distress beacon.
+     * Scene 9 (Existential Twist): Mind-bending reality glitch or terrifying perspective shift.
+     * Scene 10 (Chilling Finale): Haunting final lingering image that demands a rewatch.
 
-   - 🎭 MANDATORY SCENE-BY-SCENE PERSPECTIVE & SCALE ROTATION (Each scene MUST be a distinct shot type):
-     * Scene 1 (Hook / Vista): Colossal establishing wide shot (e.g. planetary horizon, misty sacred peak, ocean abyss, massive alien megastructure under dramatic lighting).
-     * Scene 2 (Scale / Human or Explorer POV): Tangible explorer or human scale (e.g. expedition crew in thermal suits on ice cliff, astronomer silhouette in futuristic observatory bay, deep-sea submarine headlights piercing dark depths).
-     * Scene 3 (Artifact / Intricate Mechanism): Detailed tactile relic or technology (e.g. spinning antique brass compass, carved glowing stone runes, high-tech radar console flashing red warnings, intricate crystalline quantum core).
-     * Scene 4 (Dynamic Phenomenon / Environmental Force): Atmospheric storm, churning ocean whirlpool, roaring geomagnetic auroral curtains, rivers of molten stellar fire, or violent lightning rift.
-     * Scene 5 (Interior Architecture / Subterranean Depth): Grand interior depth (e.g. endless megalithic basalt temple corridor, colossal geometric mainframe vault, deep underwater cavern).
-     * Scene 6 (Cosmic / Transcendent Scale): Universe-scale perspective (e.g. swirling galaxy cluster, gravitational spacetime warping, ancient celestial alignment).
-     * Scene 7 (Chilling Reveal / Climax): Haunting silhouette, awakening robotic monolith, or mysterious titan entity emerging from shadows.
-
-   - 🎨 MANDATORY CONTRASTING COLOR PALETTES (Every scene MUST switch dominant color temperature):
-     * Scene 1: Warm Amber / Golden Sunrise / Molten Bronze
-     * Scene 2: Glacial Cyan / Deep Oceanic Teal / Icy Blue
-     * Scene 3: Eerie Crimson / Obsidian Black / Volcanic Glow
-     * Scene 4: Bioluminescent Emerald / Radioactive Neon Green
-     * Scene 5: Amethyst Violet / Cosmic Starlight Silver / Royal Indigo
-     * Ensure neighboring scenes have completely contrasting colors!
-
-7. DYNAMIC HOLLYWOOD CAMERA MOTION (Crucial for High-Retention Visual Rhythm):
-   - For EACH scene, assign the most emotionally powerful camera motion matching the narrative:
-     * "crash_zoom": Rapid acceleration punch-in towards the subject (Essential for Scene 1 Hook & shocking reveals)
-     * "slow_pull_back": Starts close and pulls back smoothly to reveal immense cosmic or landscape scale
-     * "majestic_rise": Smooth upward tilt panning from base towards the heavens or mountain peak
-     * "deep_descent": Downward plunge into dark waters, chasms, or abyssal depths
-     * "pan_left_to_right": Grand sweeping horizontal tracking shot
-     * "pan_right_to_left": Opposite horizontal tracking shot
-     * "slow_zoom_in": Slow hypnotic drift into mystery
+7. DYNAMIC HOLLYWOOD CAMERA MOTION:
+   - For EACH scene, assign: "crash_zoom", "slow_pull_back", "majestic_rise", "deep_descent", "pan_left_to_right", "pan_right_to_left", or "slow_zoom_in".
 
 ⛔ STRICT ANTI-REPETITION CONSTRAINT:
 Do NOT duplicate any of these recently covered topics from our history:
@@ -506,15 +486,12 @@ REQUIRED JSON OUTPUT FORMAT:
 {{
   "title": "Shorts Title with emoji and #shorts (under 50 chars)",
   "hook_banner": "3-5 WORDS UPPERCASE FOR TOP BANNER (e.g. UNTOUCHED BY TIME)",
-  "full_script": "The complete 68-76 word script combining all 7-8 scenes smoothly.",
+  "full_script": "The complete 75-85 word script combining all 10 scenes smoothly.",
   "scenes": [
     {{
       "scene_id": 1,
-      "shot_type": "establishing_vista",
-      "color_palette": "golden_amber",
-      "voice_line": "Sentence for scene 1 (8-11 words)",
-      "visual_prompt": "Majestic, hyper-detailed 8K photorealistic scene description matching the exact sentence and shot type",
-      "visual_vibe": "Cinematic visual description",
+      "voice_line": "Sentence for scene 1 (7-9 words)",
+      "visual_prompt": "Majestic, hyper-detailed 8K photorealistic documentary film still description, 35mm photograph, authentic lighting",
       "camera_motion": "crash_zoom"
     }}
   ]
@@ -533,60 +510,63 @@ Output valid pure JSON only without markdown formatting."""
     print("⚠️ Falling back to curated high-retention space mystery plan.")
     return FALLBACK_PLANS[0], FALLBACK_PLANS[0].get("title")
 
-def generate_ai_scene_visual(prompt, output_jpg, scene_id=0):
+def download_scene_safely(prompt, output_jpg, scene_id, total_scenes, max_retries=4):
     """
-    Generates a guaranteed unique 9:16 vertical visual for each scene.
-    Priority 1: FLUX.1 Schnell via Hugging Face InferenceClient (Hollywood-grade 8K Photorealism)
-    Priority 2: Pollinations AI with short prompt (Turbo/Flux fallback)
-    Priority 3: Guaranteed Unique HD Photo CDN Fallback (Picsum seed)
-    Guarantees 100% unique, photorealistic images for EVERY scene!
+    Downloads scene visual sequentially.
+    Ensures photo 1 is 100% downloaded and verified (>15KB) before photo 2 starts.
+    If server reports busy / rate-limit / timeout, retries with backoff without crashing!
     """
     clean_p = re.sub(r'[^a-zA-Z0-9\s,.-]', '', prompt).strip()
-
-    # METHOD 1: FLUX.1 Schnell (Hollywood-grade Photorealism & Real Camera Aesthetics)
     hf_token = os.environ.get("HF_TOKEN")
+    
+    # Priority 1: FLUX.1 Schnell via Hugging Face with Retry Loop
     if hf_token:
-        try:
-            print(f"✨ Generating Ultra-Realistic FLUX.1 Visual for Scene {scene_id+1}...")
-            from huggingface_hub import InferenceClient
-            client = InferenceClient(api_key=hf_token)
-            flux_prompt = f"cinematic photorealistic 35mm documentary film still, 8k resolution, authentic atmosphere and lighting, {clean_p}"
-            img = client.text_to_image(flux_prompt, model="black-forest-labs/FLUX.1-schnell")
-            img.convert("RGB").save(output_jpg, "JPEG", quality=95)
-            print(f"✅ Generated 8K Photorealistic FLUX.1 Scene {scene_id+1}: {output_jpg} ({os.path.getsize(output_jpg)} bytes)")
-            return True
-        except Exception as e:
-            print(f"⚠️ FLUX.1 generation notice: {e}, attempting fallback...")
+        for attempt in range(max_retries):
+            try:
+                print(f"✨ [FLUX.1 Queue] Requesting Scene {scene_id+1}/{total_scenes} (Attempt {attempt+1}/{max_retries})...")
+                from huggingface_hub import InferenceClient
+                client = InferenceClient(api_key=hf_token)
+                flux_prompt = f"cinematic photorealistic 35mm documentary film still, 8k resolution, authentic atmosphere and lighting, {clean_p}"
+                img = client.text_to_image(flux_prompt, model="black-forest-labs/FLUX.1-schnell")
+                img.convert("RGB").save(output_jpg, "JPEG", quality=95)
+                
+                # Strict Verification: File must exist and exceed 15KB
+                if os.path.exists(output_jpg) and os.path.getsize(output_jpg) > 15000:
+                    print(f"✅ [Verified] Scene {scene_id+1}/{total_scenes} downloaded ({os.path.getsize(output_jpg)} bytes). Proceeding to next photo...")
+                    return True
+                else:
+                    print(f"⚠️ Incomplete file for Scene {scene_id+1}, retrying...")
+            except Exception as e:
+                wait_sec = 3 * (attempt + 1)
+                print(f"⚠️ Server notice for Scene {scene_id+1}: {e}. Retrying in {wait_sec}s...")
+                time.sleep(wait_sec)
+        print(f"Notice: FLUX.1 retries exhausted for Scene {scene_id+1}, activating seamless backup...")
 
+    # Priority 2: Fast Pollinations backup (8s)
     words = clean_p.split()
     active_prompt = " ".join(words[:14])
     encoded = urllib.parse.quote(active_prompt)
     seed = random.randint(10000, 999999) + scene_id * 777
-    
-    # METHOD 2: Pollinations AI (8s timeout)
     url_pollinations = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1344&nologo=true&seed={seed}&model=turbo"
-    print(f"🎨 Generating AI Visual Scene {scene_id+1} (Pollinations): '{active_prompt[:40]}...'")
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        r = requests.get(url_pollinations, headers=headers, timeout=8)
+        r = requests.get(url_pollinations, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
         if r.status_code == 200 and len(r.content) > 10000:
             with open(output_jpg, "wb") as f:
                 f.write(r.content)
-            print(f"✅ Generated AI Scene Visual (Pollinations): {output_jpg} ({len(r.content)} bytes)")
+            print(f"✅ [Backup] Scene {scene_id+1} downloaded via Pollinations ({len(r.content)} bytes)")
             return True
     except Exception:
         pass
 
-    # METHOD 3: Guaranteed Unique HD Photo CDN Fallback (0.5s response, always unique per scene)
+    # Priority 3: Guaranteed Unique HD Photo CDN Fallback
     unique_seed = int(hashlib.md5(f"{prompt}_{scene_id}_{seed}".encode()).hexdigest(), 16) % 1000 + 1
     url_picsum = f"https://picsum.photos/seed/{unique_seed}/768/1344"
-    print(f"🔄 Unique HD Scene Visual Fallback (Seed {unique_seed}) for Scene {scene_id+1}...")
     try:
         r = requests.get(url_picsum, timeout=8)
         if r.status_code == 200 and len(r.content) > 10000:
             with open(output_jpg, "wb") as f:
                 f.write(r.content)
-            print(f"✅ Generated Unique HD Scene Visual (CDN): {output_jpg} ({len(r.content)} bytes)")
+            print(f"✅ [Backup CDN] Scene {scene_id+1} downloaded (Seed {unique_seed})")
             return True
     except Exception as e:
         print(f"Warning: CDN fallback failed ({e})")
@@ -607,7 +587,7 @@ def convert_image_to_cinematic_clip(image_path, output_clip_path, duration, came
         # Grand cosmic reveal: starts tight and pulls back smoothly
         vf = "crop=in_w:in_h*0.955:0:0,scale='1080*(1.16-0.035*t)':'1920*(1.16-0.035*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,setsar=1,format=yuv420p"
     elif "rise" in motion or "tilt_up" in motion or "up" in motion:
-        # Upward vertical pan from base towards the heavens/mountain summit
+        # Upward vertical pan from base towards the heavens or mountain summit
         vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.12:1920*1.12,crop=1080:1920:(in_w-1080)/2:'max(0,(in_h-1920)*(1-0.2*t))',setsar=1,format=yuv420p"
     elif "descent" in motion or "dive" in motion or "down" in motion:
         # Downward vertical pan plunging into the dark abyss or deep ocean
@@ -640,49 +620,28 @@ def convert_image_to_cinematic_clip(image_path, output_clip_path, duration, came
 
 def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gemini_key, output_bg_path, output_thumb_path):
     """
-    100% Photorealistic AI Cinematography Pipeline:
-    1. Generates 8K photorealistic scene visuals matching the exact narrative.
-    2. Converts all scenes into dynamic 30fps Ken Burns cinematic clips with custom camera motions.
-    3. Assembles master video with zero stutter and ZERO Pexels stock video!
+    100% Photorealistic Multi-Shot Architecture:
+    Stage 1: Safe Sequential Asset Downloader (Photo 1 completes and verifies before Photo 2 starts).
+    Stage 2: Audio-Visual Timeline Sync (Maps each photo to spoken sentences).
+    Stage 3: Hollywood dynamic camera motions & assembly.
     """
     num_scenes = max(1, len(scenes))
-    print(f"\n🎬 --- STAGE 1: Generating 100% Photorealistic AI Visuals ({num_scenes} scenes) ---")
+    print(f"\n📸 --- STAGE 1: Safe Sequential Asset Downloader ({num_scenes} scenes) ---")
 
-    # Step 1: Assign timeline durations from sentence_timings or fallback
-    avg_dur = total_duration / num_scenes
-    assigned_durations = {}
-    for i in range(num_scenes):
-        if i < len(sentence_timings):
-            st = sentence_timings[i]
-            d = st.get("duration", st.get("end_s", 0) - st.get("start_s", 0))
-            assigned_durations[i] = max(2.5, min(4.2, d)) if d > 0 else avg_dur
-        else:
-            assigned_durations[i] = avg_dur
-
-    clip_files = []
+    # STEP 1: Download ALL photos sequentially one by one!
     for i, scene in enumerate(scenes):
-        assigned_dur = assigned_durations.get(i, avg_dur)
-        motion = scene.get("camera_motion", "slow_zoom_in")
-        print(f"\n🎨 Scene {i+1}/{num_scenes} ({assigned_dur:.2f}s | Camera: '{motion}'): '{scene.get('voice_line', '')[:40]}...'")
         img_path = f"temp/scene_art_{i}.jpg"
-        clip_path = f"temp/scene_clip_{i}.mp4"
-
-        # 100% Photorealistic Unique AI Visual Generation
         vis_prompt = scene.get("visual_prompt") or f"{scene.get('voice_line')} 8k photorealistic dark cinematic lighting"
-        generate_ai_scene_visual(vis_prompt, img_path, scene_id=i)
+        download_scene_safely(vis_prompt, img_path, scene_id=i, total_scenes=num_scenes)
 
-        # Fail-safe check: guarantee unique distinct visual for this scene
+        # Failsafe verification
         if not os.path.exists(img_path) or os.path.getsize(img_path) < 1000:
             unique_seed = (i + 1) * 179 + random.randint(10, 80)
             url_fallback = f"https://picsum.photos/seed/{unique_seed}/768/1344"
             r = requests.get(url_fallback, timeout=8)
             with open(img_path, "wb") as f:
                 f.write(r.content)
-            print(f"✅ Unique visual fallback saved for Scene {i+1} (Seed {unique_seed})")
 
-        print(f"🎥 Converting Scene {i+1} with Hollywood '{motion}' camera motion ({assigned_dur:.2f}s)...")
-        convert_image_to_cinematic_clip(img_path, clip_path, assigned_dur, camera_motion=motion)
-        clip_files.append(clip_path)
         if i == 0:
             try:
                 import shutil
@@ -690,10 +649,36 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gem
             except Exception:
                 pass
 
-    if not clip_files:
-        raise Exception("Could not generate any scene clips.")
+    print(f"\n🎬 --- STAGE 2: Hollywood Cinematography & Audio-Visual Sync ---")
 
-    # Smoothly concatenate clips (normalized with exact SAR and resolution)
+    # STEP 2: Timeline Duration Alignment
+    avg_dur = total_duration / num_scenes
+    assigned_durations = {}
+    for i in range(num_scenes):
+        if i < len(sentence_timings):
+            st = sentence_timings[i]
+            d = st.get("duration", st.get("end_s", 0) - st.get("start_s", 0))
+            assigned_durations[i] = max(2.5, min(4.5, d)) if d > 0 else avg_dur
+        else:
+            assigned_durations[i] = avg_dur
+
+    total_assigned = sum(assigned_durations.values())
+    if total_assigned > 0:
+        ratio = total_duration / total_assigned
+        for k in assigned_durations:
+            assigned_durations[k] = round(assigned_durations[k] * ratio, 2)
+
+    clip_files = []
+    for i, scene in enumerate(scenes):
+        assigned_dur = assigned_durations.get(i, avg_dur)
+        motion = scene.get("camera_motion", "slow_zoom_in")
+        print(f"🎥 Rendering Scene {i+1}/{num_scenes} with '{motion}' motion ({assigned_dur:.2f}s)...")
+        img_path = f"temp/scene_art_{i}.jpg"
+        clip_path = f"temp/scene_clip_{i}.mp4"
+        convert_image_to_cinematic_clip(img_path, clip_path, assigned_dur, camera_motion=motion)
+        clip_files.append(clip_path)
+
+    # Concat clips with strict normalization
     inputs = []
     filter_str = ""
     for idx, c in enumerate(clip_files):
@@ -709,13 +694,13 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gem
         "-filter_complex", filter_str,
         "-map", "[v]",
         "-c:v", "libx264",
-        "-preset", "fast",
+        "-preset", "veryfast",
         "-r", "30",
         "-pix_fmt", "yuv420p",
         output_bg_path
     ]
     subprocess.run(cmd_concat, check=True)
-    print("🎉 FULL 100% PHOTOREALISTIC AI DIRECTED VIDEO COMPLETE!")
+    print("🎉 FULL 10-SHOT PHOTOREALISTIC VIDEO ASSEMBLY COMPLETE!")
 
 def generate_sub_bass_boom(output_path="temp/boom.wav", duration=1.5, sample_rate=48000):
     try:
@@ -803,8 +788,6 @@ def main():
     parser.add_argument("--auto", action="store_true", help="Enable 100% automated script & visual direction via Two-Stage AI")
     parser.add_argument("--voice", type=str, default="en-US-ChristopherNeural", help="Edge TTS Voice name")
     parser.add_argument("--topic", type=str, default="deep space cosmic anomaly", help="Topic for script and visuals")
-    parser.add_argument("--color", type=str, default="Yellow", help="Subtitle highlight color")
-    parser.add_argument("--pexels_key", type=str, default="", help="Pexels API key")
     parser.add_argument("--gemini_key", type=str, default="", help="Gemini API key")
     parser.add_argument("--output", type=str, default="output/final_video.mp4", help="Output video path")
     parser.add_argument("--thumb", type=str, default="output/thumbnail.jpg", help="Output thumbnail path")
@@ -812,7 +795,7 @@ def main():
 
     clean_voice = clean_voice_name(args.voice)
     gemini_key = args.gemini_key.strip() if args.gemini_key and args.gemini_key.strip() else DEFAULT_GEMINI_KEY
-    print("✨ 100% Photorealistic AI Visual Mode Active (Pexels disabled).")
+    print("✨ FLUX.1 + Gemini 10-Shot Safe Sequential Architecture Active.")
 
     os.makedirs("temp", exist_ok=True)
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
