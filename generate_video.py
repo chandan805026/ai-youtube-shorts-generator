@@ -458,22 +458,18 @@ VIRAL HOOK & PACING FORMULA (The American High-RPM "Don't Scroll" Blueprint):
    - Provide a dynamic sequence of 8 to 14 SEQUENTIAL SCENES (Micro-Shots) matching story beats!
    - Each scene voice_line must be 6 to 9 words (approx 2.5 to 3.5 seconds).
    - Fast, seamless visual transitions keep viewers completely glued to the screen.
-6. 8K PHOTOREALISTIC VISUAL ART DIRECTION (FLUX.1 PHOTOGRAPHER SPECIFICATIONS):
-   - ⛔ THE CARDINAL ANTI-MONOTONY RULE:
-     * Viewers swipe away instantly if multiple scenes look similar or repetitive!
-     * NEVER generate multiple scenes with the same shape, background, or motif.
-     * EVERY scene must have a completely distinct visual environment, perspective, and subject!
-   - 🎭 MANDATORY SCENE-BY-SCENE PERSPECTIVE & SCALE ROTATION (10 Distinct Shots):
-     * Scene 1 (Hook / Vista): Colossal establishing wide shot under dramatic lighting.
-     * Scene 2 (Scale / Explorer POV): Human or instrument perspective in harsh environment.
-     * Scene 3 (Artifact / Intricate Mechanism): Detailed tactile device, sensor, or glowing relic.
-     * Scene 4 (Dynamic Force): Atmospheric storm, energy vortex, or churning natural force.
-     * Scene 5 (Interior Architecture): Deep cavern, high-tech command deck, or abandoned structure.
-     * Scene 6 (Threat / Shadow): Towering silhouette, thermal signature, or unknown entity.
-     * Scene 7 (Cosmic / Macro Scale): Celestial alignment, gravitational distortion, or planetary horizon.
-     * Scene 8 (Evidence / Clue): Physical footprint, torn metal, frozen dial, or distress beacon.
-     * Scene 9 (Existential Twist): Mind-bending reality glitch or terrifying perspective shift.
-     * Scene 10 (Chilling Finale): Haunting final lingering image that demands a rewatch.
+6. DEEP MOVIE-SCENE VISUAL DEFINITIONS FOR FLUX.1 (CRITICAL FOR PHOTO-STORY REALISM):
+   - 🎬 MANDATORY 100% STORY-TO-IMAGE ALIGNMENT:
+     * NEVER write generic prompts like "a dark forest" or "a spooky hospital".
+     * EVERY visual_prompt MUST directly depict the EXACT noun, entity, action, and object spoken in that specific scene's voice_line!
+     * Establish a unified cinematic world (same story environment, consistent architecture, cohesive color palette).
+   - 🔍 REQUIRED DEEP PHYSICAL SPECIFICATIONS (Include in EVERY visual_prompt):
+     1. EXACT FOREGROUND SUBJECT & ACTION: What entity, character POV, or relic is physically occurring.
+     2. SPECIFIC LIGHTING SOURCE: E.g. harsh halogen flashlight piercing dust, amber candle flicker, moonlight through frosted window, red alarm glow.
+     3. TACTILE PHYSICAL TEXTURES: Rusted iron, peeling paint, cracked stone, frosty breath, worn fabric, authentic human skin pores.
+     4. CAMERA FRAMING & LENS: E.g. 85mm close-up with shallow depth of field, 24mm wide establishing shot, low-angle first-person POV.
+     * Every visual_prompt MUST be 25 to 40 words of deep physical cinematic description.
+     * ZERO CGI or cartoon artifacts. Must look like an authentic 35mm documentary film still!
 
 7. DYNAMIC HOLLYWOOD CAMERA MOTION:
    - For EACH scene, assign: "crash_zoom", "slow_pull_back", "majestic_rise", "deep_descent", "pan_left_to_right", "pan_right_to_left", or "slow_zoom_in".
@@ -486,12 +482,12 @@ REQUIRED JSON OUTPUT FORMAT:
 {{
   "title": "Shorts Title with emoji and #shorts (under 50 chars)",
   "hook_banner": "3-5 WORDS UPPERCASE FOR TOP BANNER (e.g. UNTOUCHED BY TIME)",
-  "full_script": "The complete 75-85 word script combining all 10 scenes smoothly.",
+  "full_script": "The complete 75-85 word script combining all scenes smoothly.",
   "scenes": [
     {{
       "scene_id": 1,
-      "voice_line": "Sentence for scene 1 (7-9 words)",
-      "visual_prompt": "Majestic, hyper-detailed 8K photorealistic documentary film still description, 35mm photograph, authentic lighting",
+      "voice_line": "Sentence for scene 1 (6-9 words)",
+      "visual_prompt": "Hyper-detailed 25-40 word physical scene description detailing exact subject, lighting source, camera lens, and authentic textures matching this line",
       "camera_motion": "crash_zoom"
     }}
   ]
