@@ -509,21 +509,20 @@ VIRAL HOOK & PACING FORMULA (The American High-RPM "Don't Scroll" Blueprint):
      * NEVER write emotional abstractions, internal mental states, or historical exposition:
        FORBIDDEN: "atmosphere of dread", "patients felt terrified", "scientists were amazed", "a mysterious feeling", "dark tragedy".
        (AI image models CANNOT generate feelings or thoughts; they ONLY draw concrete, tangible physical objects!)
-   - ✅ MANDATORY 4-PART PHYSICAL RECIPE FOR EVERY visual_prompt:
-     1. EXACT PHYSICAL SUBJECT & CHARACTER: Name the tangible entity (e.g. "terrified 1930s doctor in white coat", "8-foot pitch-black faceless shadow silhouette", "rusted iron airlock door").
-     2. EXACT PHYSICAL ACTION: What is physically happening in the frame right now (e.g. "hands shaking as he turns a brass key", "shadow peeling off peeling-wallpaper wall", "flashlight beam cutting through dense airborne dust").
-     3. EXACT PHYSICAL SETTING & OBJECTS: Specific room, furniture, medical equipment, or architecture matching that spoken sentence.
-     4. LIGHTING & 35MM CINEMATOGRAPHY: Harsh halogen beam, flickering tungsten bulb, moonlight through iron bars, shallow depth of field, 35mm film grain, 8K documentary still.
-   - Example 1:
-     * voice_line: "In 1932, a hollow shadow figure detached from the wall."
-     * visual_prompt: "Photorealistic 35mm film still of a pitch-black humanoid shadow silhouette with hollow white eyes physically peeling away from a decaying hospital wall into a corridor, 1930s aesthetic, dim flickering tungsten light."
-   - Example 2:
-     * voice_line: "Night shift nurses recorded heavy footsteps approaching the empty ward."
-     * visual_prompt: "First-person perspective of a 1930s nurse holding a trembling brass lantern, illuminating fresh wet footprint impressions appearing one by one on the dusty wooden floorboards, dark corridor."
-   - Example 3:
-     * voice_line: "Thermal cameras revealed an 8-foot entity levitating above the floor."
-     * visual_prompt: "FLIR thermal camera LCD view screen displaying a high-contrast room in deep cold blue, with a massive 8-foot glowing bright red humanoid heat silhouette floating two feet above the tile floor."
-   - Every visual_prompt MUST be 25 to 45 words of pure physical description detailing the exact noun, entity, and action spoken in that scene's voice_line!
+     * NEVER include AI quality buzzwords like "cinematic", "photorealistic", "8k", or "film still" in visual_prompt (the backend adds high-end camera tags automatically).
+   - ✅ MANDATORY SUBJECT-FIRST 3-PART PHYSICAL RECIPE:
+     Format EVERY visual_prompt strictly as:
+     "[Foreground Physical Subject & Character] + [Physical Action/Pose] + [Immediate Environment & Props]"
+     Keep it punchy: EXACTLY 15 to 25 words of direct physical reality.
+   - Exact Examples of the Subject-First Format:
+     * voice_line: "In 1922, a psychiatric doctor carved out his own eyes."
+       -> visual_prompt: "Close-up of a 1920s doctor in white coat with bloodstained bandages over his eyes dropping a steel scalpel, dim candlelight"
+     * voice_line: "Rusted iron asylum gates remain permanently locked by Italian authorities."
+       -> visual_prompt: "Massive rusted iron asylum gates sealed with thick steel chains and weathered brass padlocks, overcast sky"
+     * voice_line: "Thermal cameras recently tracked a towering shadow ascending the bell tower stairs."
+       -> visual_prompt: "FLIR thermal camera screen showing high contrast blue background with bright red 8-foot humanoid heat silhouette climbing stone spiral stairs"
+     * voice_line: "Visitors report phantom screams echoing across dead canals."
+       -> visual_prompt: "Empty wooden rowboat drifting through thick green mist in an abandoned Venetian lagoon canal, crumbling stone sanitarium walls"
    - Establishing a cohesive cinematic world: Consistent lighting, uniform color grading, authentic historical realism. ZERO CGI or cartoon look.
 
 7. DYNAMIC HOLLYWOOD CAMERA MOTION:
@@ -556,6 +555,9 @@ Output valid pure JSON only without markdown formatting."""
         print(f"🎬 Title: {data.get('title')}")
         print(f"📌 Hook Banner: {data.get('hook_banner')}")
         print(f"📜 Generated {len(data.get('scenes', []))} fast-paced sequential scenes.")
+        for sc in data.get('scenes', []):
+            print(f"   🎬 Scene {sc.get('scene_id')}: [Audio] '{sc.get('voice_line')}'")
+            print(f"      📸 [Subject Prompt] '{sc.get('visual_prompt')}'")
         return data, active_topic
 
     print("⚠️ Falling back to curated high-retention space mystery plan.")
@@ -564,22 +566,23 @@ Output valid pure JSON only without markdown formatting."""
 def download_scene_safely(prompt, output_jpg, scene_id, total_scenes, max_retries=4):
     """
     Downloads scene visual sequentially with 100% semantic accuracy:
-    1. Primary: FLUX.1 Schnell via Hugging Face.
-    2. Secondary: SDXL Base 1.0 via Hugging Face (immune to nscale 402 errors).
-    3. Tertiary: Pollinations AI with FULL detailed prompt (never truncated).
+    1. Primary: FLUX.1 Schnell via Hugging Face (Subject-First prompt format).
+    2. Secondary: SDXL Base 1.0 via Hugging Face (Subject-First format).
+    3. Tertiary: Pollinations AI with clean prompt (never truncated to nonsense).
     Zero random stock photos - every image is guaranteed AI generated matching the prompt!
     """
     clean_p = re.sub(r'[^a-zA-Z0-9\s,.-]', '', prompt).strip()
     hf_token = os.environ.get("HF_TOKEN")
     
-    # Priority 1: FLUX.1 Schnell via Hugging Face
+    # Priority 1: FLUX.1 Schnell via Hugging Face (Subject-First Prompting)
     if hf_token:
         for attempt in range(max_retries):
             try:
                 print(f"✨ [FLUX.1 Queue] Requesting Scene {scene_id+1}/{total_scenes} (Attempt {attempt+1}/{max_retries})...")
                 from huggingface_hub import InferenceClient
                 client = InferenceClient(api_key=hf_token, timeout=25)
-                flux_prompt = f"cinematic photorealistic 35mm documentary film still, 8k resolution, authentic atmosphere and lighting, {clean_p}"
+                # SUBJECT-FIRST: Put the physical entity & action at Position 0!
+                flux_prompt = f"{clean_p}, photorealistic 35mm documentary film still, 8k resolution, authentic cinema lighting"
                 img = client.text_to_image(flux_prompt, model="black-forest-labs/FLUX.1-schnell")
                 img.convert("RGB").save(output_jpg, "JPEG", quality=95)
                 
@@ -594,13 +597,13 @@ def download_scene_safely(prompt, output_jpg, scene_id, total_scenes, max_retrie
                 print(f"⚠️ FLUX.1 server notice for Scene {scene_id+1}: {e}. Retrying in {wait_sec}s...")
                 time.sleep(wait_sec)
         
-        # Priority 2: SDXL Base 1.0 via Hugging Face (Rock-solid free inference tier)
+        # Priority 2: SDXL Base 1.0 via Hugging Face (Subject-First fallback)
         print(f"🔄 Activating Hugging Face SDXL fallback for Scene {scene_id+1}...")
         for attempt in range(2):
             try:
                 from huggingface_hub import InferenceClient
                 client = InferenceClient(api_key=hf_token, timeout=30)
-                sdxl_prompt = f"cinematic photorealistic 35mm documentary still, 8k, authentic atmosphere, {clean_p}"
+                sdxl_prompt = f"{clean_p}, 35mm documentary still, 8k, authentic cinematic lighting"
                 img = client.text_to_image(sdxl_prompt, model="stabilityai/stable-diffusion-xl-base-1.0")
                 img.convert("RGB").save(output_jpg, "JPEG", quality=95)
                 if os.path.exists(output_jpg) and os.path.getsize(output_jpg) > 15000:
@@ -610,9 +613,9 @@ def download_scene_safely(prompt, output_jpg, scene_id, total_scenes, max_retrie
                 print(f"⚠️ SDXL fallback notice for Scene {scene_id+1}: {e}")
                 time.sleep(2)
 
-    # Priority 3: Pollinations AI with Full Prompt (100% thematic AI, NO random stock photos)
+    # Priority 3: Pollinations AI with Clean Subject Prompt (100% thematic AI, NO random stock photos)
     print(f"🌐 Activating Pollinations AI generator for Scene {scene_id+1}...")
-    encoded_p = urllib.parse.quote(clean_p[:180])
+    encoded_p = urllib.parse.quote(f"{clean_p[:140]}, 35mm photo")
     seed = random.randint(10000, 999999) + scene_id * 777
     url_pollinations = f"https://image.pollinations.ai/prompt/{encoded_p}?nologo=true&seed={seed}"
     try:
@@ -712,6 +715,10 @@ def build_hollywood_directed_video(scenes, scene_durations, total_duration, gemi
                 shutil.copyfile(img_path, output_thumb_path)
             except Exception:
                 pass
+
+        # Anti-burst cooldown: Wait 3.5s between scene requests to prevent router 402/rate-limits
+        if i < num_scenes - 1:
+            time.sleep(3.5)
 
     print(f"\n🎬 --- STAGE 2: 100% Scene-Synchronized Cinematography ---")
 
@@ -866,7 +873,8 @@ def main():
             "description": f"{script_text}\n\n#shorts #mystery #science #deepspace #ocean #quantum",
             "hook_banner": hook_title,
             "topic": active_topic,
-            "tags": ["shorts", "mystery", "science", "deepspace", "ocean", "universe", "unexplained"]
+            "tags": ["shorts", "mystery", "science", "deepspace", "ocean", "universe", "unexplained"],
+            "scenes": scenes
         }
         with open("output/metadata.json", "w", encoding="utf-8") as f:
             json.dump(meta, f, indent=2)
