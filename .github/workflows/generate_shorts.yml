@@ -78,6 +78,7 @@ jobs:
       - name: 🚀 Run 100% Photorealistic AI Video Generator with Gemini 3.8 Flash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           if [ "${{ inputs.auto_pilot }}" = "false" ] && [ -n "${{ inputs.script }}" ]; then
             echo "🎬 Running in Custom Script mode..."
