@@ -192,31 +192,66 @@ def split_sentence_into_cues(start_s, end_s, text, max_words=3):
         cues.append((c_start, c_end, ' '.join(c).upper()))
     return cues
 
-async def generate_speech_and_subtitles(script_text, voice_id, audio_output_path, ass_output_path):
+async def generate_scene_synchronized_narration(scenes, voice_id, audio_output_path, ass_output_path):
+    """
+    100% Mathematical Audio-Visual Synchronization:
+    Generates exact voiceover per scene so that each photo clip length is
+    EXACTLY equal to the spoken duration of that scene's line.
+    Zero drift, zero timing lag!
+    """
     import edge_tts
-    print(f"🎙️ Generating voiceover using voice: {voice_id}...")
-    communicate = edge_tts.Communicate(script_text, voice_id)
+    print(f"🎙️ Generating Scene-Synchronized Voiceover across {len(scenes)} scenes...")
     
+    os.makedirs(os.path.dirname(audio_output_path) or ".", exist_ok=True)
     cues = []
-    sentence_timings = []
-    with open(audio_output_path, "wb") as f:
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                f.write(chunk["data"])
-            elif chunk["type"] == "SentenceBoundary":
-                start_s = chunk["offset"] / 10_000_000
-                end_s = start_s + (chunk["duration"] / 10_000_000)
-                sentence_timings.append({
-                    "text": chunk["text"],
-                    "start_s": round(start_s, 2),
-                    "end_s": round(end_s, 2),
-                    "duration": round(end_s - start_s, 2)
-                })
-                sentence_cues = split_sentence_into_cues(start_s, end_s, chunk["text"], max_words=3)
-                cues.extend(sentence_cues)
-                
+    scene_durations = []
+    audio_parts = []
+    current_offset = 0.0
+
+    for i, sc in enumerate(scenes):
+        v_line = sc.get("voice_line", "").strip()
+        if not v_line:
+            v_line = "..."
+        part_path = f"temp/voice_part_{i}.mp3"
+        comm = edge_tts.Communicate(v_line, voice_id)
+        
+        part_cues = []
+        with open(part_path, "wb") as f:
+            async for chunk in comm.stream():
+                if chunk["type"] == "audio":
+                    f.write(chunk["data"])
+                elif chunk["type"] == "SentenceBoundary":
+                    s_dur = chunk["duration"] / 10_000_000
+                    sub_cues = split_sentence_into_cues(current_offset, current_offset + s_dur, chunk["text"], max_words=3)
+                    part_cues.extend(sub_cues)
+                    
+        part_dur = get_audio_duration(part_path)
+        if not part_cues:
+            part_cues = split_sentence_into_cues(current_offset, current_offset + part_dur, v_line, max_words=3)
+            
+        cues.extend(part_cues)
+        scene_durations.append(round(part_dur, 2))
+        audio_parts.append(part_path)
+        current_offset += part_dur
+
+    # Join audio parts with ffmpeg
+    inputs = []
+    filter_str = ""
+    for idx, p in enumerate(audio_parts):
+        inputs.extend(["-i", p])
+        filter_str += f"[{idx}:a]"
+    filter_str += f"concat=n={len(audio_parts)}:v=0:a=1[a]"
+    
+    cmd_join = ["ffmpeg", "-y"] + inputs + ["-filter_complex", filter_str, "-map", "[a]", audio_output_path]
+    subprocess.run(cmd_join, check=True)
+    
     generate_hormozi_ass_subtitles(cues, ass_output_path)
-    return sentence_timings
+    total_audio_dur = get_audio_duration(audio_output_path)
+    print(f"✅ Scene-Synchronized Audio Complete: {len(scenes)} scenes | Total: {total_audio_dur:.2f}s")
+    for idx, d in enumerate(scene_durations):
+        print(f"   🎬 Scene {idx+1} ({d:.2f}s): '{scenes[idx].get('voice_line', '')[:35]}...'")
+        
+    return scene_durations, total_audio_dur
 
 def get_audio_duration(audio_path):
     try:
@@ -614,11 +649,11 @@ def convert_image_to_cinematic_clip(image_path, output_clip_path, duration, came
     subprocess.run(cmd, check=True)
     return True
 
-def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gemini_key, output_bg_path, output_thumb_path):
+def build_hollywood_directed_video(scenes, scene_durations, total_duration, gemini_key, output_bg_path, output_thumb_path):
     """
     100% Photorealistic Multi-Shot Architecture:
     Stage 1: Safe Sequential Asset Downloader (Photo 1 completes and verifies before Photo 2 starts).
-    Stage 2: Audio-Visual Timeline Sync (Maps each photo to spoken sentences).
+    Stage 2: 100% Frame-Perfect Audio-Visual Sync (Exact scene duration locked to voiceover).
     Stage 3: Hollywood dynamic camera motions & assembly.
     """
     num_scenes = max(1, len(scenes))
@@ -645,30 +680,13 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gem
             except Exception:
                 pass
 
-    print(f"\n🎬 --- STAGE 2: Hollywood Cinematography & Audio-Visual Sync ---")
-
-    # STEP 2: Timeline Duration Alignment
-    avg_dur = total_duration / num_scenes
-    assigned_durations = {}
-    for i in range(num_scenes):
-        if i < len(sentence_timings):
-            st = sentence_timings[i]
-            d = st.get("duration", st.get("end_s", 0) - st.get("start_s", 0))
-            assigned_durations[i] = max(2.5, min(4.5, d)) if d > 0 else avg_dur
-        else:
-            assigned_durations[i] = avg_dur
-
-    total_assigned = sum(assigned_durations.values())
-    if total_assigned > 0:
-        ratio = total_duration / total_assigned
-        for k in assigned_durations:
-            assigned_durations[k] = round(assigned_durations[k] * ratio, 2)
+    print(f"\n🎬 --- STAGE 2: 100% Scene-Synchronized Cinematography ---")
 
     clip_files = []
     for i, scene in enumerate(scenes):
-        assigned_dur = assigned_durations.get(i, avg_dur)
+        assigned_dur = scene_durations[i] if i < len(scene_durations) else (total_duration / num_scenes)
         motion = scene.get("camera_motion", "slow_zoom_in")
-        print(f"🎥 Rendering Scene {i+1}/{num_scenes} with '{motion}' motion ({assigned_dur:.2f}s)...")
+        print(f"🎥 Rendering Scene {i+1}/{num_scenes} ({assigned_dur:.2f}s | Motion: '{motion}'): '{scene.get('voice_line', '')[:35]}...'")
         img_path = f"temp/scene_art_{i}.jpg"
         clip_path = f"temp/scene_clip_{i}.mp4"
         convert_image_to_cinematic_clip(img_path, clip_path, assigned_dur, camera_motion=motion)
@@ -850,18 +868,14 @@ def main():
             })
         print(f"🎬 Split custom script into {len(scenes)} distinct multi-scene visual shots!")
 
-    # Step 2: Voice & Hormozi-style two-tone ASS Subtitles + Ground Truth Sentence Timings
-    sentence_timings = asyncio.run(generate_speech_and_subtitles(script_text, clean_voice, audio_path, ass_path))
+    # Step 2: Scene-Synchronized Voiceover & Hormozi-style Subtitles (1:1 Frame-Perfect Sync)
+    scene_durations, duration = asyncio.run(generate_scene_synchronized_narration(scenes, clean_voice, audio_path, ass_path))
 
-    # Step 3: Exact Audio Duration
-    duration = get_audio_duration(audio_path)
-    print(f"⏱️ Exact narration duration measured: {duration:.2f} seconds")
-
-    # Step 4: Fetch Cinematic Background Music
+    # Step 3: Fetch Cinematic Background Music
     fetch_bgm_track(active_topic, bgm_path)
 
-    # Step 5: Multi-scene Hollywood Directed 100% AI Video Footage
-    build_hollywood_directed_video(scenes, sentence_timings, duration, gemini_key, bg_video_path, args.thumb)
+    # Step 4: Multi-scene Hollywood Directed Video Footage (Locked to Exact Scene Durations)
+    build_hollywood_directed_video(scenes, scene_durations, duration, gemini_key, bg_video_path, args.thumb)
 
     # Step 6: Render with Top Hook Banner & Audible BGM
     render_final_short_with_bgm(bg_video_path, audio_path, ass_path, bgm_path, duration, args.output, hook_title)
