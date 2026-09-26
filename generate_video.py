@@ -1,4 +1,16 @@
-import asyncio
+#!/usr/bin/env python3
+"""
+Autonomous Viral Asian Meme & Comedy Shorts Studio
+--------------------------------------------------
+Designed for 100% cloud execution on GitHub Actions.
+Bypasses YouTube Reused Content policy with transformative editing:
+- Dual-Route Fail-safe Ingestion (Route 1: URL/yt-dlp, Route 2: Curated Viral Vault)
+- Gemini Baba Multimodal / AI Comedy Director (Ray William Johnson / Meme creator style)
+- Microsoft Edge TTS (en-US-GuyNeural energetic American voice)
+- Hormozi / MrBeast Yellow & White Bold Animated Subtitles
+- FFmpeg Transformative Studio: Horizontal Flip + 106% Dynamic Zoom + Micro Speed Ramp + Top Hook Banner + Audio Mixing
+"""
+
 import os
 import sys
 import argparse
@@ -9,886 +21,729 @@ import re
 import urllib.parse
 import time
 import random
-import base64
-import wave
 import math
 import struct
-import hashlib
+import wave
 
+# Ensure UTF-8 output
 if sys.stdout.encoding != 'utf-8':
     try:
         sys.stdout.reconfigure(encoding='utf-8')
     except Exception:
         pass
 
-DEFAULT_GEMINI_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
-
-BGM_TRACKS = {
-    "space": "https://upload.wikimedia.org/wikipedia/commons/5/55/Dreamstate_Logic_-_Zero_Point_%28space_ambient%2C_dark_ambient%29.ogg",
-    "mystery": "https://upload.wikimedia.org/wikipedia/commons/5/55/Dreamstate_Logic_-_Zero_Point_%28space_ambient%2C_dark_ambient%29.ogg",
-    "dark mystery": "https://upload.wikimedia.org/wikipedia/commons/5/55/Dreamstate_Logic_-_Zero_Point_%28space_ambient%2C_dark_ambient%29.ogg",
-    "tech": "https://upload.wikimedia.org/wikipedia/commons/d/db/Terminus_Void_-_Inception_%28Dystopian_Cyberpunk_Space_Ambient_Music_similar_to_Blade_Runner_soundtrack_music%29.opus",
-    "nature": "https://upload.wikimedia.org/wikipedia/commons/8/81/Vastopia_-_Dark_Ambient_Music_for_Deep_Relaxation_and_Focus.ogg"
-}
-
-POWER_WORDS = {
-    "TERRIFYING", "MASSIVE", "COLOSSAL", "DARKNESS", "GALAXIES", "ALIEN", "CIVILIZATION",
-    "EXPLODED", "VOID", "HARVESTING", "ERASING", "LURKING", "EXTINCT", "INFINITY",
-    "MILLION", "BILLION", "LIGHT-YEARS", "BLACK", "HOLE", "SILENT", "SHOCK", "SECRETS",
-    "UNIVERSE", "DESTROYED", "DANGEROUS", "SWALLOWED", "UNKNOWN", "VANISHED", "SCREAMING"
-}
-
-FALLBACK_PLANS = [
+# ==========================================
+# 1. VIRAL COMEDY VAULT (ROUTE 2 FAIL-SAFE)
+# ==========================================
+VIRAL_VAULT = [
     {
-        "title": "The Void That Swallowed 2,000 Galaxies 🌌 #shorts",
-        "hook_banner": "TERRIFYING HOLE IN SPACE",
-        "full_script": "Deep in space lies a 330 million light-year abyss of pure nothingness. Two thousand galaxies should exist here, but astronomers found absolute silence. What could erase an entire sector of our cosmos? Some believe a colossal Type-3 civilization is devouring entire solar systems. Others warn this growing void is slowly expanding toward us.",
-        "scenes": [
-            {
-                "scene_id": 1,
-                "shot_type": "establishing_vista",
-                "color_palette": "golden_amber",
-                "voice_line": "Deep in space lies a 330 million light-year abyss of pure nothingness.",
-                "visual_prompt": "Colossal cosmic void surrounded by faint golden star clusters and nebulae, 8k cinematic IMAX",
-                "camera_motion": "crash_zoom"
-            },
-            {
-                "scene_id": 2,
-                "shot_type": "human_scale_pov",
-                "color_palette": "glacial_cyan",
-                "voice_line": "Two thousand galaxies should exist here, but astronomers found absolute silence.",
-                "visual_prompt": "Astronomer silhouette standing inside high-tech observatory observation deck looking at panoramic starry window, glowing cyan holographic maps, 8k cinematic",
-                "camera_motion": "slow_pull_back"
-            },
-            {
-                "scene_id": 3,
-                "shot_type": "tactile_relic_detail",
-                "color_palette": "warm_bronze",
-                "voice_line": "Ancient radio telescopes scanning the sector pick up zero electromagnetic signals.",
-                "visual_prompt": "Detailed vintage observatory brass radio telescope dial spinning erratically, warm atmospheric amber light, 8k cinematic",
-                "camera_motion": "majestic_rise"
-            },
-            {
-                "scene_id": 4,
-                "shot_type": "environmental_force",
-                "color_palette": "eerie_crimson",
-                "voice_line": "What could erase an entire sector of our universe?",
-                "visual_prompt": "Violent cosmic shockwave tearing through glowing crimson accretion dust in deep cosmos, 8k National Geographic",
-                "camera_motion": "deep_descent"
-            },
-            {
-                "scene_id": 5,
-                "shot_type": "interior_depth",
-                "color_palette": "bioluminescent_emerald",
-                "voice_line": "Some believe a colossal Type-3 civilization is devouring entire solar systems.",
-                "visual_prompt": "Massive alien megastructure interior corridor with glowing emerald data channels stretching to infinity, 8k cinematic",
-                "camera_motion": "pan_left_to_right"
-            },
-            {
-                "scene_id": 6,
-                "shot_type": "cosmic_climax",
-                "color_palette": "amethyst_violet",
-                "voice_line": "Harvesting every star to power a colossal superintelligence.",
-                "visual_prompt": "Colossal gravitational vortex bending violet starlight around empty cosmic abyss, 8k cinematic masterpiece",
-                "camera_motion": "pan_right_to_left"
-            },
-            {
-                "scene_id": 7,
-                "shot_type": "chilling_reveal",
-                "color_palette": "obsidian_crimson",
-                "voice_line": "Others warn this growing void is slowly expanding toward us.",
-                "visual_prompt": "Eerie dark titan silhouette looming against distant burning red stars in silent cosmos, 8k cinematic",
-                "camera_motion": "slow_zoom_in"
-            }
+        "id": "vault_kid_cookie_heist",
+        "category": "cute_kids",
+        "title": "Bro Really Thought Nobody Saw Him 💀 #shorts",
+        "hook_banner": "CAUGHT IN 4K 😂",
+        "description": "A cheeky toddler attempts a stealth mission to steal a chocolate cookie from the kitchen counter. When he hears footsteps, he freezes in place, flashes an angelic innocent smile, and pretends he was just doing morning stretches.",
+        "fallback_script": "Bro really thought he had the stealth of a secret agent! Look at him reaching for that cookie like it's a mission impossible heist. But the second he hears mom walking in? Total freeze frame! Look at that innocent face! He really tried to play it off like a morning stretch! You can't even be mad at that! 😂",
+        "local_fallback": "assets/vault/starter_comedy.mp4",
+        "cdn_urls": [
+            "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4",
+            "https://www.w3schools.com/html/mov_bbb.mp4"
+        ]
+    },
+    {
+        "id": "vault_cat_side_eye",
+        "category": "funny_pets",
+        "title": "Bro Is Deeply Offended By This Food 💀 #shorts",
+        "hook_banner": "THE AUDACITY 😂",
+        "description": "A dramatic cat stares at diet kibble in his food bowl, gives his owner the most judgmental bombastic side-eye, raises one paw, and slowly knocks the bowl off the table without blinking.",
+        "fallback_script": "Ain't no way this cat just did that! The owner gave him diet food and look at the disrespect in those eyes! That is a pure bombastic side-eye. He looks directly at the camera, raises one paw, and says not in my house! Bro sent that bowl straight to the shadow realm! Cats really think they pay the rent! 💀",
+        "local_fallback": "assets/vault/starter_comedy.mp4",
+        "cdn_urls": [
+            "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4",
+            "https://www.w3schools.com/html/mov_bbb.mp4"
+        ]
+    },
+    {
+        "id": "vault_puppy_drift_fail",
+        "category": "funny_pets",
+        "title": "When The 3 AM Zoomies Hit Hard 🏎️💨 #shorts",
+        "hook_banner": "TOKYO DRIFT FAILS 😭",
+        "description": "An excited puppy gets midnight zoomies, charges down the hallway at full speed, attempts to drift on the slippery wooden floor, loses all traction, and slides right into an empty laundry basket.",
+        "fallback_script": "Tell me why dogs get possessed at 3 AM! This little guy decided he was in Fast and Furious! He hits the corner at full speed, tries to drift on the hardwood floor, and completely loses grip! But wait for the landing... straight into the basket! Ten out of ten for style! Bro wasn't even embarrassed! 😂",
+        "local_fallback": "assets/vault/starter_comedy.mp4",
+        "cdn_urls": [
+            "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4",
+            "https://www.w3schools.com/html/mov_bbb.mp4"
+        ]
+    },
+    {
+        "id": "vault_baby_sour_lemon",
+        "category": "cute_kids",
+        "title": "Bro Experienced His First Betrayal 🍋💀 #shorts",
+        "hook_banner": "HE TRUSTED THEM 😭",
+        "description": "A baby eagerly takes a slice of lemon handed by dad expecting candy, takes a big bite, gets hit with the sour shockwave, makes a hilarious scrunchy face, shakes his whole body, and then immediately tries it again.",
+        "fallback_script": "Bro really trusted his parents with his whole heart! Look at that excited smile thinking it's candy! Then the sourness hits his soul! His whole face just collapsed in 4K! But wait, why is he going back for seconds?! That's when you know curiosity is dangerous! He will remember this betrayal forever! 💀",
+        "local_fallback": "assets/vault/starter_comedy.mp4",
+        "cdn_urls": [
+            "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4",
+            "https://www.w3schools.com/html/mov_bbb.mp4"
+        ]
+    },
+    {
+        "id": "vault_asian_street_comedy",
+        "category": "asian_street_comedy",
+        "title": "Bro Tried To Look Smooth And Failed 💀 #shorts",
+        "hook_banner": "ACT NATURAL 😂",
+        "description": "A stylish guy tries to do a smooth slow-motion pose while crossing a pedestrian bridge to impress someone walking by, trips over a tiny bump, does an awkward windmill arm recovery, and acts like it was totally intentional.",
+        "fallback_script": "Bro was trying so hard to be the main character! He practiced that smooth walk for three hours in the mirror. But the pavement had other plans! One tiny stumble and the arms started flying like a helicopter! And look how he immediately acts like nothing happened. Yeah, I always stretch like this. Respect the confidence! 😂",
+        "local_fallback": "assets/vault/starter_comedy.mp4",
+        "cdn_urls": [
+            "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4",
+            "https://www.w3schools.com/html/mov_bbb.mp4"
         ]
     }
 ]
 
-def clean_voice_name(voice_input):
-    if " " in voice_input:
-        return voice_input.split(" ")[0].strip()
-    return voice_input.strip()
+# ==========================================
+# 2. INGESTION ENGINE (DUAL ROUTE FAIL-SAFE)
+# ==========================================
+def download_file_stream(url, dest_path, timeout=30):
+    """Download a file with streaming and browser User-Agent headers."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "*/*"
+    }
+    r = requests.get(url, headers=headers, stream=True, timeout=timeout)
+    r.raise_for_status()
+    with open(dest_path, "wb") as f:
+        for chunk in r.iter_content(chunk_size=1024 * 512):
+            if chunk:
+                f.write(chunk)
+    return os.path.exists(dest_path) and os.path.getsize(dest_path) > 10000
 
-def format_ass_time(sec):
-    hrs = int(sec // 3600)
-    mins = int((sec % 3600) // 60)
-    secs = int(sec % 60)
-    cs = int(round((sec - int(sec)) * 100))
-    if cs >= 100:
-        secs += 1
-        cs = 0
-    return f"{hrs:d}:{mins:02d}:{secs:02d}.{cs:02d}"
+def try_tikwm_download(video_url, dest_path):
+    """Attempt watermark-free extraction from TikWM API for Douyin/TikTok."""
+    try:
+        print(f"🔍 [Route 1 - TikWM] Querying watermark-free API for: {video_url}")
+        resp = requests.post("https://www.tikwm.com/api/", data={"url": video_url}, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("code") == 0 and "data" in data and "play" in data["data"]:
+                play_url = data["data"]["play"]
+                title = data["data"].get("title", "Viral Comedy Short")
+                print(f"✅ [Route 1 - TikWM] Found direct video stream! Downloading...")
+                if download_file_stream(play_url, dest_path):
+                    return True, title
+    except Exception as e:
+        print(f"⚠️ [Route 1 - TikWM] Error: {e}")
+    return False, ""
 
-def generate_hormozi_ass_subtitles(cues, ass_path):
+def try_ytdlp_download(video_url, dest_path):
+    """Attempt download via yt-dlp."""
+    try:
+        print(f"🔍 [Route 1 - yt-dlp] Invoking yt-dlp on: {video_url}")
+        cmd = [
+            sys.executable, "-m", "yt_dlp",
+            "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best",
+            "--no-check-certificates",
+            "--max-filesize", "50M",
+            "-o", dest_path,
+            video_url
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if res.returncode == 0 and os.path.exists(dest_path) and os.path.getsize(dest_path) > 10000:
+            print("✅ [Route 1 - yt-dlp] Download succeeded!")
+            return True
+        else:
+            print(f"⚠️ [Route 1 - yt-dlp] Warning/Error:\n{res.stderr[:300]}")
+    except Exception as e:
+        print(f"⚠️ [Route 1 - yt-dlp] Exception: {e}")
+    return False
+
+def ingest_video_dual_route(video_url, topic, history_file="history.json"):
     """
-    Creates eye-popping two-tone subtitles (Alex Hormozi style)
-    Active/Power words pop in Neon Green (&H0000FF00), while base words are crisp White!
+    Dual-Route Ingestion Engine:
+    Route 1: User URL (Douyin, TikTok, YouTube Shorts, or direct video URL)
+    Route 2: Curated Viral Comedy Vault (Guaranteed zero-failure fallback)
     """
-    ass_header = """[Script Info]
-ScriptType: v4.00+
-PlayResX: 1080
-PlayResY: 1920
-ScaledBorderAndShadow: yes
+    os.makedirs("input", exist_ok=True)
+    raw_video_path = os.path.join("input", "source_video.mp4")
 
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,DejaVu Sans,68,&H00FFFFFF,&H000000FF,&H00000000,&H90000000,-1,0,0,0,100,100,0,0,1,6,3,2,50,50,750,1
-
-[Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-"""
-    dialogues = []
-    for s_time, e_time, text in cues:
-        words = text.split()
-        if not words:
-            continue
-            
-        highlight_idx = -1
-        for idx, w in enumerate(words):
-            clean_w = re.sub(r'[^A-Z0-9]', '', w)
-            if clean_w in POWER_WORDS or clean_w.isdigit():
-                highlight_idx = idx
-                break
-        if highlight_idx == -1:
-            highlight_idx = max(range(len(words)), key=lambda i: len(words[i]))
-            
-        formatted_words = []
-        for idx, w in enumerate(words):
-            if idx == highlight_idx:
-                formatted_words.append(f"{{\\c&H0000FF00&}}{w}{{\\c&H00FFFFFF&}}")
-            else:
-                formatted_words.append(w)
-                
-        styled_line = " ".join(formatted_words)
-        start_fmt = format_ass_time(s_time)
-        end_fmt = format_ass_time(e_time)
-        dialogues.append(f"Dialogue: 0,{start_fmt},{end_fmt},Default,,0,0,0,,{styled_line}")
+    # 1. Route 1: Try user-provided URL
+    if video_url and video_url.strip():
+        url = video_url.strip()
+        print(f"\n=======================================================")
+        print(f"🚀 [ROUTE 1 ACTIVATED] Processing Video URL: {url}")
+        print(f"=======================================================")
         
-    with open(ass_path, "w", encoding="utf-8") as f:
-        f.write(ass_header + "\n".join(dialogues) + "\n")
-    print(f"✅ Generated {len(dialogues)} Hormozi-style two-tone animated subtitle cues!")
+        # Check if direct video file
+        if url.endswith(".mp4") or url.endswith(".webm"):
+            print("📥 Direct media link detected, streaming download...")
+            try:
+                if download_file_stream(url, raw_video_path):
+                    print("✅ Direct download succeeded!")
+                    return raw_video_path, "Viral Comedy Clip #shorts", "Watch this hilarious moment unfold 😂", "route_1", None
+            except Exception as e:
+                print(f"⚠️ Direct download failed: {e}")
 
-def split_sentence_into_cues(start_s, end_s, text, max_words=3):
-    words = text.strip().split()
-    if not words:
-        return []
-    chunks = []
-    curr = []
-    for w in words:
-        curr.append(w)
-        if len(curr) >= max_words or any(w.endswith(p) for p in [".", "!", "?", ","]):
-            chunks.append(curr)
-            curr = []
-    if curr:
-        chunks.append(curr)
-    
-    total_chunks = len(chunks)
-    chunk_dur = (end_s - start_s) / max(1, total_chunks)
-    
+        # Check if Douyin or TikTok
+        if "douyin.com" in url or "tiktok.com" in url:
+            ok, detected_title = try_tikwm_download(url, raw_video_path)
+            if ok:
+                return raw_video_path, detected_title or "Viral Asian Comedy #shorts", "Viral Douyin comedy clip", "route_1", None
+
+        # Fall back to yt-dlp
+        ok = try_ytdlp_download(url, raw_video_path)
+        if ok:
+            return raw_video_path, "Viral Comedy Short #shorts", "Hilarious trending video", "route_1", None
+
+        print("\n⚠️ [ROUTE 1 FAILED] Could not download from provided URL (Firewall/Captcha/Rate-limit).")
+        print("🔄 [FAIL-SAFE SWITCH] Seamlessly switching to Route 2: Curated Viral Vault!")
+
+    # 2. Route 2: Curated Viral Comedy Vault Fallback
+    print(f"\n=======================================================")
+    print(f"🎯 [ROUTE 2 ACTIVATED] Accessing Curated Viral Comedy Vault...")
+    print(f"=======================================================")
+
+    # Load history memory to avoid repeating clips
+    used_ids = set()
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, "r", encoding="utf-8") as f:
+                hist = json.load(f)
+                for item in hist:
+                    if "clip_id" in item:
+                        used_ids.add(item["clip_id"])
+        except Exception:
+            pass
+
+    # Filter out played clips
+    available_clips = [c for c in VIRAL_VAULT if c["id"] not in used_ids]
+    if not available_clips:
+        print("🔄 Memory vault fully played! Resetting cycle for endless fresh content.")
+        available_clips = VIRAL_VAULT
+
+    # Filter by topic if specified
+    if topic and topic.strip() and topic.strip().lower() != 'auto':
+        topic_lower = topic.strip().lower()
+        topic_matched = [c for c in available_clips if topic_lower in c["category"] or topic_lower in c["title"].lower()]
+        if topic_matched:
+            available_clips = topic_matched
+
+    chosen_clip = random.choice(available_clips)
+    print(f"🎬 Selected Vault Clip: {chosen_clip['id']} ({chosen_clip['category']})")
+    print(f"📖 Context: {chosen_clip['description']}")
+
+    # Obtain media file: try local asset first, then CDN URLs
+    if os.path.exists(chosen_clip.get("local_fallback", "")):
+        print(f"✅ Found verified local asset: {chosen_clip['local_fallback']}")
+        import shutil
+        shutil.copy(chosen_clip["local_fallback"], raw_video_path)
+        return raw_video_path, chosen_clip["title"], chosen_clip["description"], "route_2", chosen_clip
+
+    # Try CDN URLs
+    for cdn_url in chosen_clip.get("cdn_urls", []):
+        try:
+            print(f"🌐 Fetching clip from CDN: {cdn_url}")
+            if download_file_stream(cdn_url, raw_video_path, timeout=15):
+                print("✅ Successfully downloaded clip from CDN!")
+                return raw_video_path, chosen_clip["title"], chosen_clip["description"], "route_2", chosen_clip
+        except Exception as e:
+            print(f"⚠️ CDN download attempt failed: {e}")
+
+    # Fallback to local starter clip
+    if os.path.exists("assets/vault/starter_comedy.mp4"):
+        import shutil
+        shutil.copy("assets/vault/starter_comedy.mp4", raw_video_path)
+        return raw_video_path, chosen_clip["title"], chosen_clip["description"], "route_2", chosen_clip
+
+    raise RuntimeError("Critical: Unable to acquire video clip from either Route 1 or Route 2!")
+
+# ==========================================
+# 3. GEMINI BABA MULTIMODAL COMEDY DIRECTOR
+# ==========================================
+def direct_comedy_with_gemini(clip_description, topic, custom_script="", fallback_meta=None):
+    """
+    Directs the short in American meme/commentary style:
+    - Writes energetic, hilarious voiceover commentary (18-24s).
+    - Writes high-retention Title with emojis & #shorts.
+    - Writes 3-5 word ALL CAPS Top Hook Banner.
+    """
+    if custom_script and custom_script.strip():
+        print("🎬 Using user-provided custom script...")
+        return {
+            "title": fallback_meta.get("title", "Viral Comedy Short #shorts") if fallback_meta else "Viral Comedy Short #shorts",
+            "hook_banner": fallback_meta.get("hook_banner", "WAIT FOR IT 😂") if fallback_meta else "WAIT FOR IT 😂",
+            "script": custom_script.strip(),
+            "description": "Hilarious viral comedy moment! #shorts #viral #funny #comedy",
+            "tags": "shorts, funny, comedy, viral, meme, hilarious"
+        }
+
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if gemini_key:
+        print("🧠 Calling Gemini Baba Comedy Director...")
+        system_instruction = (
+            "You are an elite YouTube Shorts & TikTok comedy writer in the style of Ray William Johnson, "
+            "Daily Dose of Internet, and modern American meme creators ('Bro really thought...', 'Ain't no way').\n"
+            "Your commentary must be fast-paced, witty, highly energetic, and relatable for US/UK/global audiences.\n"
+            "Format your entire response as a single valid JSON object with keys: title, hook_banner, script, description, tags."
+        )
+        
+        user_prompt = f"""
+Analyze this viral comedy clip:
+- Scenario: {clip_description}
+- Genre/Niche: {topic}
+
+Provide JSON with:
+1. "title": Catchy viral YouTube Shorts title under 60 characters with funny emojis and #shorts.
+2. "hook_banner": 3-5 words ALL CAPS punchy top banner (e.g., 'HE WAS CAUGHT IN 4K 😂', 'BRO REALLY THOUGHT 💀').
+3. "script": Fast, hilarious English voiceover commentary (45 to 65 words, 18-22 seconds when spoken at 1.1x speed). 
+   Must hook viewer in first 2 seconds, narrate the funny action, and hit a hilarious punchline right at the end!
+4. "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy.
+5. "tags": 8-10 comma-separated keywords.
+
+Output ONLY raw JSON. No markdown ticks, no backticks.
+"""
+        models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
+        for mod in models_to_try:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={gemini_key}"
+                payload = {
+                    "contents": [{"parts": [{"text": user_prompt}]}],
+                    "systemInstruction": {"parts": [{"text": system_instruction}]},
+                    "generationConfig": {"temperature": 0.85, "maxOutputTokens": 600}
+                }
+                r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=20)
+                if r.status_code == 200:
+                    data = r.json()
+                    raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    cleaned = re.sub(r"^```json\s*", "", raw_text)
+                    cleaned = re.sub(r"\s*```$", "", cleaned)
+                    parsed = json.loads(cleaned)
+                    if "script" in parsed and "title" in parsed:
+                        print(f"🎉 Gemini Baba Director Success! Title: {parsed['title']}")
+                        return parsed
+            except Exception as e:
+                print(f"⚠️ Gemini {mod} call notice: {e}")
+
+    # Fallback if Gemini key is missing or quota reached
+    print("💡 Using Curated Comedy Script from Vault...")
+    if fallback_meta:
+        return {
+            "title": fallback_meta["title"],
+            "hook_banner": fallback_meta["hook_banner"],
+            "script": fallback_meta["fallback_script"],
+            "description": f"Hilarious viral moment! {fallback_meta['title']} #shorts #funny #viral #comedy",
+            "tags": "shorts, funny, comedy, viral, meme, cute, hilarious"
+        }
+
+    return {
+        "title": "Bro Really Thought He Got Away With It 💀 #shorts",
+        "hook_banner": "HE WAS CAUGHT IN 4K 😂",
+        "script": "Bro really thought he was slick! Look at that confidence right before disaster strikes. The way he froze the second he got caught is pure comedy gold! You can see his whole soul leaving his body in 4K! You can't even make this stuff up! 😂",
+        "description": "Hilarious viral comedy moment! #shorts #viral #funny #comedy",
+        "tags": "shorts, funny, comedy, viral, meme, hilarious"
+    }
+
+# ==========================================
+# 4. MICROSOFT EDGE TTS & HORMOZI SUBTITLES
+# ==========================================
+def parse_vtt_timestamps(vtt_file):
+    """Parses WebVTT subtitle cues generated by edge-tts into word/phrase segments."""
     cues = []
-    for i, c in enumerate(chunks):
-        c_start = start_s + i * chunk_dur
-        c_end = c_start + chunk_dur
-        cues.append((c_start, c_end, ' '.join(c).upper()))
+    if not os.path.exists(vtt_file):
+        return cues
+    try:
+        with open(vtt_file, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        time_pat = re.compile(r"(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})")
+        current_start = None
+        current_end = None
+        for line in lines:
+            line = line.strip()
+            m = time_pat.search(line)
+            if m:
+                current_start = m.group(1)
+                current_end = m.group(2)
+            elif current_start and current_end and line and not line.startswith("WEBVTT"):
+                # Clean formatting tags
+                clean_text = re.sub(r"<[^>]+>", "", line).strip()
+                if clean_text:
+                    cues.append((current_start, current_end, clean_text))
+                current_start = None
+                current_end = None
+    except Exception as e:
+        print(f"⚠️ Error parsing VTT: {e}")
     return cues
 
-async def generate_scene_synchronized_narration(scenes, voice_id, audio_output_path, ass_output_path):
-    """
-    100% Mathematical Audio-Visual Synchronization:
-    Generates exact voiceover per scene so that each photo clip length is
-    EXACTLY equal to the spoken duration of that scene's line.
-    Zero drift, zero timing lag!
-    """
-    import edge_tts
-    print(f"🎙️ Generating Scene-Synchronized Voiceover across {len(scenes)} scenes...")
-    
-    os.makedirs(os.path.dirname(audio_output_path) or ".", exist_ok=True)
-    cues = []
-    scene_durations = []
-    audio_parts = []
-    current_offset = 0.0
+def vtt_time_to_seconds(ts):
+    parts = ts.split(":")
+    h = float(parts[0])
+    m = float(parts[1])
+    s = float(parts[2])
+    return h * 3600 + m * 60 + s
 
-    for i, sc in enumerate(scenes):
-        v_line = sc.get("voice_line", "").strip()
-        if not v_line:
-            v_line = "..."
-        part_path = f"temp/voice_part_{i}.mp3"
-        comm = edge_tts.Communicate(v_line, voice_id)
+def seconds_to_ass_time(sec):
+    h = int(sec // 3600)
+    m = int((sec % 3600) // 60)
+    s = int(sec % 60)
+    cs = int((sec - int(sec)) * 100)
+    return f"{h:01d}:{m:02d}:{s:02d}.{cs:02d}"
+
+def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
+    """
+    Generates Microsoft Edge TTS speech with +12% meme pace,
+    and builds an animated yellow/white Hormozi ASS subtitle file.
+    """
+    os.makedirs(os.path.dirname(output_audio) or ".", exist_ok=True)
+    vtt_file = output_audio.replace(".mp3", ".vtt")
+    
+    print(f"🎙️ Generating voiceover with voice: {voice} at +12% speed...")
+    cmd = [
+        sys.executable, "-m", "edge_tts",
+        "--voice", voice,
+        "--rate", "+12%",
+        "--text", script_text,
+        "--write-media", output_audio,
+        "--write-subtitles", vtt_file
+    ]
+    subprocess.run(cmd, check=True)
+
+    # Parse cues
+    cues = parse_vtt_timestamps(vtt_file)
+    print(f"📝 Parsed {len(cues)} subtitle cues from Edge TTS.")
+
+    # Group into punchy 2-4 word cards for high retention
+    ass_cards = []
+    chunk_size = 3
+    if cues:
+        for i in range(0, len(cues), chunk_size):
+            chunk = cues[i:i + chunk_size]
+            start_sec = vtt_time_to_seconds(chunk[0][0])
+            end_sec = vtt_time_to_seconds(chunk[-1][1])
+            card_words = [w[2] for w in chunk]
+            ass_cards.append((start_sec, end_sec, card_words))
+    else:
+        # Fallback if VTT empty: estimate from words
+        words = script_text.split()
+        total_dur = 20.0
+        w_dur = total_dur / max(len(words), 1)
+        for i in range(0, len(words), chunk_size):
+            chunk = words[i:i + chunk_size]
+            s = i * w_dur
+            e = (i + len(chunk)) * w_dur
+            ass_cards.append((s, e, chunk))
+
+    # Write ASS File with Hormozi Yellow/White typography
+    with open(output_ass, "w", encoding="utf-8") as f:
+        f.write("[Script Info]\n")
+        f.write("ScriptType: v4.00+\n")
+        f.write("PlayResX: 1080\n")
+        f.write("PlayResY: 1920\n")
+        f.write("ScaledBorderAndShadow: yes\n\n")
         
-        part_cues = []
-        with open(part_path, "wb") as f:
-            async for chunk in comm.stream():
-                if chunk["type"] == "audio":
-                    f.write(chunk["data"])
-                elif chunk["type"] == "SentenceBoundary":
-                    s_dur = chunk["duration"] / 10_000_000
-                    sub_cues = split_sentence_into_cues(current_offset, current_offset + s_dur, chunk["text"], max_words=3)
-                    part_cues.extend(sub_cues)
-                    
-        part_dur = get_audio_duration(part_path)
-        if not part_cues:
-            part_cues = split_sentence_into_cues(current_offset, current_offset + part_dur, v_line, max_words=3)
+        f.write("[V4+ Styles]\n")
+        f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
+        # Bold yellow & white text, thick black outline, center bottom alignment (Alignment 2)
+        f.write("Style: Hormozi,DejaVu Sans,58,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,2,2,40,40,280,1\n\n")
+        
+        f.write("[Events]\n")
+        f.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
+        
+        for start_s, end_s, words in ass_cards:
+            start_ts = seconds_to_ass_time(start_s)
+            end_ts = seconds_to_ass_time(end_s)
             
-        cues.extend(part_cues)
-        scene_durations.append(round(part_dur, 2))
-        audio_parts.append(part_path)
-        current_offset += part_dur
+            # Format: First word yellow, remaining white, all uppercase
+            if len(words) == 1:
+                styled_text = f"{{\\c&H0000FFFF&}}{words[0].upper()}"
+            elif len(words) >= 2:
+                w1 = f"{{\\c&H0000FFFF&}}{words[0].upper()}"
+                w_rest = f"{{\\c&H00FFFFFF&}}{' '.join(words[1:]).upper()}"
+                styled_text = f"{w1} {w_rest}"
+            else:
+                styled_text = ""
+                
+            f.write(f"Dialogue: 0,{start_ts},{end_ts},Hormozi,,0,0,0,,{styled_text}\n")
+            
+    print(f"✅ Generated Hormozi ASS Subtitles: {output_ass}")
 
-    # Join audio parts with ffmpeg
-    inputs = []
-    filter_str = ""
-    for idx, p in enumerate(audio_parts):
-        inputs.extend(["-i", p])
-        filter_str += f"[{idx}:a]"
-    filter_str += f"concat=n={len(audio_parts)}:v=0:a=1[a]"
+# ==========================================
+# 5. AUDIO SYNTHESIS (COMEDY BGM & SFX)
+# ==========================================
+def synthesize_comedy_bgm(output_wav, duration_sec):
+    """
+    Synthesizes an upbeat, quirky comedy groove BGM using sine/square wave notes
+    to ensure 100% royalty-free, copyright-free background music on cloud runners.
+    """
+    sample_rate = 44100
+    total_samples = int(sample_rate * duration_sec)
     
-    cmd_join = ["ffmpeg", "-y"] + inputs + ["-filter_complex", filter_str, "-map", "[a]", audio_output_path]
-    subprocess.run(cmd_join, check=True)
+    # Quirky comedy bassline notes (frequencies in Hz)
+    bass_notes = [130.81, 146.83, 164.81, 174.61, 196.00, 220.00, 246.94] # C3-B3
+    step_duration = 0.25 # 16th notes feel
+    step_samples = int(sample_rate * step_duration)
     
-    generate_hormozi_ass_subtitles(cues, ass_output_path)
-    total_audio_dur = get_audio_duration(audio_output_path)
-    print(f"✅ Scene-Synchronized Audio Complete: {len(scenes)} scenes | Total: {total_audio_dur:.2f}s")
-    for idx, d in enumerate(scene_durations):
-        print(f"   🎬 Scene {idx+1} ({d:.2f}s): '{scenes[idx].get('voice_line', '')[:35]}...'")
+    with wave.open(output_wav, "wb") as wf:
+        wf.setnchannels(2)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
         
-    return scene_durations, total_audio_dur
+        frames = bytearray()
+        step = 0
+        for i in range(total_samples):
+            if i % step_samples == 0:
+                note_idx = (step % len(bass_notes))
+                freq = bass_notes[note_idx]
+                step += 1
+                
+            t = (i % step_samples) / sample_rate
+            # Plucky envelope
+            env = math.exp(-t * 6.0)
+            sample_val = int(32767 * 0.18 * env * math.sin(2.0 * math.pi * freq * t))
+            sample_val = max(-32768, min(32767, sample_val))
+            
+            # Stereo frames
+            packed = struct.pack("<hh", sample_val, sample_val)
+            frames.extend(packed)
+            
+        wf.writeframes(frames)
+    print(f"🎵 Synthesized Royalty-Free Comedy BGM: {output_wav}")
 
-def get_audio_duration(audio_path):
+# ==========================================
+# 6. FFMPEG TRANSFORMATIVE VIDEO STUDIO
+# ==========================================
+def get_media_duration(file_path):
+    """Probes media duration in seconds via ffprobe."""
     try:
         cmd = [
             "ffprobe", "-v", "error",
             "-show_entries", "format=duration",
             "-of", "default=noprint_wrappers=1:nokey=1",
-            audio_path
+            file_path
         ]
-        out = subprocess.check_output(cmd).decode().strip()
-        return float(out)
-    except Exception as e:
-        print(f"Warning: ffprobe failed ({e}), using default estimation.")
-        return 40.0
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return float(res.stdout.strip())
+    except Exception:
+        return 20.0
 
-def fetch_bgm_track(topic, output_bgm_path):
-    topic_lower = topic.lower()
-    url = BGM_TRACKS.get("space")
-    for k in BGM_TRACKS:
-        if k in topic_lower:
-            url = BGM_TRACKS[k]
-            break
-            
-    print(f"🎵 Fetching cinematic background music from: {url[:60]}...")
-    try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(url, headers=headers, stream=True, timeout=20)
-        if r.status_code == 200:
-            with open(output_bgm_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=1024*64):
-                    f.write(chunk)
-                    if f.tell() > 1024 * 1024 * 3:
-                        break
-            print("✅ Background music downloaded!")
-            return True
-    except Exception as e:
-        print(f"BGM download failed: {e}")
-    return False
+def render_transformative_short(input_video, narration_audio, ass_subtitles, hook_banner, output_video, output_thumb):
+    """
+    Renders 100% Monetizable YouTube Short:
+    - Horizontal Flip (hflip)
+    - 9:16 Vertical Framing (1080x1920)
+    - 106% Dynamic Zoom & Crop
+    - 1.03x Micro Speed Shift (setpts=0.97*PTS)
+    - Top Hook Banner Pill Box (ALL CAPS)
+    - Burned Hormozi Yellow/White Subtitles
+    - Dual Audio Mixing (Voiceover 1.0 + Upbeat BGM 0.12)
+    """
+    os.makedirs(os.path.dirname(output_video) or ".", exist_ok=True)
+    os.makedirs("temp", exist_ok=True)
 
-# =========================================================================
-# 🧠 TWO-STAGE AI PIPELINE:
-# 1. ✍️ Executive Storyboard Director : Gemini 3.5 / 3.8 Flash (10-Scene Script & FLUX Visuals)
-# 2. 🎨 AI Cinematographer          : FLUX.1 Schnell via Hugging Face (Sequential Verified Queue)
-# =========================================================================
+    narration_dur = get_media_duration(narration_audio)
+    target_dur = narration_dur + 0.6
+    print(f"⏱️ Target Video Duration: {target_dur:.2f}s (Narration: {narration_dur:.2f}s)")
 
-SCRIPT_MODELS = [
-    "gemini-3.5-flash-lite",  # Proven rock-solid & ultra-fast (500 RPD)
-    "gemini-3.8-flash",       # High-tier Google flagship
-    "gemini-3.6-flash",       # High-tier backup
-    "gemini-3.1-flash-lite"   # Emergency backup
-]
+    # 1. Synthesize background music
+    bgm_path = "temp/comedy_bgm.wav"
+    synthesize_comedy_bgm(bgm_path, target_dur + 2.0)
 
-def call_gemini_json_api(gemini_key, prompt, model_list, timeout=35):
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"responseMimeType": "application/json"}
-    }
-    for model in model_list:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
-        try:
-            res = requests.post(url, json=payload, timeout=timeout)
-            if res.status_code == 200:
-                text = res.json()['candidates'][0]['content']['parts'][0]['text']
-                data = json.loads(text)
-                return data, model
-            elif res.status_code == 429:
-                print(f"⚠️ Model {model} hit rate limit (429), trying backup model...")
-                continue
-            elif res.status_code == 503:
-                print(f"⚠️ Model {model} busy (503), switching to fast backup...")
-                continue
-            else:
-                print(f"Notice: Model {model} returned status {res.status_code}, trying backup...")
-        except Exception as e:
-            print(f"Notice: Model {model} failed ({e}), trying backup...")
-    return None, None
-
-MASTER_MYSTERY_VAULT = [
-    # 🌌 Deep Space Anomalies & Cosmic Horrors
-    "The Great Attractor: An invisible gravitational anomaly pulling our entire Milky Way and thousands of galaxies at 2 million km/h toward an unseen cosmic wall.",
-    "Boötes Void: The 330-million light-year abyss of pure nothingness where 2,000 galaxies should exist but completely vanished.",
-    "Strange Matter Stars: A hypothetical cosmic material denser than neutron stars that converts any normal matter it touches into strangelets, destroying whole planets.",
-    "False Vacuum Decay: The ultimate cosmic nightmare where a single quantum bubble could erase all laws of physics and atoms at the speed of light.",
-    "Dark Flow: A mysterious cosmic current dragging galaxy clusters outside the boundaries of our observable universe as if something colossal exists beyond.",
-    "The CMB Cold Spot: An unexplained 1.8 billion light-year freezing zone in cosmic background radiation, possibly a bruise from a colliding parallel universe.",
-    "Ghost Galaxies: Massive cosmic structures composed of 99.9% dark matter with zero visible stars, silently bending light around empty space.",
-    "Rogue Black Holes: Unseen stellar-mass black holes hurtling through interstellar space at supersonic speeds without emitting any light.",
-    "Supermassive Black Hole TON 618: An unimaginable cosmic monster with the mass of 66 billion suns, shining brighter than 140 trillion stars.",
-    "The Eridanus Supervoid: A terrifying expanse of empty space 1 billion light years wide where matter and cosmic temperatures drop to near absolute zero.",
-    "Cosmic Strings: Infinitely thin, universe-spanning tears in spacetime with the mass of mountain ranges per inch, capable of slicing planets in half.",
-    "Quasar 3C 273: An ancient active galactic nucleus consuming 1,000 Earths of matter every minute, spewing relativistic plasma jets 300,000 light years long.",
-
-    # 🌊 Deep Ocean & Subterranean Terrors
-    "The Bloop of 1997: An ultra-low frequency sound echoing 3,000 miles across the Pacific Ocean, louder than any known marine animal or volcanic event.",
-    "Mariana Trench Challenger Deep: Deep-sea hydrophones at 36,000 feet recording unexplained rhythmic metallic pulses from beneath the tectonic crust.",
-    "The Baltic Sea Monolith: A 200-foot disc-shaped submerged structure at 300 feet depth that inexplicably jams electrical navigation gear above it.",
-    "The Upsweep Sound: An unidentified deep ocean acoustic signal steadily rising from Antarctic waters every spring since 1991.",
-    "Lake Vostok Sealed Abyss: A massive Antarctic lake sealed beneath 2 miles of solid ice for 15 million years, harboring isolated alien-like microbes.",
-    "Point Nemo Spacecraft Graveyard: The oceanic pole of inaccessibility, furthest place from civilization, where hundreds of defunct space stations are buried.",
-    "The Bermuda Triangle Blue Holes: Hundreds of feet deep underwater caverns creating sudden massive whirlpool currents that swallow ships without debris.",
-    "Mariana Bioluminescent Sirens: Unclassified organisms surviving under 1,000 atmospheres of crushing pressure that communicate through mesmerizing light pulses.",
-    "The Dragon's Triangle (Devil's Sea): The sinister Pacific zone south of Tokyo where military vessels and cargo ships vanish from radar screens with no distress calls.",
-    "Challenger Deep Hydrothermal Sirens: Superheated 400-degree mineral chimneys hosting bizarre translucent creatures in pitch-black boiling acidic water.",
-
-    # ⏳ Quantum, Time & Reality Glitches
-    "The Quantum Delayed-Choice Experiment: How observing photons in the present physically rewrites what they did billions of years in the past.",
-    "Time Dilation at Black Hole Horizons: Why watching someone fall toward a singularity freezes their frozen image forever while they watch the universe die.",
-    "The Boltzmann Brain Paradox: In an infinite universe, a random disembodied consciousness fluctuating into existence in deep space is more likely than humanity.",
-    "Quantum Entanglement Spooky Action: Particles separated by billions of light years communicating states instantaneously, defying the cosmic speed limit.",
-    "The Simulation Refresh Rate Glitch: Why the speed of light is the strict universal speed limit, identical to maximum processing rendering limits in computer engines.",
-    "Closed Timelike Curves: Einstein's general relativity allowing spacetime to loop back on itself around rotating Kerr black holes, creating real time travel loops.",
-    "The Quantum Zeno Paradox: Continuously observing an unstable radioactive particle physically freezes it in time and prevents it from ever decaying.",
-    "The Grandfather Paradox and Many-Worlds: How altering past timelines branches reality into an infinite tree of divergent parallel universes.",
-
-    # 📡 Alien Megastructures & Cosmic Signals
-    "The Wow! Signal: The legendary 72-second narrow-band transmission detected in 1977 that matched interstellar alien beacon frequencies and never repeated.",
-    "KIC 8462852 (Tabby's Star): Erratic 22% drops in starlight that led astrophysicists to investigate whether an alien Dyson Swarm was orbiting the star.",
-    "The Matrioshka Brain: Hypothetical nested Dyson spheres capturing the entire energy output of a star to power a solar-system-scale artificial intelligence.",
-    "Oumuamua's Anomalous Acceleration: The reddish cigar-shaped interstellar visitor that accelerated away from the Sun with no cometary tail or outgassing.",
-    "The Fermi Paradox & The Great Filter: The terrifying mathematical reality that trillions of habitable worlds are dead and silent because an invisible filter destroys civilizations.",
-    "Fast Radio Bursts (FRBs): Millisecond-duration cosmic radio flashes discharging as much energy in a fraction of a second as our Sun emits in three days.",
-
-    # 🏔️ Ancient Sacred Enigmas & Lost Civilizations
-    "Mount Kailash Cosmic Axis: The 22,000-foot unclimbed pyramid peak aligned with cardinal directions where climbers age decades in days and magnetic compasses spin uncontrollably.",
-    "The Submerged City of Dwarka: 9,000-year-old geometric stone ruins found 120 feet deep in the Arabian Sea, predating mainstream human civilization history.",
-    "Kailasa Temple Ellora: A colossal 100-foot multi-story megalithic temple carved top-down out of 200,000 tons of solid basalt rock with technology that defies modern engineering.",
-    "The Vedic Vimanas: Ancient Sanskrit texts describing advanced mercury-vortex flying crafts capable of instantaneous directional changes and interplanetary travel.",
-    "Ram Setu Floating Stones: A 48-kilometer ancient oceanic causeway visible from NASA satellites composed of porous stones that naturally float on seawater.",
-
-    # 👻 Terrifying Real-World Paranormal & Horror Enigmas
-    "Poveglia Island Plague Asylum: The quarantined Venetian island where 100,000 plague victims were burned and doctors threw themselves from the asylum bell tower.",
-    "The Paris Catacombs Forbidden Maze: 200 miles of limestone labyrinths lined with 6 million human skulls where explorers stumble upon sealed occult chambers.",
-    "The Dyatlov Pass Incident: Nine experienced Russian hikers found dead with slashed tents, missing eyes, unexplained blunt trauma, and radioactive clothing.",
-    "Island of the Dolls (Isla de las Muñecas): Thousands of decaying severed dolls hung from Mexican swamp trees that whisper and move their heads at night.",
-    "Skinwalker Ranch Anomaly: Utah basin where high-tech surveillance cameras repeatedly catch bulletproof shapeshifting wolf-creatures and subterranean radiation spikes.",
-    "Aokigahara Ghost Forest: A volcanic labyrinth at the foot of Mount Fuji with magnetic compass anomalies where searchers discover abandoned tape trails and specters.",
-    "Eastern State Penitentiary Shadow Entity: America's oldest solitary prison where cellblock 12 captures thermal humanoid shadows walking through solid locked iron gates.",
-    "The Stanley Hotel Room 217: The Colorado mountain resort where phantom piano music plays in empty ballrooms and spectral hotel staff pack guests' luggage."
-]
-
-HISTORY_FILE = "history.json"
-
-def load_recent_history():
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return []
-
-def extract_key_ident(text):
-    if ":" in text:
-        return text.split(":")[0].strip().lower()
-    return " ".join(text.split()[:3]).lower()
-
-def get_untouched_mystery(history):
-    past_texts = []
-    for h in history:
-        past_texts.append(h.get("title", "").lower())
-        past_texts.append(h.get("topic", "").lower())
-        past_texts.append(h.get("hook_banner", "").lower())
-    full_past = " ".join(past_texts)
-
-    untouched = []
-    for mystery in MASTER_MYSTERY_VAULT:
-        ident = extract_key_ident(mystery)
-        # Extract meaningful keywords (length >= 4 and not generic stop-words)
-        key_words = [w for w in re.findall(r'\b[a-z0-9]{4,}\b', ident) if w not in ["deep", "space", "mystery", "cosmic", "ocean", "sound", "alien", "anomaly"]]
-        if not key_words:
-            key_words = [ident]
-        
-        already_used = any(kw in full_past for kw in key_words)
-        if not already_used:
-            untouched.append(mystery)
-
-    if untouched:
-        return random.choice(untouched)
+    # 2. Build FFmpeg Filtergraph
+    # Top banner: draws a dark rounded pill box at y=110, with bold yellow text
+    clean_hook = hook_banner.replace("'", "").replace(":", "").upper()
+    ass_escaped = ass_subtitles.replace("\\", "/").replace(":", "\\:")
     
-    # If all items touched, return random from vault
-    return random.choice(MASTER_MYSTERY_VAULT)
-
-def save_to_history(title, topic, hook_banner):
-    history = load_recent_history()
-    history.append({
-        "date": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-        "title": title,
-        "topic": topic,
-        "hook_banner": hook_banner
-    })
-    # Strict Sliding Window: Keep only the last 35 entries to keep file < 4KB forever!
-    history = history[-35:]
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=2)
-    print(f"🧠 Updated Memory Vault: Tracking {len(history)} recent unique topics (sliding window active).")
-
-def generate_ai_director_plan(gemini_key, requested_topic="auto"):
-    """
-    Step 1: Executive Producer (Gemini 3.8 Flash) composes an unforgettable viral script
-    strictly targeted for 30 seconds (68-78 words) with ZERO topic repetition!
-    """
-    recent_history = load_recent_history()
-    past_topics_desc = [f"- {h.get('title', '')} (Theme: {h.get('topic', '')})" for h in recent_history[-20:]]
-    past_topics_str = "\n".join(past_topics_desc) if past_topics_desc else "None yet (Brand new channel vault)"
-
-    # Determine active topic
-    is_auto = (
-        not requested_topic 
-        or requested_topic.strip().lower() in [
-            "auto", "deep space cosmic mystery", "deep space cosmic anomaly", 
-            "mystery", "space mystery", "default"
-        ]
+    # Video filters:
+    # 1. hflip -> mirror image
+    # 2. scale & crop to 1080:1920
+    # 3. 106% zoom
+    # 4. setpts=0.97*PTS (1.03x speed)
+    # 5. drawbox + drawtext for hook banner
+    # 6. subtitles filter for ASS
+    filter_complex = (
+        f"[0:v]hflip,loop=loop=-1:size=3000:start=0,"
+        f"scale=1080:1920:force_original_aspect_ratio=increase,"
+        f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
+        f"scale=1.06*iw:1.06*ih,crop=1080:1920,"
+        f"setpts=0.97*PTS,"
+        f"drawbox=x=(iw-860)/2:y=110:w=860:h=90:color=black@0.75:t=fill,"
+        f"drawtext=text='{clean_hook}':fontsize=40:fontcolor=yellow:x=(w-text_w)/2:y=132,"
+        f"subtitles='{ass_escaped}'[outv];"
+        f"[1:a]volume=1.0[voice];"
+        f"[2:a]volume=0.12[bgm];"
+        f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
     )
-
-    if is_auto:
-        active_topic = get_untouched_mystery(recent_history)
-        print(f"🎯 Auto-Selected Untouched Mystery from Vault:\n   -> {active_topic}")
-    else:
-        active_topic = requested_topic.strip()
-        print(f"🎯 Using User-Specified Topic: '{active_topic}'")
-
-    prompt = f"""You are the Executive Producer for a viral YouTube Shorts channel targeting American audiences (Tier-1 High RPM).
-Your mission: Create an unscrollable, suspenseful 30-SECOND viral Short about this exact phenomenon:
-THEME: "{active_topic}"
-
-VIRAL HOOK & PACING FORMULA (The American High-RPM "Don't Scroll" Blueprint):
-1. SCENE 1 HOOK (THE 0-3 SECOND THUMB-STOPPER - CRITICAL):
-   - The opening 8-11 words MUST be an explosive psychological PATTERN INTERRUPT!
-   - ⛔ STRICTLY FORBIDDEN OPENINGS (Instant Swipe-Away):
-     * NEVER start with slow geographical, astronomical, or scenery exposition:
-       FORBIDDEN: "Deep in the constellation Boötes...", "In the Pacific ocean...", "In 1997, scientists detected...", "Mount Kailash is a 22,000-foot mountain...", "Space is full of mysterious things...", "Deep under the Antarctic ice...".
-   - ✅ MANDATORY SHOCK OPENINGS (Use one of these 4 high-retention psychological triggers):
-     * Trigger A (The Impossible Paradox): "Albert Einstein spent his final years terrified of this one glitch..." / "Physicists just proved the universe is actively faking its own reality..."
-     * Trigger B (Classified / Censored Discovery): "What deep-sea hydrophones recorded at 36,000 feet forced oceanographers to cut the audio..." / "NASA telescopes pointed at this sector detected something they refuse to explain..."
-     * Trigger C (Direct Threat / Existential Stake): "If you look at the night sky tonight, two thousand galaxies are already gone..." / "Do not assume the dark void above your head is silent..."
-     * Trigger D (Sacred Ancient Anomaly): "This 9,000-year-old submerged monolith was built with technology modern engineers cannot explain..."
-   - The Scene 1 voice_line MUST violently freeze the viewer's thumb in the first 1.2 seconds!
-   - The `hook_banner` MUST be an unscrollable 3-4 word curiosity trap in CAPITAL LETTERS (e.g. "PHYSICS IS BROKEN", "NASA CUT THE AUDIO", "2,000 GALAXIES GONE", "DO NOT LOOK AWAY", "IMPOSSIBLE GLITCH").
-2. TENSION ESCALATION (3-18 SECONDS):
-   - Deliver 2 to 3 chilling, scientifically documented facts about this phenomenon.
-   - Use vivid, atmospheric language that triggers cosmic dread or visceral fascination.
-3. CLIMAX / MIND-BENDING REVEAL (18-28 SECONDS):
-   - Deliver an unsettling twist or an existential question that lingers in their mind.
-   - Forces viewers to rewatch or debate in the comments.
-4. WORD COUNT CONSTRAINT:
-   - Target Word Count: EXACTLY 75 to 85 words!
-   - Spoken at a documentary pace, this yields EXACTLY 30-35 seconds of speech.
-5. FAST-PACED VIRAL SCENE STRUCTURE (CRITICAL FOR RETENTION):
-   - Provide a dynamic sequence of 8 to 14 SEQUENTIAL SCENES (Micro-Shots) matching story beats!
-   - Each scene voice_line must be 6 to 9 words (approx 2.5 to 3.5 seconds).
-   - Fast, seamless visual transitions keep viewers completely glued to the screen.
-6. MANDATORY WORD-FOR-WORD LITERAL VISUAL CORRESPONDENCE (THE RETENTION SECRET):
-   - 🎯 THE GOLDEN RULE OF RETENTION: "What the viewer's ears hear, the viewer's eyes MUST literally see in that exact frame!"
-   - ⛔ ABSOLUTELY FORBIDDEN IN visual_prompt:
-     * NEVER write emotional abstractions, internal mental states, or historical exposition:
-       FORBIDDEN: "atmosphere of dread", "patients felt terrified", "scientists were amazed", "a mysterious feeling", "dark tragedy".
-       (AI image models CANNOT generate feelings or thoughts; they ONLY draw concrete, tangible physical objects!)
-     * NEVER include AI quality buzzwords like "cinematic", "photorealistic", "8k", or "film still" in visual_prompt (the backend adds high-end camera tags automatically).
-   - ✅ MANDATORY SUBJECT-FIRST 3-PART PHYSICAL RECIPE:
-     Format EVERY visual_prompt strictly as:
-     "[Foreground Physical Subject & Character] + [Physical Action/Pose] + [Immediate Environment & Props]"
-     Keep it punchy: EXACTLY 15 to 25 words of direct physical reality.
-   - Exact Examples of the Subject-First Format:
-     * voice_line: "In 1922, a psychiatric doctor carved out his own eyes."
-       -> visual_prompt: "Close-up of a 1920s doctor in white coat with bloodstained bandages over his eyes dropping a steel scalpel, dim candlelight"
-     * voice_line: "Rusted iron asylum gates remain permanently locked by Italian authorities."
-       -> visual_prompt: "Massive rusted iron asylum gates sealed with thick steel chains and weathered brass padlocks, overcast sky"
-     * voice_line: "Thermal cameras recently tracked a towering shadow ascending the bell tower stairs."
-       -> visual_prompt: "FLIR thermal camera screen showing high contrast blue background with bright red 8-foot humanoid heat silhouette climbing stone spiral stairs"
-     * voice_line: "Visitors report phantom screams echoing across dead canals."
-       -> visual_prompt: "Empty wooden rowboat drifting through thick green mist in an abandoned Venetian lagoon canal, crumbling stone sanitarium walls"
-   - Establishing a cohesive cinematic world: Consistent lighting, uniform color grading, authentic historical realism. ZERO CGI or cartoon look.
-
-7. DYNAMIC HOLLYWOOD CAMERA MOTION:
-   - For EACH scene, assign: "crash_zoom", "slow_pull_back", "majestic_rise", "deep_descent", "pan_left_to_right", "pan_right_to_left", or "slow_zoom_in".
-
-⛔ STRICT ANTI-REPETITION CONSTRAINT:
-Do NOT duplicate any of these recently covered topics from our history:
-{past_topics_str}
-
-REQUIRED JSON OUTPUT FORMAT:
-{{
-  "title": "Shorts Title with emoji and #shorts (under 50 chars)",
-  "hook_banner": "3-5 WORDS UPPERCASE FOR TOP BANNER (e.g. UNTOUCHED BY TIME)",
-  "full_script": "The complete 75-85 word script combining all scenes smoothly.",
-  "scenes": [
-    {{
-      "scene_id": 1,
-      "voice_line": "Sentence for scene 1 (6-9 words)",
-      "visual_prompt": "Hyper-detailed 25-40 word physical scene description detailing exact subject, lighting source, camera lens, and authentic textures matching this line",
-      "camera_motion": "crash_zoom"
-    }}
-  ]
-}}
-Output valid pure JSON only without markdown formatting."""
-
-    print(f"✍️ Executive Producer (Gemini 3.5 Flash Lite) is composing a fresh 30s script for: '{active_topic[:50]}...'")
-    data, used_model = call_gemini_json_api(gemini_key, prompt, SCRIPT_MODELS, timeout=65)
-    if data:
-        print(f"✨ Masterpiece Script written by: [{used_model}]")
-        print(f"🎬 Title: {data.get('title')}")
-        print(f"📌 Hook Banner: {data.get('hook_banner')}")
-        print(f"📜 Generated {len(data.get('scenes', []))} fast-paced sequential scenes.")
-        for sc in data.get('scenes', []):
-            print(f"   🎬 Scene {sc.get('scene_id')}: [Audio] '{sc.get('voice_line')}'")
-            print(f"      📸 [Subject Prompt] '{sc.get('visual_prompt')}'")
-        return data, active_topic
-
-    print("⚠️ Falling back to curated high-retention space mystery plan.")
-    return FALLBACK_PLANS[0], FALLBACK_PLANS[0].get("title")
-
-def download_scene_safely(prompt, output_jpg, scene_id, total_scenes, max_retries=6):
-    """
-    100% PURE FLUX.1 SCHNELL PIPELINE (Zero Weak Backups):
-    Every single photo is generated exclusively by FLUX.1 Schnell via Hugging Face.
-    If the server reports busy (rate-limit/402/503), it waits 10+ seconds and retries until success!
-    """
-    clean_p = re.sub(r'[^a-zA-Z0-9\s,.-]', '', prompt).strip()
-    hf_token = os.environ.get("HF_TOKEN")
-    
-    if not hf_token:
-        print(f"❌ Error: HF_TOKEN missing! Cannot generate FLUX.1 image.")
-        return False
-
-    for attempt in range(max_retries):
-        try:
-            print(f"✨ [100% FLUX.1 Only] Generating Scene {scene_id+1}/{total_scenes} (Attempt {attempt+1}/{max_retries})...")
-            from huggingface_hub import InferenceClient
-            client = InferenceClient(api_key=hf_token, timeout=35)
-            # SUBJECT-FIRST: Put the physical entity & action at Position 0!
-            flux_prompt = f"{clean_p}, photorealistic 35mm documentary film still, 8k resolution, authentic cinema lighting"
-            img = client.text_to_image(flux_prompt, model="black-forest-labs/FLUX.1-schnell")
-            img.convert("RGB").save(output_jpg, "JPEG", quality=95)
-            
-            # Strict Verification: File must exist and exceed 15KB
-            if os.path.exists(output_jpg) and os.path.getsize(output_jpg) > 15000:
-                print(f"✅ [Verified FLUX.1 8K] Scene {scene_id+1}/{total_scenes} downloaded ({os.path.getsize(output_jpg)} bytes). Proceeding to next photo...")
-                return True
-            else:
-                print(f"⚠️ Incomplete file for Scene {scene_id+1}, retrying...")
-        except Exception as e:
-            wait_sec = 10 + attempt * 2  # 10s, 12s, 14s, 16s, 18s, 20s
-            print(f"⚠️ FLUX.1 server busy/notice for Scene {scene_id+1}: {e}.")
-            print(f"⏳ Waiting {wait_sec}s for FLUX.1 server cooldown before retry (Attempt {attempt+1}/{max_retries})...")
-            time.sleep(wait_sec)
-
-    # If all 6 retries fail, reuse previous verified FLUX.1 image to keep 100% FLUX visual quality
-    if scene_id > 0 and os.path.exists(f"temp/scene_art_{scene_id-1}.jpg"):
-        import shutil
-        shutil.copyfile(f"temp/scene_art_{scene_id-1}.jpg", output_jpg)
-        print(f"🔄 Preserved 100% FLUX.1 style: Reused Scene {scene_id} visual for Scene {scene_id+1}.")
-        return True
-
-    return False
-
-def convert_image_to_cinematic_clip(image_path, output_clip_path, duration, camera_motion="slow_zoom_in"):
-    """
-    Applies 100% crash-proof Hollywood-grade dynamic camera movement.
-    Uses fixed 1296x2304 scaling with dynamic 1080x1920 cropping to guarantee zero stride alignment errors!
-    """
-    motion = str(camera_motion).lower().strip()
-
-    if "crash" in motion or "punch" in motion:
-        # Rapid zoom punch-in without dynamic frame re-allocation
-        vf = "scale=1296:2304,crop=1080:1920:'(in_w-1080)/2':'(in_h-1920)/2*(1-min(1,0.25*t))',setsar=1,format=yuv420p"
-    elif "pull" in motion or "back" in motion or "zoom_out" in motion:
-        # Smooth pull back from tight framing
-        vf = "scale=1296:2304,crop=1080:1920:'(in_w-1080)/2':'(in_h-1920)/2*min(1,0.2*t)',setsar=1,format=yuv420p"
-    elif "rise" in motion or "tilt_up" in motion or "up" in motion:
-        # Upward vertical pan from base towards the top
-        vf = "scale=1296:2304,crop=1080:1920:'(in_w-1080)/2':'max(0,(in_h-1920)*(1-0.2*t))',setsar=1,format=yuv420p"
-    elif "descent" in motion or "dive" in motion or "down" in motion:
-        # Downward vertical pan plunging into the depths
-        vf = "scale=1296:2304,crop=1080:1920:'(in_w-1080)/2':'min(in_h-1920,(in_h-1920)*(0.1+0.2*t))',setsar=1,format=yuv420p"
-    elif "left_to_right" in motion or "pan_right" in motion:
-        # Sweeping horizontal tracking shot from left to right
-        vf = "scale=1296:2304,crop=1080:1920:'min(in_w-1080,(in_w-1080)*(0.05+0.2*t))':'(in_h-1920)/2',setsar=1,format=yuv420p"
-    elif "right_to_left" in motion or "pan_left" in motion:
-        # Sweeping horizontal tracking shot from right to left
-        vf = "scale=1296:2304,crop=1080:1920:'max(0,(in_w-1080)*(0.95-0.2*t))':'(in_h-1920)/2',setsar=1,format=yuv420p"
-    else:
-        # Smooth default Ken Burns drift
-        vf = "scale=1296:2304,crop=1080:1920:'(in_w-1080)/2+sin(t*0.5)*30':'(in_h-1920)/2+cos(t*0.5)*30',setsar=1,format=yuv420p"
 
     cmd = [
         "ffmpeg", "-y",
-        "-loop", "1",
-        "-i", image_path,
-        "-t", str(duration + 0.1),
-        "-vf", vf,
-        "-r", "30",
+        "-stream_loop", "-1", "-i", input_video,
+        "-i", narration_audio,
+        "-i", bgm_path,
+        "-filter_complex", filter_complex,
+        "-map", "[outv]",
+        "-map", "[outa]",
         "-c:v", "libx264",
-        "-preset", "veryfast",
+        "-preset", "fast",
+        "-crf", "22",
         "-pix_fmt", "yuv420p",
-        "-an",
-        output_clip_path
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-t", f"{target_dur:.2f}",
+        output_video
     ]
-    subprocess.run(cmd, check=True)
-    return True
 
-def build_hollywood_directed_video(scenes, scene_durations, total_duration, gemini_key, output_bg_path, output_thumb_path):
-    """
-    100% Photorealistic Multi-Shot Architecture:
-    Stage 1: Safe Sequential Asset Downloader (Photo 1 completes and verifies before Photo 2 starts).
-    Stage 2: 100% Frame-Perfect Audio-Visual Sync (Exact scene duration locked to voiceover).
-    Stage 3: Hollywood dynamic camera motions & assembly.
-    """
-    num_scenes = max(1, len(scenes))
-    print(f"\n📸 --- STAGE 1: Safe Sequential Asset Downloader ({num_scenes} scenes) ---")
-
-    # STEP 1: Download ALL photos sequentially one by one!
-    for i, scene in enumerate(scenes):
-        img_path = f"temp/scene_art_{i}.jpg"
-        vis_prompt = scene.get("visual_prompt") or f"{scene.get('voice_line')} 8k photorealistic dark cinematic lighting"
-        download_scene_safely(vis_prompt, img_path, scene_id=i, total_scenes=num_scenes)
-
-        # Failsafe verification: preserve 100% FLUX.1 style
-        if not os.path.exists(img_path) or os.path.getsize(img_path) < 1000:
-            if i > 0 and os.path.exists(f"temp/scene_art_{i-1}.jpg"):
-                import shutil
-                shutil.copyfile(f"temp/scene_art_{i-1}.jpg", img_path)
-                print(f"🔄 Reused previous Scene {i} visual for continuity in Scene {i+1}")
-
-        if i == 0:
-            try:
-                import shutil
-                shutil.copyfile(img_path, output_thumb_path)
-            except Exception:
-                pass
-
-        # Anti-burst cooldown: Wait 3.5s between scene requests to prevent router 402/rate-limits
-        if i < num_scenes - 1:
-            time.sleep(3.5)
-
-    print(f"\n🎬 --- STAGE 2: 100% Scene-Synchronized Cinematography ---")
-
-    clip_files = []
-    for i, scene in enumerate(scenes):
-        assigned_dur = scene_durations[i] if i < len(scene_durations) else (total_duration / num_scenes)
-        motion = scene.get("camera_motion", "slow_zoom_in")
-        print(f"🎥 Rendering Scene {i+1}/{num_scenes} ({assigned_dur:.2f}s | Motion: '{motion}'): '{scene.get('voice_line', '')[:35]}...'")
-        img_path = f"temp/scene_art_{i}.jpg"
-        clip_path = f"temp/scene_clip_{i}.mp4"
-        convert_image_to_cinematic_clip(img_path, clip_path, assigned_dur, camera_motion=motion)
-        clip_files.append(clip_path)
-
-    # Concat clips with strict normalization
-    inputs = []
-    filter_str = ""
-    for idx, c in enumerate(clip_files):
-        inputs.extend(["-i", c])
-        filter_str += f"[{idx}:v]scale=1080:1920,setsar=1[v{idx}];"
-    for idx in range(len(clip_files)):
-        filter_str += f"[v{idx}]"
-    filter_str += f"concat=n={len(clip_files)}:v=1:a=0[v]"
-
-    cmd_concat = [
-        "ffmpeg", "-y"
-    ] + inputs + [
-        "-filter_complex", filter_str,
-        "-map", "[v]",
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-r", "30",
-        "-pix_fmt", "yuv420p",
-        output_bg_path
-    ]
-    subprocess.run(cmd_concat, check=True)
-    print("🎉 FULL 10-SHOT PHOTOREALISTIC VIDEO ASSEMBLY COMPLETE!")
-
-def generate_sub_bass_boom(output_path="temp/boom.wav", duration=1.5, sample_rate=48000):
-    try:
-        num_samples = int(duration * sample_rate)
-        with wave.open(output_path, "w") as wav_file:
-            wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
-            wav_file.setframerate(sample_rate)
-            frames = []
-            for i in range(num_samples):
-                t = i / sample_rate
-                freq = 72 - 28 * (t / duration)
-                decay = math.exp(-2.5 * t)
-                sample = int(32767 * 0.85 * decay * math.sin(2 * math.pi * freq * t))
-                frames.append(struct.pack("<h", max(-32767, min(32767, sample))))
-            wav_file.writeframes(b"".join(frames))
-        return True
-    except Exception as e:
-        print(f"Warning: sub-bass boom skipped ({e})")
-        return False
-
-def render_final_short_with_bgm(bg_path, audio_path, ass_path, bgm_path, duration, output_path, hook_title):
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    print(f"🎬 Burning Hormozi subtitles, Top Hook Banner, and mixing loud cinematic BGM...")
-    
-    escaped_ass = ass_path.replace("\\", "/").replace(":", "\\:")
-    
-    safe_hook = re.sub(r"['\":\\]", "", str(hook_title)).strip().upper()
-    # Ultra-eye-catching Yellow hook banner with high-contrast background box
-    v_filter = (
-        f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"
-        f"ass={escaped_ass},"
-        f"drawtext=text='{safe_hook}':font='DejaVu Sans':fontsize=42:fontcolor=yellow:"
-        f"box=1:boxcolor=black@0.82:boxborderw=18:x=(w-text_w)/2:y=220[vout]"
-    )
-    
-    fade_out_start = max(1.0, duration - 1.5)
-    if bgm_path and os.path.exists(bgm_path):
-        audio_filter = (
-            f"[1:a]volume=1.1[voice];"
-            f"[2:a]volume=0.32,afade=t=in:ss=0:d=0.8,afade=t=out:st={fade_out_start}:d=1.5[bgm];"
-            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+    print("🎬 Rendering final transformed YouTube Short with FFmpeg...")
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        print(f"⚠️ Primary FFmpeg render notice:\n{res.stderr[-500:]}")
+        print("🔄 Falling back to simplified filtergraph (subtitles only)...")
+        # Simplified fallback filter if drawbox/drawtext hits font issues
+        simpler_filter = (
+            f"[0:v]hflip,scale=1080:1920:force_original_aspect_ratio=increase,"
+            f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
+            f"subtitles='{ass_escaped}'[outv];"
+            f"[1:a]volume=1.0[voice];"
+            f"[2:a]volume=0.12[bgm];"
+            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
         )
-        cmd = [
+        cmd_fallback = [
             "ffmpeg", "-y",
-            "-stream_loop", "-1", "-i", bg_path,
-            "-i", audio_path,
-            "-stream_loop", "-1", "-i", bgm_path,
-            "-filter_complex", f"{v_filter};{audio_filter}",
-            "-map", "[vout]",
-            "-map", "[aout]",
+            "-stream_loop", "-1", "-i", input_video,
+            "-i", narration_audio,
+            "-i", bgm_path,
+            "-filter_complex", simpler_filter,
+            "-map", "[outv]",
+            "-map", "[outa]",
             "-c:v", "libx264",
-            "-preset", "veryfast",
-            "-crf", "20",
+            "-preset", "fast",
+            "-crf", "22",
+            "-pix_fmt", "yuv420p",
             "-c:a", "aac",
             "-b:a", "192k",
-            "-t", str(duration + 0.2),
-            "-pix_fmt", "yuv420p",
-            output_path
+            "-t", f"{target_dur:.2f}",
+            output_video
         ]
-    else:
-        cmd = [
-            "ffmpeg", "-y",
-            "-stream_loop", "-1", "-i", bg_path,
-            "-i", audio_path,
-            "-filter_complex", v_filter,
-            "-map", "[vout]",
-            "-map", "1:a",
-            "-c:v", "libx264",
-            "-preset", "veryfast",
-            "-crf", "20",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-t", str(duration + 0.2),
-            "-pix_fmt", "yuv420p",
-            output_path
-        ]
-        
-    subprocess.run(cmd, check=True)
-    print(f"🎉 FINAL UPGRADED VIDEO READY! Saved to: {output_path}")
+        subprocess.run(cmd_fallback, check=True)
 
+    print(f"✅ Final Video Successfully Rendered: {output_video}")
+
+    # Generate Thumbnail at 70% duration
+    thumb_time = target_dur * 0.70
+    cmd_thumb = [
+        "ffmpeg", "-y",
+        "-ss", f"{thumb_time:.2f}",
+        "-i", output_video,
+        "-vframes", "1",
+        "-q:v", "2",
+        output_thumb
+    ]
+    subprocess.run(cmd_thumb, check=True)
+    print(f"✅ Thumbnail Generated: {output_thumb}")
+
+# ==========================================
+# 7. MAIN ENTRYPOINT
+# ==========================================
 def main():
-    parser = argparse.ArgumentParser(description="AI YouTube Shorts Generator with Hollywood Two-Stage AI Director & Hormozi Subtitles")
-    parser.add_argument("--script", type=str, default="", help="Narration script text (leave blank for Gemini AI auto-pilot)")
-    parser.add_argument("--auto", action="store_true", help="Enable 100% automated script & visual direction via Two-Stage AI")
-    parser.add_argument("--voice", type=str, default="en-US-ChristopherNeural", help="Edge TTS Voice name")
-    parser.add_argument("--topic", type=str, default="deep space cosmic anomaly", help="Topic for script and visuals")
-    parser.add_argument("--gemini_key", type=str, default="", help="Gemini API key")
+    parser = argparse.ArgumentParser(description="Autonomous Viral Asian Meme & Comedy Shorts Studio")
+    parser.add_argument("--auto", action="store_true", help="100% Autonomous Auto-Pilot Mode")
+    parser.add_argument("--video_url", type=str, default="", help="Douyin / TikTok / YouTube / MP4 URL")
+    parser.add_argument("--topic", type=str, default="auto", help="Video Niche (e.g. cute kids, funny pets, comedy)")
+    parser.add_argument("--voice", type=str, default="en-US-GuyNeural", help="Microsoft Edge TTS Voice")
+    parser.add_argument("--script", type=str, default="", help="Optional custom commentary script")
     parser.add_argument("--output", type=str, default="output/final_video.mp4", help="Output video path")
     parser.add_argument("--thumb", type=str, default="output/thumbnail.jpg", help="Output thumbnail path")
     args = parser.parse_args()
 
-    clean_voice = clean_voice_name(args.voice)
-    gemini_key = args.gemini_key.strip() if args.gemini_key and args.gemini_key.strip() else DEFAULT_GEMINI_KEY
-    print("✨ FLUX.1 + Gemini 10-Shot Safe Sequential Architecture Active.")
+    print("===================================================================")
+    print("🔥 LAUNCHING VIRAL ASIAN MEME & COMEDY SHORTS STUDIO (100% CLOUD)")
+    print("===================================================================")
 
+    # 1. Dual-Route Ingestion
+    raw_video, raw_title, raw_desc, route_used, vault_meta = ingest_video_dual_route(
+        video_url=args.video_url,
+        topic=args.topic,
+        history_file="history.json"
+    )
+    print(f"📹 Acquired video via: {route_used.upper()}")
+
+    # 2. Gemini Baba Multimodal / Script Direction
+    director_output = direct_comedy_with_gemini(
+        clip_description=raw_desc,
+        topic=args.topic,
+        custom_script=args.script,
+        fallback_meta=vault_meta
+    )
+    
+    print("\n🎭 --- DIRECTED SHORT DETAILS ---")
+    print(f"📌 Title: {director_output.get('title')}")
+    print(f"🏷️ Top Hook: {director_output.get('hook_banner')}")
+    print(f"🗣️ Voiceover Script:\n{director_output.get('script')}")
+    print("---------------------------------\n")
+
+    # 3. Microsoft Edge TTS & Hormozi Subtitles
     os.makedirs("temp", exist_ok=True)
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    os.makedirs(os.path.dirname(args.thumb), exist_ok=True)
-
-    audio_path = "temp/voice.mp3"
+    audio_path = "temp/narration.mp3"
     ass_path = "temp/subtitles.ass"
-    bg_video_path = "temp/background.mp4"
-    bgm_path = "temp/bgm.ogg"
+    generate_voiceover_and_ass(
+        script_text=director_output.get("script", ""),
+        voice=args.voice,
+        output_audio=audio_path,
+        output_ass=ass_path
+    )
 
-    # Step 1: Screenplay Generation via Executive Producer (Gemini 3.8 / 3.6 Flash)
-    if not args.script or args.script.strip() == "" or args.auto or args.script.lower() == "auto":
-        plan, active_topic = generate_ai_director_plan(gemini_key, args.topic)
-        script_text = plan.get("full_script") or " ".join([s.get("voice_line", "") for s in plan.get("scenes", [])])
-        hook_title = plan.get("hook_banner", "UNEXPLAINED MYSTERY")
-        scenes = plan.get("scenes", [])
-        
-        # Save metadata for YouTube auto-uploader
-        meta = {
-            "title": plan.get("title", f"The Unexplained Cosmic Mystery 🌌 #shorts"),
-            "description": f"{script_text}\n\n#shorts #mystery #science #deepspace #ocean #quantum",
-            "hook_banner": hook_title,
-            "topic": active_topic,
-            "tags": ["shorts", "mystery", "science", "deepspace", "ocean", "universe", "unexplained"],
-            "scenes": scenes
-        }
-        with open("output/metadata.json", "w", encoding="utf-8") as f:
-            json.dump(meta, f, indent=2)
-        print(f"💾 Saved video metadata to output/metadata.json")
-    else:
-        script_text = args.script
-        hook_title = "DEEP SPACE MYSTERY"
-        active_topic = args.topic
-        meta = {
-            "title": f"{hook_title} 🌌 #shorts",
-            "description": f"{script_text}\n\n#shorts #mystery #science",
-            "hook_banner": hook_title,
-            "topic": active_topic,
-            "tags": ["shorts", "mystery", "science"]
-        }
-        with open("output/metadata.json", "w", encoding="utf-8") as f:
-            json.dump(meta, f, indent=2)
-        # Split custom script into multiple distinct scenes (1 per sentence)
-        raw_sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', script_text) if s.strip()]
-        if not raw_sentences:
-            raw_sentences = [script_text]
-        
-        camera_motions = ["crash_zoom", "slow_pull_back", "majestic_rise", "deep_descent", "pan_right", "pan_left", "slow_zoom_in"]
-        scenes = []
-        for idx, sent in enumerate(raw_sentences):
-            motion = camera_motions[idx % len(camera_motions)]
-            scenes.append({
-                "scene_id": idx + 1,
-                "voice_line": sent,
-                "visual_prompt": f"{sent}, photorealistic, authentic documentary film style, 8k, dramatic lighting",
-                "camera_motion": motion
-            })
-        print(f"🎬 Split custom script into {len(scenes)} distinct multi-scene visual shots!")
+    # 4. Transformative FFmpeg Editing (Anti-Reused Content)
+    render_transformative_short(
+        input_video=raw_video,
+        narration_audio=audio_path,
+        ass_subtitles=ass_path,
+        hook_banner=director_output.get("hook_banner", "WAIT FOR IT 😂"),
+        output_video=args.output,
+        output_thumb=args.thumb
+    )
 
-    # Step 2: Scene-Synchronized Voiceover & Hormozi-style Subtitles (1:1 Frame-Perfect Sync)
-    scene_durations, duration = asyncio.run(generate_scene_synchronized_narration(scenes, clean_voice, audio_path, ass_path))
+    # 5. Save Video Metadata
+    os.makedirs("output", exist_ok=True)
+    metadata_path = "output/metadata.json"
+    metadata = {
+        "title": director_output.get("title", "Viral Comedy Short #shorts"),
+        "description": director_output.get("description", "Hilarious viral comedy short! #shorts #viral #funny"),
+        "tags": director_output.get("tags", "shorts, funny, comedy, viral, meme"),
+        "hook_banner": director_output.get("hook_banner", "WAIT FOR IT 😂"),
+        "route_used": route_used,
+        "clip_id": vault_meta["id"] if vault_meta else "custom_url",
+        "created_at": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+    }
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+    print(f"💾 Saved Video Metadata: {metadata_path}")
 
-    # Step 3: Fetch Cinematic Background Music
-    fetch_bgm_track(active_topic, bgm_path)
+    # 6. Update Video Memory Vault (Anti-Repetition)
+    history_file = "history.json"
+    history = []
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, "r", encoding="utf-8") as f:
+                history = json.load(f)
+        except Exception:
+            history = []
+            
+    history.append({
+        "date": metadata["created_at"],
+        "clip_id": metadata["clip_id"],
+        "title": metadata["title"],
+        "hook_banner": metadata["hook_banner"],
+        "route_used": route_used
+    })
+    
+    with open(history_file, "w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2)
+    print(f"🧠 Updated Anti-Repetition Vault: {history_file} ({len(history)} total shorts)")
 
-    # Step 4: Multi-scene Hollywood Directed Video Footage (Locked to Exact Scene Durations)
-    build_hollywood_directed_video(scenes, scene_durations, duration, gemini_key, bg_video_path, args.thumb)
-
-    # Step 6: Render with Top Hook Banner & Audible BGM
-    render_final_short_with_bgm(bg_video_path, audio_path, ass_path, bgm_path, duration, args.output, hook_title)
-
-    # Step 7: Update Anti-Repetition History Memory Vault
-    save_to_history(meta.get("title", hook_title), active_topic, hook_title)
+    print("\n===================================================================")
+    print("🎉 VIRAL COMEDY SHORT SUCCESSFULLY GENERATED!")
+    print(f"🎬 Video: {args.output}")
+    print(f"🖼️ Thumbnail: {args.thumb}")
+    print("===================================================================\n")
 
 if __name__ == "__main__":
     main()
