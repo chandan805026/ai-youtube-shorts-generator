@@ -602,25 +602,25 @@ def convert_image_to_cinematic_clip(image_path, output_clip_path, duration, came
 
     if "crash" in motion or "punch" in motion:
         # High-intensity shock zoom acceleration (Scene 1 Hooks & Plot Twists)
-        vf = "crop=in_w:in_h*0.955:0:0,scale='1080*(1+0.065*t)':'1920*(1+0.065*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,format=yuv420p"
+        vf = "crop=in_w:in_h*0.955:0:0,scale='1080*(1+0.065*t)':'1920*(1+0.065*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,setsar=1,format=yuv420p"
     elif "pull" in motion or "back" in motion or "zoom_out" in motion:
         # Grand cosmic reveal: starts tight and pulls back smoothly
-        vf = "crop=in_w:in_h*0.955:0:0,scale='1080*(1.16-0.035*t)':'1920*(1.16-0.035*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,format=yuv420p"
+        vf = "crop=in_w:in_h*0.955:0:0,scale='1080*(1.16-0.035*t)':'1920*(1.16-0.035*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,setsar=1,format=yuv420p"
     elif "rise" in motion or "tilt_up" in motion or "up" in motion:
         # Upward vertical pan from base towards the heavens/mountain summit
-        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.12:1920*1.12,crop=1080:1920:(in_w-1080)/2:'max(0,(in_h-1920)*(1-0.2*t))',format=yuv420p"
+        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.12:1920*1.12,crop=1080:1920:(in_w-1080)/2:'max(0,(in_h-1920)*(1-0.2*t))',setsar=1,format=yuv420p"
     elif "descent" in motion or "dive" in motion or "down" in motion:
         # Downward vertical pan plunging into the dark abyss or deep ocean
-        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.12:1920*1.12,crop=1080:1920:(in_w-1080)/2:'min(in_h-1920,(in_h-1920)*(0.08+0.2*t))',format=yuv420p"
+        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.12:1920*1.12,crop=1080:1920:(in_w-1080)/2:'min(in_h-1920,(in_h-1920)*(0.08+0.2*t))',setsar=1,format=yuv420p"
     elif "left_to_right" in motion or "pan_right" in motion:
         # Sweeping horizontal tracking shot from left to right
-        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.15:1920*1.15,crop=1080:1920:'min(in_w-1080,(in_w-1080)*(0.05+0.2*t))':(in_h-1920)/2,format=yuv420p"
+        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.15:1920*1.15,crop=1080:1920:'min(in_w-1080,(in_w-1080)*(0.05+0.2*t))':(in_h-1920)/2,setsar=1,format=yuv420p"
     elif "right_to_left" in motion or "pan_left" in motion:
         # Sweeping horizontal tracking shot from right to left
-        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.15:1920*1.15,crop=1080:1920:'max(0,(in_w-1080)*(0.95-0.2*t))':(in_h-1920)/2,format=yuv420p"
+        vf = "crop=in_w:in_h*0.955:0:0,scale=1080*1.15:1920*1.15,crop=1080:1920:'max(0,(in_w-1080)*(0.95-0.2*t))':(in_h-1920)/2,setsar=1,format=yuv420p"
     else:
         # Smooth default Ken Burns mystery drift (3.5%/s)
-        vf = "crop=in_w:in_h*0.955:0:0,scale='1080*(1+0.035*t)':'1920*(1+0.035*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,format=yuv420p"
+        vf = "crop=in_w:in_h*0.955:0:0,scale='1080*(1+0.035*t)':'1920*(1+0.035*t)':eval=frame,crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,setsar=1,format=yuv420p"
 
     cmd = [
         "ffmpeg", "-y",
@@ -693,12 +693,14 @@ def build_hollywood_directed_video(scenes, sentence_timings, total_duration, gem
     if not clip_files:
         raise Exception("Could not generate any scene clips.")
 
-    # Smoothly concatenate clips
+    # Smoothly concatenate clips (normalized with exact SAR and resolution)
     inputs = []
     filter_str = ""
     for idx, c in enumerate(clip_files):
         inputs.extend(["-i", c])
-        filter_str += f"[{idx}:v]"
+        filter_str += f"[{idx}:v]scale=1080:1920,setsar=1[v{idx}];"
+    for idx in range(len(clip_files)):
+        filter_str += f"[v{idx}]"
     filter_str += f"concat=n={len(clip_files)}:v=1:a=0[v]"
 
     cmd_concat = [
