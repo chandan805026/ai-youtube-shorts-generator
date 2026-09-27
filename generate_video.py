@@ -377,7 +377,7 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                     methods = m.get("supportedGenerationMethods", [])
                     if "generateContent" in methods:
                         discovered.append(m_name)
-                priority_names = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-flash-latest", "gemini-flash-lite-latest"]
+                priority_names = ["gemini-3.8-flash", "gemini-3.8-flash-lite", "gemini-3.1-pro-preview", "gemini-flash-latest", "gemini-flash-lite-latest"]
                 top_picks = [p for p in priority_names if p in discovered]
                 rest = [m for m in discovered if m not in top_picks and "tts" not in m and "image" not in m]
                 models_to_try = top_picks + rest
