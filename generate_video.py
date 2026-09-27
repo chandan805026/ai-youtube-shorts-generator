@@ -51,10 +51,10 @@ VIRAL_VAULT = [
     {
         "id": "vault_douyin_hd_bad_luck",
         "category": "douyin_comedy",
-        "title": "When The Universe Personally Hates You 😭💀 #shorts",
-        "hook_banner": "UNLUCKIEST BRO ALIVE 😂",
-        "description": "A viral 24-second high-definition Asian comedy skit showing the most ridiculously unlucky series of events happening to one guy trying to mind his own business.",
-        "fallback_script": "Tell me why bro woke up on the wrong side of the entire solar system! Every single step he takes triggers a new disaster. Look at his face, he has completely given up on life! That is the look of a man who knows luck has permanently left the chat! Respect for still standing! 😭",
+        "title": "Bro Thought He Was Safe But Wait For The Ending 💀 #shorts",
+        "hook_banner": "WAIT TILL THE END 💀",
+        "description": "A viral 24-second high-definition Asian comedy skit showing a hilarious series of escalating unexpected comedic traps and twists happening to a guy who thinks he is totally safe.",
+        "fallback_script": "Bro really thought he had the smoothest day of his life... but wait until you see what happens next! Look at that relaxed confidence, he has no idea the universe is planning his downfall! Wait for it... wait for it... AND BOOM! The ending completely caught him off guard in 4K! You can't even make this stuff up! 💀",
         "local_fallback": "assets/vault/douyin_hd_bad_luck.mp4",
         "cdn_urls": [
             "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_hd_bad_luck.mp4"
@@ -309,10 +309,12 @@ Analyze this viral comedy clip:
 - Target Video Duration: {target_duration:.1f} seconds
 
 Provide JSON with:
-1. "title": Catchy viral YouTube Shorts title under 60 characters with funny emojis and #shorts.
-2. "hook_banner": 3-5 words ALL CAPS punchy top banner (e.g., 'HE WAS CAUGHT IN 4K 😂', 'BRO REALLY THOUGHT 💀').
-3. "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words (takes {safe_audio_dur:.1f}s spoken at 1.12x speed). 
-   Must hook viewer in first 2 seconds, narrate the funny action, and deliver the punchline right at the end!
+1. "title": High curiosity viral YouTube Shorts title under 60 characters with funny emojis and #shorts (e.g. 'Bro Thought He Was Safe But Wait For The Ending 💀 #shorts').
+2. "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner (e.g. 'WAIT TILL THE END 💀', 'THE PLOT TWIST 😂', 'HE DID NOT SEE THIS COMING 😭').
+3. "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words ({safe_audio_dur:.1f}s spoken at 1.12x speed).
+   - Hook in first 1.5 seconds (create intense curiosity without spoiling what actually happens!).
+   - Middle section: build comedic anticipation and suspense ('Look at him thinking he got away... wait for it...').
+   - Climax & Punchline: land the punchline right at the final 2 seconds as the twist explodes!
 4. "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy #asianmemes.
 5. "tags": 8-10 comma-separated keywords.
 
