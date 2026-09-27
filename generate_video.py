@@ -131,28 +131,86 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             if resp.status_code == 200:
                 items = resp.json().get("aweme_list", [])
                 candidates = []
+                ad_words = ["带货", "下单", "直播", "价格", "广告", "同款", "链接", "优惠", "购买", "领券", "店铺", "商用"]
+                viral_tags = ["搞笑", "沙雕", "反转", "没想到", "神操作", "社死", "笑不活了", "名场面", "人类高质量", "狗子", "萌宠"]
+
                 for item in items:
                     aweme_id = str(item.get("aweme_id", ""))
                     if aweme_id in used_ids:
                         continue
+
+                    # 1. Skip Commercial Ads and E-Commerce Shopping
+                    if item.get("is_ads") or item.get("commerce_info"):
+                        continue
+                    desc = item.get("desc", "")
+                    if any(w in desc for w in ad_words):
+                        continue
+
+                    # 2. Check Golden Duration (12s to 35s)
                     dur = item.get("duration", 0) / 1000.0
                     if not (12.0 <= dur <= 35.0):
                         continue
+
+                    # 3. Check direct playable stream URL
                     play_urls = item.get("video", {}).get("play_addr", {}).get("url_list", [])
                     if not play_urls:
                         continue
-                    desc = item.get("desc", "")
-                    score = 0
+
+                    # 4. Extract Real Metrics (Likes, Shares, Comments)
+                    stats = item.get("statistics", {})
+                    likes = stats.get("digg_count", 0)
+                    shares = stats.get("share_count", 0)
+                    comments = stats.get("comment_count", 0)
+
+                    # 5. Virality Score calculation (Likes + 10x Shares + 5x Comments)
+                    virality_score = likes + (shares * 10) + (comments * 5)
+
+                    # Boost for comedy/twist tags
+                    for vt in viral_tags:
+                        if vt in desc:
+                            virality_score += 50000
+
+                    # Boost for user topic keywords
                     for kw in keywords:
                         if kw in desc:
-                            score += 10
-                    candidates.append((score, dur, aweme_id, desc, play_urls[0]))
+                            virality_score += 100000
 
+                    # Golden duration sweet spot bonus (15s to 25s)
+                    if 14.0 <= dur <= 26.0:
+                        virality_score += 25000
+
+                    # 50K+ likes threshold priority
+                    is_mega_viral = (likes >= 50000)
+
+                    candidates.append({
+                        "score": virality_score,
+                        "likes": likes,
+                        "shares": shares,
+                        "is_mega_viral": is_mega_viral,
+                        "dur": dur,
+                        "id": aweme_id,
+                        "desc": desc,
+                        "url": play_urls[0]
+                    })
+
+                # Prefer candidates with 50K+ likes first, else top virality score
                 if candidates:
-                    candidates.sort(key=lambda x: x[0], reverse=True)
-                    score, dur, aweme_id, desc, play_url = candidates[0]
-                    print(f"✅ Found fresh unindexed Douyin clip! ID: {aweme_id} ({dur:.1f}s)")
-                    print(f"   Chinese Caption: {desc}")
+                    mega_candidates = [c for c in candidates if c["is_mega_viral"]]
+                    chosen_pool = mega_candidates if mega_candidates else candidates
+                    chosen_pool.sort(key=lambda x: x["score"], reverse=True)
+                    top_pick = chosen_pool[0]
+
+                    score = top_pick["score"]
+                    dur = top_pick["dur"]
+                    aweme_id = top_pick["id"]
+                    desc = top_pick["desc"]
+                    play_url = top_pick["url"]
+                    likes = top_pick["likes"]
+                    shares = top_pick["shares"]
+
+                    print(f"🔥 [VIRAL QUALITY GATEKEEPER] Selected Rank #1 Clip!")
+                    print(f"   ▶ ID: {aweme_id} ({dur:.1f}s) | Likes: {likes:,} | Shares: {shares:,} | Virality Score: {score:,}")
+                    print(f"   ▶ Chinese Caption: {desc}")
                     print(f"📥 Downloading directly from ByteDance China CDN...")
 
                     dl_headers = {"User-Agent": "okhttp/3.10.0.1"}
