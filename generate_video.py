@@ -87,11 +87,11 @@ VIRAL_VAULT = [
     },
     {
         "id": "vault_douyin_hd_bad_luck",
-        "category": "douyin_comedy",
-        "title": "Bro Thought He Was Safe But Wait For The Ending 💀 #shorts",
-        "hook_banner": "WAIT TILL THE END 💀",
-        "description": "A viral 24-second high-definition Asian comedy skit showing a hilarious series of escalating unexpected comedic traps and twists happening to a guy who thinks he is totally safe.",
-        "fallback_script": "Bro really thought he had the smoothest day of his life... but wait until you see what happens next! Look at that relaxed confidence, he has no idea the universe is planning his downfall! Wait for it... wait for it... AND BOOM! The ending completely caught him off guard in 4K! You can't even make this stuff up! 💀",
+        "category": "suspense",
+        "title": "Bro Thought He Was Safe But Wait For The Plot Twist 💀 #shorts",
+        "hook_banner": "WAIT FOR THE PLOT TWIST 💀",
+        "description": "An intense, edge-of-your-seat viral Chinese suspense comedy short where a guy thinks he is completely safe in the room, until an escalating chain of shocking twists traps him, ending with a mind-blowing comedy climax in 4K!",
+        "fallback_script": "Bro thought he had the smoothest escape of his entire life... but wait until you see the plot twist! Look at the tension building in this room! He thinks nobody is watching, but wait for it... wait for it... AND BOOM! The ending completely shattered his whole reality in 4K! You literally cannot make this level of suspense up! 💀",
         "local_fallback": "assets/vault/douyin_hd_bad_luck.mp4",
         "cdn_urls": [
             "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_hd_bad_luck.mp4"
@@ -253,8 +253,10 @@ def ingest_video_dual_route(video_url, topic, history_file="history.json"):
     os.makedirs("input", exist_ok=True)
     raw_video_path = os.path.join("input", "source_video.mp4")
 
-    # 0. Live Chinese Douyin Feed (if no specific URL is provided, get fresh live China video)
-    if not video_url or not video_url.strip():
+    # 0. If a specific topic is requested (e.g. suspense, kids, pets), allow Vault to match it!
+    if topic and topic.strip() and topic.strip().lower() != 'auto':
+        print(f"🎯 [TARGETED NICHE] Topic requested: '{topic}'. Matching from Curated Vault...")
+    elif not video_url or not video_url.strip():
         print(f"\n=======================================================")
         print(f"🇨🇳 [CHINA LIVE STREAM] Fetching brand new viral clip directly from Douyin China API...")
         print(f"=======================================================")
@@ -553,11 +555,10 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                     methods = m.get("supportedGenerationMethods", [])
                     if "generateContent" in methods:
                         discovered.append(m_name)
-                print(f"📋 Discovered Gemini API models: {discovered}")
-                flash_models = [m for m in discovered if "flash" in m]
-                other_models = [m for m in discovered if m not in flash_models]
-                if flash_models:
-                    models_to_try = flash_models + other_models
+                priority_names = ["gemini-flash-lite-latest", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-2.5-flash"]
+                top_picks = [p for p in priority_names if p in discovered]
+                rest = [m for m in discovered if m not in top_picks and "tts" not in m and "image" not in m]
+                models_to_try = top_picks + rest
         except Exception as e:
             print(f"⚠️ Dynamic model discovery notice: {e}")
         print(f"🎯 Target Gemini models to try: {models_to_try[:4]}")
