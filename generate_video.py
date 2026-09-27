@@ -38,6 +38,18 @@ if sys.stdout.encoding != 'utf-8':
 # ==========================================
 VIRAL_VAULT = [
     {
+        "id": "vault_douyin_fresh_china",
+        "category": "douyin_direct_china",
+        "title": "Chinese TikTok Transformation Went Crazy 💀 #shorts",
+        "hook_banner": "WAIT FOR THE TRANSFORMATION 😂",
+        "description": "An authentic trending Douyin video directly from China (ID 7687882613504036777) featuring a jaw-dropping and hilarious Chinese costume and style transformation challenge to trending music.",
+        "fallback_script": "Ain't no way Chinese TikTok just pulled off this insane transformation! Watch the transition right before the beat drops! The confidence, the style, the facial expression is pure gold! You can't even make this level of creativity up! Ten out of ten viral masterpiece! 💀",
+        "local_fallback": "assets/vault/douyin_fresh_china.mp4",
+        "cdn_urls": [
+            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_fresh_china.mp4"
+        ]
+    },
+    {
         "id": "vault_douyin_china_live",
         "category": "douyin_direct_china",
         "title": "Dog Mom Gives Human Toilet Demo In 4K 😭💀 #shorts",
@@ -480,7 +492,25 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
             print(f"👁️ Attaching {len(frame_images_b64)} visual frames to Gemini contents!")
         content_parts.append({"text": user_prompt})
 
-        models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
+        # Dynamic Gemini Model Discovery & Priority to gemini-2.5-flash
+        models_to_try = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash-exp", "gemini-1.5-pro"]
+        try:
+            m_resp = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}", timeout=10)
+            if m_resp.status_code == 200:
+                discovered = []
+                for m in m_resp.json().get("models", []):
+                    m_name = m.get("name", "").replace("models/", "")
+                    methods = m.get("supportedGenerationMethods", [])
+                    if "generateContent" in methods:
+                        discovered.append(m_name)
+                print(f"📋 Discovered Gemini API models: {discovered}")
+                flash_models = [m for m in discovered if "flash" in m]
+                other_models = [m for m in discovered if m not in flash_models]
+                if flash_models:
+                    models_to_try = flash_models + other_models
+        except Exception as e:
+            print(f"⚠️ Dynamic model discovery notice: {e}")
+        print(f"🎯 Target Gemini models to try: {models_to_try[:4]}")
         for mod in models_to_try:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={gemini_key}"
