@@ -116,10 +116,16 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
     if topic and topic.strip().lower() != "auto":
         keywords = topic_keywords.get(topic.strip().lower(), [topic.strip().lower()])
 
-    url = "https://aweme.snssdk.com/aweme/v1/feed/?count=35"
+    endpoints = [
+        "https://aweme.snssdk.com/aweme/v1/feed/?count=35",
+        "https://api.amemv.com/aweme/v1/feed/?count=35",
+        "https://api3-normal-c-hl.amemv.com/aweme/v1/feed/?count=35",
+        "https://aweme.snssdk.com/aweme/v1/feed/?count=35&type=0"
+    ]
     headers = {"User-Agent": "okhttp/3.10.0.1", "Accept": "application/json"}
 
-    for attempt in range(5):
+    for attempt in range(8):
+        url = endpoints[attempt % len(endpoints)]
         try:
             resp = requests.get(url, headers=headers, timeout=20)
             if resp.status_code == 200:
@@ -528,7 +534,27 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
         "--write-media", output_audio,
         "--write-subtitles", vtt_file
     ]
-    subprocess.run(cmd, check=True)
+    tts_success = False
+    for tts_attempt in range(3):
+        try:
+            subprocess.run(cmd, check=True)
+            if os.path.exists(output_audio) and os.path.getsize(output_audio) > 1000:
+                tts_success = True
+                break
+        except Exception as e:
+            print(f"⚠️ Edge TTS attempt {tts_attempt+1} notice: {e}")
+            time.sleep(2)
+    if not tts_success:
+        print("🔄 Edge TTS fallback: attempting with en-US-ChristopherNeural...")
+        fallback_cmd = [
+            sys.executable, "-m", "edge_tts",
+            "--voice", "en-US-ChristopherNeural",
+            "--rate", "+5%",
+            "--text", clean_spoken_text,
+            "--write-media", output_audio,
+            "--write-subtitles", vtt_file
+        ]
+        subprocess.run(fallback_cmd, check=True)
 
     # Parse cues
     cues = parse_vtt_timestamps(vtt_file)
