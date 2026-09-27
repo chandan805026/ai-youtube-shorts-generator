@@ -37,6 +37,18 @@ if sys.stdout.encoding != 'utf-8':
 # ==========================================
 VIRAL_VAULT = [
     {
+        "id": "vault_douyin_slapstick_fresh",
+        "category": "asian_comedy",
+        "title": "Bro Tried To Look Tough And Regretted Everything 💀 #shorts",
+        "hook_banner": "WAIT FOR THE KARMA 😂",
+        "description": "A hilarious 24-second high-definition Asian slapstick comedy sketch where a guy tries to act tough and confident, only to suffer an escalating series of instant funny fails and a shocking climax.",
+        "fallback_script": "Bro woke up thinking he was the main character of an action movie! Look at that swagger before the first disaster strikes. But wait until you see the ending... you literally cannot script this! Wait for it... wait for it... AND DOWN HE GOES! His soul just completely exited the building! 💀",
+        "local_fallback": "assets/vault/douyin_slapstick_fresh.mp4",
+        "cdn_urls": [
+            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_slapstick_fresh.mp4"
+        ]
+    },
+    {
         "id": "vault_douyin_hd_prank",
         "category": "douyin_comedy",
         "title": "Bro Tried To Prank His Best Friend And Paid In 4K 💀 #shorts",
@@ -622,6 +634,7 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
         f"{speed_filter},"
         f"drawbox=x=(iw-860)/2:y=110:w=860:h=90:color=black@0.75:t=fill,"
         f"drawtext=text='{clean_hook}':fontsize=40:fontcolor=yellow:x=(w-text_w)/2:y=132,"
+        f"drawbox=x=0:y=1500:w=1080:h=350:color=black@0.90:t=fill,"
         f"subtitles='{ass_escaped}'[outv];"
         f"[1:a]volume=1.0[voice];"
         f"[2:a]volume=0.12[bgm];"
@@ -655,6 +668,7 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
         simpler_filter = (
             f"[0:v]hflip,scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
             f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
+            f"drawbox=x=0:y=1500:w=1080:h=350:color=black@0.90:t=fill,"
             f"subtitles='{ass_escaped}'[outv];"
             f"[1:a]volume=1.0[voice];"
             f"[2:a]volume=0.12[bgm];"
