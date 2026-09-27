@@ -34,109 +34,7 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 # ==========================================
-# 1. VIRAL COMEDY VAULT (ROUTE 2 FAIL-SAFE)
-# ==========================================
-VIRAL_VAULT = [
-    {
-        "id": "vault_douyin_china_live",
-        "category": "douyin_direct_china",
-        "title": "Dog Mom Gives Human Toilet Demo In 4K 😭💀 #shorts",
-        "hook_banner": "MOM GAVE A LIVE DEMO 😂",
-        "description": "An authentic viral Douyin comedy short directly from China where a golden retriever mother dog in yellow clothes teaches her cute puppy how to use the human toilet. When the confused puppy doesn't know what to do on the training seat, the mother dog literally hops onto the porcelain commode and balances all four paws on the rim to demonstrate how to use it like a civilized human!",
-        "fallback_script": "Ain't no way this dog mom literally said: 'Watch and learn, son!' Look at her placing the puppy on the potty trainer first... but when the kid looks confused, SHE HOPS ON THE TOILET TO DEMO IT HERSELF! Four paws perfectly balanced on the porcelain throne looking at the camera like: 'See? It's that easy!' Asian parenting has officially crossed over to pets! 💀",
-        "local_fallback": "assets/vault/douyin_china_live.mp4",
-        "cdn_urls": [
-            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_china_live.mp4"
-        ]
-    },
-    {
-        "id": "vault_douyin_slapstick_fresh",
-        "category": "asian_comedy",
-        "title": "Bro Woke Up To The Ultimate Disrespect In 4K 😭💀 #shorts",
-        "hook_banner": "WORST WAY TO WAKE UP 💀",
-        "description": "A man is fast asleep dreaming peacefully on the couch, when his friend quietly sneaks up with a dirty bare foot and rests it right over his nose and mouth. The sleeping man begins sniffing it thinking it is breakfast, slowly opens his eyes in utter disbelief, and freaks out in horror.",
-        "fallback_script": "Bro was having the most peaceful dream of his entire life... until his friend chose pure biological violence! Look at this man quietly sneaking up and putting his whole bare foot directly on his face! And bro is actually sniffing it in his sleep thinking it's breakfast! Wait for it... wait for it... look at his eyes opening! The exact second reality hits and he realizes what he's smelling, his whole soul exits his body in 4K! You literally cannot make this level of disrespect up! 💀",
-        "local_fallback": "assets/vault/douyin_slapstick_fresh.mp4",
-        "cdn_urls": [
-            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_slapstick_fresh.mp4"
-        ]
-    },
-    {
-        "id": "vault_douyin_hd_prank",
-        "category": "douyin_comedy",
-        "title": "Bro Tried To Prank His Best Friend And Paid In 4K 💀 #shorts",
-        "hook_banner": "INSTANT KARMA 😂",
-        "description": "A hilarious 27-second high-definition viral Douyin bestfriend prank where an elaborate setup backfires immediately with hysterical facial expressions and instant comedy karma.",
-        "fallback_script": "Bro really spent two hours setting up this master prank! Look at that smug smile thinking he has the ultimate plan. But the universe said not today! The exact second it backfires, his whole soul leaves his body in 4K! You can't even make this level of instant karma up! Ten out of ten comedy gold! 💀",
-        "local_fallback": "assets/vault/douyin_hd_prank.mp4",
-        "cdn_urls": [
-            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_hd_prank.mp4"
-        ]
-    },
-    {
-        "id": "vault_douyin_hd_bad_luck",
-        "category": "suspense",
-        "title": "Bro Thought He Was Safe But Wait For The Plot Twist 💀 #shorts",
-        "hook_banner": "WAIT FOR THE PLOT TWIST 💀",
-        "description": "An intense, edge-of-your-seat viral Chinese suspense comedy short where a guy thinks he is completely safe in the room, until an escalating chain of shocking twists traps him, ending with a mind-blowing comedy climax in 4K!",
-        "fallback_script": "Bro thought he had the smoothest escape of his entire life... but wait until you see the plot twist! Look at the tension building in this room! He thinks nobody is watching, but wait for it... wait for it... AND BOOM! The ending completely shattered his whole reality in 4K! You literally cannot make this level of suspense up! 💀",
-        "local_fallback": "assets/vault/douyin_hd_bad_luck.mp4",
-        "cdn_urls": [
-            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_hd_bad_luck.mp4"
-        ]
-    },
-    {
-        "id": "vault_douyin_viral_1",
-        "category": "douyin_comedy",
-        "title": "Chinese TikTok Really Hits Different 💀 #shorts",
-        "hook_banner": "MILLION VIEWS ON DOUYIN 😂",
-        "description": "A viral Douyin comedy short where an unexpected slapstick reaction and comedic face turn a normal moment into pure comedy gold.",
-        "fallback_script": "Ain't no way Chinese TikTok just did that! Look at bro trying to keep a straight face before disaster strikes. The reaction at the end is pure comedy gold! You can't even make this stuff up! 💀",
-        "local_fallback": "assets/vault/douyin_viral_1.mp4",
-        "cdn_urls": [
-            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_viral_1.mp4"
-        ]
-    },
-    {
-        "id": "vault_douyin_viral_2",
-        "category": "asian_comedy",
-        "title": "Bro Woke Up And Chose Violence 🥁💀 #shorts",
-        "hook_banner": "MAIN CHARACTER ENERGY 😂",
-        "description": "An epic viral Chinese meme drum moment with dramatic focus, unexpected comedic timing, and hilarious intensity.",
-        "fallback_script": "Bro really thought he was in Fast and Furious! Look at that intense focus right before the beat drops. The confidence is on another level! Ten out of ten for style! 😂",
-        "local_fallback": "assets/vault/douyin_viral_2.mp4",
-        "cdn_urls": [
-            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_viral_2.mp4"
-        ]
-    },
-    {
-        "id": "vault_douyin_viral_3",
-        "category": "douyin_comedy",
-        "title": "Bro Experienced Heartbreak In 4K 🚗😭 #shorts",
-        "hook_banner": "BRO IS GOING THROUGH IT 💀",
-        "description": "The legendary trending Chinese meme where someone dramatically weeps in the car with maximum emotional exaggeration and funny tearful face.",
-        "fallback_script": "Bro is fighting for his life right now! Look at the tears pouring down in 4K! What song was playing in that car to make him this emotional?! Give this man an Oscar right now! 💀",
-        "local_fallback": "assets/vault/douyin_viral_3.mp4",
-        "cdn_urls": [
-            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_viral_3.mp4"
-        ]
-    },
-    {
-        "id": "vault_asian_street_comedy",
-        "category": "asian_street_comedy",
-        "title": "Bro Tried To Look Smooth And Failed 💀 #shorts",
-        "hook_banner": "ACT NATURAL 😂",
-        "description": "A stylish guy tries to do a smooth slow-motion pose while crossing a pedestrian bridge to impress someone walking by, trips over a tiny bump, does an awkward windmill arm recovery, and acts like it was totally intentional.",
-        "fallback_script": "Bro was trying so hard to be the main character! He practiced that smooth walk for three hours in the mirror. But the pavement had other plans! One tiny stumble and the arms started flying like a helicopter! And look how he immediately acts like nothing happened. Respect the confidence! 😂",
-        "local_fallback": "assets/vault/starter_comedy.mp4",
-        "cdn_urls": [
-            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/starter_comedy.mp4"
-        ]
-    }
-]
-
-# ==========================================
-# 2. INGESTION ENGINE (DUAL ROUTE FAIL-SAFE)
+# 1. LIVE CHINESE DOUYIN INGESTION ENGINE
 # ==========================================
 def download_file_stream(url, dest_path, timeout=30):
     """Download a file with streaming and browser User-Agent headers."""
@@ -155,194 +53,126 @@ def download_file_stream(url, dest_path, timeout=30):
 def try_tikwm_download(video_url, dest_path):
     """Attempt watermark-free extraction from TikWM API for Douyin/TikTok."""
     try:
-        print(f"🔍 [Route 1 - TikWM] Querying watermark-free API for: {video_url}")
+        print(f"🔍 [TikWM] Querying watermark-free API for: {video_url}")
         resp = requests.post("https://www.tikwm.com/api/", data={"url": video_url}, timeout=15)
         if resp.status_code == 200:
             data = resp.json()
             if data.get("code") == 0 and "data" in data and "play" in data["data"]:
                 play_url = data["data"]["play"]
-                title = data["data"].get("title", "Viral Comedy Short")
-                print(f"✅ [Route 1 - TikWM] Found direct video stream! Downloading...")
+                title = data["data"].get("title", "Viral Chinese Comedy")
+                print("✅ [TikWM] Found direct video stream! Downloading...")
                 if download_file_stream(play_url, dest_path):
                     return True, title
     except Exception as e:
-        print(f"⚠️ [Route 1 - TikWM] Error: {e}")
+        print(f"⚠️ [TikWM] Error: {e}")
     return False, ""
 
-def try_ytdlp_download(video_url, dest_path):
-    """Attempt download via yt-dlp."""
-    try:
-        print(f"🔍 [Route 1 - yt-dlp] Invoking yt-dlp on: {video_url}")
-        cmd = [
-            sys.executable, "-m", "yt_dlp",
-            "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/best",
-            "--no-check-certificates",
-            "--max-filesize", "50M",
-            "-o", dest_path,
-            video_url
-        ]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-        if res.returncode == 0 and os.path.exists(dest_path) and os.path.getsize(dest_path) > 10000:
-            print("✅ [Route 1 - yt-dlp] Download succeeded!")
-            return True
-        else:
-            print(f"⚠️ [Route 1 - yt-dlp] Warning/Error:\n{res.stderr[:300]}")
-    except Exception as e:
-        print(f"⚠️ [Route 1 - yt-dlp] Exception: {e}")
-    return False
-
-def scrape_fresh_douyin_china_feed(dest_path):
+def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.json"):
     """
-    Directly queries the live Chinese Douyin ByteDance mobile feed API from China CDN!
-    Bypasses all western blocks and gets 100% authentic, unindexed Chinese clips.
+    100% Dynamic Chinese Douyin Video Ingestion:
+    - Never uses old stale files or hardcoded cartoon vaults.
+    - If user provides URL: downloads that specific video directly.
+    - If auto: queries live Douyin ByteDance China feed API directly from China CDN.
+    - Guarantees zero duplicate videos using history.json memory.
     """
-    try:
-        print("🌐 [DOUYIN CHINA DIRECT] Scraping live Douyin ByteDance feed API...")
-        url = "https://aweme.snssdk.com/aweme/v1/feed/?count=15"
-        headers = {"User-Agent": "okhttp/3.10.0.1", "Accept": "application/json"}
-        r = requests.get(url, headers=headers, timeout=15)
-        if r.status_code == 200:
-            data = r.json()
-            for item in data.get("aweme_list", []):
-                dur = item.get("duration", 0) / 1000.0
-                video = item.get("video", {})
-                play_urls = video.get("play_addr", {}).get("url_list", [])
-                if 14.0 <= dur <= 35.0 and play_urls:
-                    aweme_id = item.get("aweme_id")
-                    desc = item.get("desc", "Viral Chinese Douyin Comedy")
-                    print(f"✅ Found fresh Douyin clip ID {aweme_id} ({dur:.1f}s)! Downloading from ByteDance China CDN...")
-                    dl_headers = {"User-Agent": "okhttp/3.10.0.1"}
-                    with requests.get(play_urls[0], headers=dl_headers, stream=True, timeout=30) as resp:
-                        resp.raise_for_status()
-                        with open(dest_path, "wb") as f:
-                            for chunk in resp.iter_content(chunk_size=1024*512):
-                                if chunk:
-                                    f.write(chunk)
-                    if os.path.exists(dest_path) and os.path.getsize(dest_path) > 50000:
-                        print(f"🎉 Successfully downloaded live Chinese Douyin video ({os.path.getsize(dest_path)/(1024*1024):.2f} MB)!")
-                        meta = {
-                            "id": f"douyin_{aweme_id}",
-                            "title": "Chinese TikTok Went Too Far 💀 #shorts",
-                            "hook_banner": "WAIT TILL THE END 😂",
-                            "description": desc,
-                            "fallback_script": "Ain't no way Chinese TikTok just did that! Look at the reaction right before disaster strikes. Pure comedy gold in 4K! 💀"
-                        }
-                        return True, meta
-    except Exception as e:
-        print(f"⚠️ Live Douyin feed scrape notice: {e}")
-    return False, None
+    os.makedirs("temp", exist_ok=True)
+    raw_video_path = os.path.join("temp", "source_video.mp4")
 
-def ingest_video_dual_route(video_url, topic, history_file="history.json"):
-    """
-    Dual-Route Ingestion Engine:
-    Route 1: User URL (Douyin, TikTok, YouTube Shorts, or direct video URL)
-    Route 2: Curated Viral Comedy Vault (Guaranteed zero-failure fallback)
-    """
-    os.makedirs("input", exist_ok=True)
-    raw_video_path = os.path.join("input", "source_video.mp4")
-
-    # 0. If a specific topic is requested (e.g. suspense, kids, pets), allow Vault to match it!
-    if topic and topic.strip() and topic.strip().lower() != 'auto':
-        print(f"🎯 [TARGETED NICHE] Topic requested: '{topic}'. Matching from Curated Vault...")
-    elif not video_url or not video_url.strip():
-        print(f"\n=======================================================")
-        print(f"🇨🇳 [CHINA LIVE STREAM] Fetching brand new viral clip directly from Douyin China API...")
-        print(f"=======================================================")
-        ok, live_meta = scrape_fresh_douyin_china_feed(raw_video_path)
-        if ok and live_meta:
-            return raw_video_path, live_meta["title"], live_meta["description"], "douyin_live_china", live_meta
-
-    # 1. Route 1: Try user-provided URL
+    # 1. Custom URL given by user
     if video_url and video_url.strip():
         url = video_url.strip()
-        print(f"\n=======================================================")
-        print(f"🚀 [ROUTE 1 ACTIVATED] Processing Video URL: {url}")
-        print(f"=======================================================")
-        
-        # Check if direct video file
+        print(f"\n🚀 Processing Custom Video URL: {url}")
         if url.endswith(".mp4") or url.endswith(".webm"):
-            print("📥 Direct media link detected, streaming download...")
-            try:
-                if download_file_stream(url, raw_video_path):
-                    print("✅ Direct download succeeded!")
-                    return raw_video_path, "Viral Comedy Clip #shorts", "Watch this hilarious moment unfold 😂", "route_1", None
-            except Exception as e:
-                print(f"⚠️ Direct download failed: {e}")
-
-        # Check if Douyin or TikTok
+            if download_file_stream(url, raw_video_path):
+                return raw_video_path, "Viral Comedy Short #shorts", "Watch this hilarious moment unfold 😂", "custom_url", {"id": "custom_url"}
         if "douyin.com" in url or "tiktok.com" in url:
-            ok, detected_title = try_tikwm_download(url, raw_video_path)
+            ok, det_title = try_tikwm_download(url, raw_video_path)
             if ok:
-                return raw_video_path, detected_title or "Viral Asian Comedy #shorts", "Viral Douyin comedy clip", "route_1", None
+                return raw_video_path, det_title or "Viral Asian Comedy #shorts", "Viral Douyin comedy clip", "custom_url", {"id": "custom_url"}
 
-        # Fall back to yt-dlp
-        ok = try_ytdlp_download(url, raw_video_path)
-        if ok:
-            return raw_video_path, "Viral Comedy Short #shorts", "Hilarious trending video", "route_1", None
-
-        print("\n⚠️ [ROUTE 1 FAILED] Could not download from provided URL (Firewall/Captcha/Rate-limit).")
-        print("🔄 [FAIL-SAFE SWITCH] Seamlessly switching to Route 2: Curated Viral Vault!")
-
-    # 2. Route 2: Curated Viral Comedy Vault Fallback
+    # 2. Live Chinese Douyin ByteDance Feed API (Direct from China CDN)
     print(f"\n=======================================================")
-    print(f"🎯 [ROUTE 2 ACTIVATED] Accessing Curated Viral Comedy Vault...")
+    print(f"🇨🇳 [CHINA LIVE STREAM] Fetching 100% BRAND NEW video directly from Douyin China API...")
     print(f"=======================================================")
 
-    # Load history memory to avoid repeating clips
     used_ids = set()
     if os.path.exists(history_file):
         try:
             with open(history_file, "r", encoding="utf-8") as f:
-                hist = json.load(f)
-                for item in hist:
+                for item in json.load(f):
                     if "clip_id" in item:
-                        used_ids.add(item["clip_id"])
+                        used_ids.add(str(item["clip_id"]))
         except Exception:
             pass
 
-    # Filter out played clips
-    available_clips = [c for c in VIRAL_VAULT if c["id"] not in used_ids]
-    if not available_clips:
-        print("🔄 Memory vault fully played! Resetting cycle for endless fresh content.")
-        available_clips = VIRAL_VAULT
+    # Keyword mappings for Chinese Douyin topics
+    topic_keywords = {
+        "suspense": ["反转", "剧情", "没想到", "搞笑剧情", "反转剧情", "神反转"],
+        "prank": ["整蛊", "搞笑", "整人", "恶作剧"],
+        "pets": ["金毛", "修狗", "萌宠", "狗狗", "猫咪"],
+        "comedy": ["搞笑", "沙雕", "幽默", "段子"]
+    }
+    keywords = []
+    if topic and topic.strip().lower() != "auto":
+        keywords = topic_keywords.get(topic.strip().lower(), [topic.strip().lower()])
 
-    # Filter by topic if specified
-    if topic and topic.strip() and topic.strip().lower() != 'auto':
-        topic_lower = topic.strip().lower()
-        topic_matched = [c for c in available_clips if topic_lower in c["category"] or topic_lower in c["title"].lower()]
-        if topic_matched:
-            available_clips = topic_matched
+    url = "https://aweme.snssdk.com/aweme/v1/feed/?count=35"
+    headers = {"User-Agent": "okhttp/3.10.0.1", "Accept": "application/json"}
 
-    chosen_clip = random.choice(available_clips)
-    print(f"🎬 Selected Vault Clip: {chosen_clip['id']} ({chosen_clip['category']})")
-    print(f"📖 Context: {chosen_clip['description']}")
-
-    # Obtain media file: try local asset first, then CDN URLs
-    if os.path.exists(chosen_clip.get("local_fallback", "")):
-        print(f"✅ Found verified local asset: {chosen_clip['local_fallback']}")
-        import shutil
-        shutil.copy(chosen_clip["local_fallback"], raw_video_path)
-        return raw_video_path, chosen_clip["title"], chosen_clip["description"], "route_2", chosen_clip
-
-    # Try CDN URLs
-    for cdn_url in chosen_clip.get("cdn_urls", []):
+    for attempt in range(5):
         try:
-            print(f"🌐 Fetching clip from CDN: {cdn_url}")
-            if download_file_stream(cdn_url, raw_video_path, timeout=15):
-                print("✅ Successfully downloaded clip from CDN!")
-                return raw_video_path, chosen_clip["title"], chosen_clip["description"], "route_2", chosen_clip
+            resp = requests.get(url, headers=headers, timeout=20)
+            if resp.status_code == 200:
+                items = resp.json().get("aweme_list", [])
+                candidates = []
+                for item in items:
+                    aweme_id = str(item.get("aweme_id", ""))
+                    if aweme_id in used_ids:
+                        continue
+                    dur = item.get("duration", 0) / 1000.0
+                    if not (12.0 <= dur <= 35.0):
+                        continue
+                    play_urls = item.get("video", {}).get("play_addr", {}).get("url_list", [])
+                    if not play_urls:
+                        continue
+                    desc = item.get("desc", "")
+                    score = 0
+                    for kw in keywords:
+                        if kw in desc:
+                            score += 10
+                    candidates.append((score, dur, aweme_id, desc, play_urls[0]))
+
+                if candidates:
+                    candidates.sort(key=lambda x: x[0], reverse=True)
+                    score, dur, aweme_id, desc, play_url = candidates[0]
+                    print(f"✅ Found fresh unindexed Douyin clip! ID: {aweme_id} ({dur:.1f}s)")
+                    print(f"   Chinese Caption: {desc}")
+                    print(f"📥 Downloading directly from ByteDance China CDN...")
+
+                    dl_headers = {"User-Agent": "okhttp/3.10.0.1"}
+                    with requests.get(play_url, headers=dl_headers, stream=True, timeout=30) as dl_resp:
+                        dl_resp.raise_for_status()
+                        with open(raw_video_path, "wb") as f:
+                            for chunk in dl_resp.iter_content(chunk_size=1024*512):
+                                if chunk:
+                                    f.write(chunk)
+
+                    if os.path.exists(raw_video_path) and os.path.getsize(raw_video_path) > 50000:
+                        file_mb = os.path.getsize(raw_video_path) / (1024 * 1024)
+                        print(f"🎉 Successfully downloaded brand new Chinese Douyin video ({file_mb:.2f} MB)!")
+                        meta = {
+                            "id": f"douyin_{aweme_id}",
+                            "title": "Chinese TikTok Went Too Far 💀 #shorts",
+                            "hook_banner": "WAIT FOR THE TWIST 💀" if "suspense" in (topic or "").lower() else "WAIT TILL THE END 😂",
+                            "description": desc,
+                            "fallback_script": "Ain't no way Chinese TikTok just did that! Pure comedy gold in 4K! 💀"
+                        }
+                        return raw_video_path, meta["title"], desc, "douyin_live_china", meta
         except Exception as e:
-            print(f"⚠️ CDN download attempt failed: {e}")
+            print(f"⚠️ Feed attempt {attempt+1} notice: {e}")
+            time.sleep(2)
 
-    # Fallback to verified local Douyin Chinese clips
-    for backup_clip in ["assets/vault/douyin_hd_bad_luck.mp4", "assets/vault/douyin_china_live.mp4", "assets/vault/douyin_hd_prank.mp4"]:
-        if os.path.exists(backup_clip):
-            print(f"🔄 Using verified authentic Douyin Chinese backup: {backup_clip}")
-            import shutil
-            shutil.copy(backup_clip, raw_video_path)
-            return raw_video_path, chosen_clip["title"], chosen_clip["description"], "route_2", chosen_clip
-
-    raise RuntimeError("Critical: Unable to acquire video clip from either Route 1 or Route 2!")
+    raise RuntimeError("Critical: Could not acquire a fresh video from Douyin China API. Retrying...")
 
 # ==========================================
 # 3. GEMINI BABA MULTIMODAL COMEDY DIRECTOR
@@ -1008,8 +838,8 @@ def main():
     print("🔥 LAUNCHING VIRAL ASIAN MEME & COMEDY SHORTS STUDIO (100% CLOUD)")
     print("===================================================================")
 
-    # 1. Dual-Route Ingestion
-    raw_video, raw_title, raw_desc, route_used, vault_meta = ingest_video_dual_route(
+    # 1. Live Chinese Douyin Ingestion
+    raw_video, raw_title, raw_desc, route_used, vault_meta = ingest_live_chinese_video(
         video_url=args.video_url,
         topic=args.topic,
         history_file="history.json"
@@ -1094,6 +924,15 @@ def main():
     with open(history_file, "w", encoding="utf-8") as f:
         json.dump(history, f, indent=2)
     print(f"🧠 Updated Anti-Repetition Vault: {history_file} ({len(history)} total shorts)")
+
+    # 7. Auto-Cleanup Temporary Files (Zero leftover video junk)
+    try:
+        import shutil
+        if os.path.exists("temp"):
+            shutil.rmtree("temp", ignore_errors=True)
+            print("🧹 [CLEANUP] Successfully deleted all temporary raw video and audio files!")
+    except Exception as e:
+        print(f"⚠️ Cleanup notice: {e}")
 
     print("\n===================================================================")
     print("🎉 VIRAL COMEDY SHORT SUCCESSFULLY GENERATED!")
