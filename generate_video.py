@@ -500,7 +500,7 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
         f.write("[V4+ Styles]\n")
         f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
         # Bold yellow & white text, thick black outline, center bottom alignment (Alignment 2)
-        f.write("Style: Hormozi,DejaVu Sans,58,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,2,2,40,40,280,1\n\n")
+        f.write("Style: Hormozi,DejaVu Sans,58,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,2,2,40,40,320,1\n\n")
         
         f.write("[Events]\n")
         f.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
@@ -582,13 +582,31 @@ def get_media_duration(file_path):
     except Exception:
         return 20.0
 
+def get_video_dimensions(file_path):
+    """Probes video width and height via ffprobe."""
+    try:
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=width,height",
+            "-of", "csv=s=x:p=0",
+            file_path
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        parts = res.stdout.strip().split("x")
+        w, h = int(parts[0]), int(parts[1])
+        return w, h
+    except Exception as e:
+        print(f"⚠️ ffprobe dimension check fallback: {e}")
+        return 1920, 1080
+
 def render_transformative_short(input_video, narration_audio, ass_subtitles, hook_banner, output_video, output_thumb):
     """
-    Renders 100% Monetizable YouTube Short:
-    - Horizontal Flip (hflip)
-    - 9:16 Vertical Framing (1080x1920)
-    - 106% Dynamic Zoom & Crop
-    - 1.03x Micro Speed Shift (setpts=0.97*PTS)
+    Renders 100% Monetizable YouTube Short with Adaptive Framing:
+    - Smart Aspect Ratio Detection:
+      * Landscape (16:9): Ambient Blurred Studio Frame (100% full action visible, zero cropping/zooming)
+      * Vertical (9:16): Native 9:16 vertical framing (zero artificial zoom)
+    - Horizontal Flip (hflip) & dynamic speed match (setpts)
     - Top Hook Banner Pill Box (ALL CAPS)
     - Burned Hormozi Yellow/White Subtitles
     - Dual Audio Mixing (Voiceover 1.0 + Upbeat BGM 0.12)
@@ -599,7 +617,11 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
     narration_dur = get_media_duration(narration_audio)
     target_dur = narration_dur + 0.6
     src_dur = get_media_duration(input_video)
+    v_w, v_h = get_video_dimensions(input_video)
+    is_landscape = (v_w > v_h) or (v_w / max(v_h, 1) >= 0.85)
+
     print(f"⏱️ Video Sync: Source={src_dur:.2f}s | Narration={narration_dur:.2f}s | Target Short={target_dur:.2f}s")
+    print(f"📐 Video Dimensions: {v_w}x{v_h} | Layout: {'Studio Ambient Blur Frame (Full Action, Zero Zoom)' if is_landscape else 'Native 9:16 Vertical (Zero Artificial Zoom)'}")
 
     # Dynamic speed scaling: If source video duration is close to target duration,
     # calibrate PTS so the entire clip plays once from start to finish with zero awkward looping!
@@ -615,31 +637,65 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
     synthesize_comedy_bgm(bgm_path, target_dur + 2.0)
 
     # 2. Build FFmpeg Filtergraph
-    # Top banner: draws a dark rounded pill box at y=110, with bold yellow text
     clean_hook = hook_banner.replace("'", "").replace(":", "").upper()
     ass_escaped = ass_subtitles.replace("\\", "/").replace(":", "\\:")
-    
-    # Video filters:
-    # 1. hflip -> mirror image
-    # 2. scale & crop to 1080:1920
-    # 3. 106% dynamic zoom
-    # 4. dynamic speed match (setpts)
-    # 5. drawbox + drawtext for hook banner
-    # 6. subtitles filter for ASS
-    filter_complex = (
-        f"[0:v]hflip,"
-        f"scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
-        f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
-        f"scale=1.06*iw:1.06*ih:flags=lanczos,crop=1080:1920,"
-        f"{speed_filter},"
-        f"drawbox=x=(iw-860)/2:y=110:w=860:h=90:color=black@0.75:t=fill,"
-        f"drawtext=text='{clean_hook}':fontsize=40:fontcolor=yellow:x=(w-text_w)/2:y=132,"
-        f"drawbox=x=0:y=1500:w=1080:h=350:color=black@0.90:t=fill,"
-        f"subtitles='{ass_escaped}'[outv];"
-        f"[1:a]volume=1.0[voice];"
-        f"[2:a]volume=0.12[bgm];"
-        f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
-    )
+
+    if is_landscape:
+        # Professional Studio Ambient Blur:
+        # Foreground preserves 100% of the horizontal video (scale=1080:-2), centered vertically
+        # Background is an ambient blurred version of the video filling 1080x1920
+        # 100% of action, faces, and slapstick punchlines are in full view!
+        filter_complex = (
+            f"[0:v]hflip,{speed_filter},split=2[v_bg][v_fg];"
+            f"[v_bg]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
+            f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
+            f"boxblur=25:8,eq=brightness=-0.15[bg_blur];"
+            f"[v_fg]scale=1080:-2:flags=lanczos[fg_crisp];"
+            f"[bg_blur][fg_crisp]overlay=0:(H-h)/2[base_comp];"
+            f"[base_comp]drawbox=x=(iw-860)/2:y=120:w=860:h=90:color=black@0.75:t=fill,"
+            f"drawtext=text='{clean_hook}':fontsize=40:fontcolor=yellow:x=(w-text_w)/2:y=142,"
+            f"subtitles='{ass_escaped}'[outv];"
+            f"[1:a]volume=1.0[voice];"
+            f"[2:a]volume=0.12[bgm];"
+            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
+        )
+        simpler_filter = (
+            f"[0:v]hflip,{speed_filter},split=2[v_bg][v_fg];"
+            f"[v_bg]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
+            f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
+            f"boxblur=25:8,eq=brightness=-0.15[bg_blur];"
+            f"[v_fg]scale=1080:-2:flags=lanczos[fg_crisp];"
+            f"[bg_blur][fg_crisp]overlay=0:(H-h)/2[base_comp];"
+            f"[base_comp]subtitles='{ass_escaped}'[outv];"
+            f"[1:a]volume=1.0[voice];"
+            f"[2:a]volume=0.12[bgm];"
+            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
+        )
+    else:
+        # Native Vertical 9:16 Video:
+        # Scale to 1080x1920 with minimal crop, ZERO artificial zoom
+        filter_complex = (
+            f"[0:v]hflip,{speed_filter},"
+            f"scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
+            f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
+            f"drawbox=x=(iw-860)/2:y=110:w=860:h=90:color=black@0.75:t=fill,"
+            f"drawtext=text='{clean_hook}':fontsize=40:fontcolor=yellow:x=(w-text_w)/2:y=132,"
+            f"drawbox=x=0:y=1540:w=1080:h=260:color=black@0.85:t=fill,"
+            f"subtitles='{ass_escaped}'[outv];"
+            f"[1:a]volume=1.0[voice];"
+            f"[2:a]volume=0.12[bgm];"
+            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
+        )
+        simpler_filter = (
+            f"[0:v]hflip,{speed_filter},"
+            f"scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
+            f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
+            f"drawbox=x=0:y=1540:w=1080:h=260:color=black@0.85:t=fill,"
+            f"subtitles='{ass_escaped}'[outv];"
+            f"[1:a]volume=1.0[voice];"
+            f"[2:a]volume=0.12[bgm];"
+            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
+        )
 
     cmd = [
         "ffmpeg", "-y",
@@ -664,16 +720,6 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
     if res.returncode != 0:
         print(f"⚠️ Primary FFmpeg render notice:\n{res.stderr[-500:]}")
         print("🔄 Falling back to simplified filtergraph (subtitles only)...")
-        # Simplified fallback filter if drawbox/drawtext hits font issues
-        simpler_filter = (
-            f"[0:v]hflip,scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
-            f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
-            f"drawbox=x=0:y=1500:w=1080:h=350:color=black@0.90:t=fill,"
-            f"subtitles='{ass_escaped}'[outv];"
-            f"[1:a]volume=1.0[voice];"
-            f"[2:a]volume=0.12[bgm];"
-            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
-        )
         cmd_fallback = [
             "ffmpeg", "-y",
             "-stream_loop", "-1", "-i", input_video,
@@ -691,7 +737,9 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
             "-t", f"{target_dur:.2f}",
             output_video
         ]
-        subprocess.run(cmd_fallback, check=True)
+        res_fb = subprocess.run(cmd_fallback, capture_output=True, text=True)
+        if res_fb.returncode != 0:
+            raise RuntimeError(f"FFmpeg rendering failed completely: {res_fb.stderr[-500:]}")
 
     print(f"✅ Final Video Successfully Rendered: {output_video}")
 
