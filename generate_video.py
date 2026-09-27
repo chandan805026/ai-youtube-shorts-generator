@@ -24,6 +24,7 @@ import random
 import math
 import struct
 import wave
+import base64
 
 # Ensure UTF-8 output
 if sys.stdout.encoding != 'utf-8':
@@ -39,10 +40,10 @@ VIRAL_VAULT = [
     {
         "id": "vault_douyin_china_live",
         "category": "douyin_direct_china",
-        "title": "Dog Forced To Use Human Toilet In 4K 😭💀 #shorts",
-        "hook_banner": "BRO IS POTTY TRAINED 😂",
-        "description": "An authentic viral Douyin comedy short directly from China where a lazy golden retriever dog is sitting on the human bathroom toilet like a civilized person, making hilarious human-like expressions and refusing to take care of its rebellious puppy.",
-        "fallback_script": "Ain't no way Chinese TikTok just taught a golden retriever to use a human toilet! Look at bro sitting on the porcelain throne contemplating every single life decision! He looks like he's about to ask for the morning newspaper and a hot cup of coffee! And the way he completely ignores the puppy trying to interrupt his private bathroom time is pure comedy gold! Ten out of ten civilized gentleman! 💀",
+        "title": "Dog Mom Gives Human Toilet Demo In 4K 😭💀 #shorts",
+        "hook_banner": "MOM GAVE A LIVE DEMO 😂",
+        "description": "An authentic viral Douyin comedy short directly from China where a golden retriever mother dog in yellow clothes teaches her cute puppy how to use the human toilet. When the confused puppy doesn't know what to do on the training seat, the mother dog literally hops onto the porcelain commode and balances all four paws on the rim to demonstrate how to use it like a civilized human!",
+        "fallback_script": "Ain't no way this dog mom literally said: 'Watch and learn, son!' Look at her placing the puppy on the potty trainer first... but when the kid looks confused, SHE HOPS ON THE TOILET TO DEMO IT HERSELF! Four paws perfectly balanced on the porcelain throne looking at the camera like: 'See? It's that easy!' Asian parenting has officially crossed over to pets! 💀",
         "local_fallback": "assets/vault/douyin_china_live.mp4",
         "cdn_urls": [
             "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_china_live.mp4"
@@ -292,9 +293,113 @@ def ingest_video_dual_route(video_url, topic, history_file="history.json"):
 # ==========================================
 # 3. GEMINI BABA MULTIMODAL COMEDY DIRECTOR
 # ==========================================
-def direct_comedy_with_gemini(clip_description, topic, custom_script="", fallback_meta=None, target_duration=20.0):
+def upload_video_to_gemini(video_path, gemini_key):
+    """
+    Uploads the full raw downloaded video to the Google Gemini Files API
+    so Gemini can watch the entire video with its own eyes!
+    """
+    if not video_path or not os.path.exists(video_path):
+        print(f"⚠️ Video file does not exist for Gemini upload: {video_path}")
+        return None, None
+
+    file_size = os.path.getsize(video_path)
+    print(f"📤 Uploading full video to Gemini Files API ({file_size / (1024*1024):.2f} MB)...")
+    try:
+        # Step 1: Initialize Resumable Upload
+        init_url = f"https://generativelanguage.googleapis.com/upload/v1beta/files?key={gemini_key}"
+        headers = {
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+            "X-Goog-Upload-Header-Content-Length": str(file_size),
+            "X-Goog-Upload-Header-Content-Type": "video/mp4",
+            "Content-Type": "application/json"
+        }
+        metadata = {"file": {"display_name": os.path.basename(video_path)}}
+        init_resp = requests.post(init_url, headers=headers, json=metadata, timeout=30)
+        init_resp.raise_for_status()
+
+        upload_url = init_resp.headers.get("X-Goog-Upload-URL") or init_resp.headers.get("x-goog-upload-url")
+        if not upload_url:
+            print("⚠️ Gemini Files API did not return an upload URL.")
+            return None, None
+
+        # Step 2: Upload Video File Content
+        with open(video_path, "rb") as f:
+            upload_headers = {
+                "Content-Length": str(file_size),
+                "X-Goog-Upload-Offset": "0",
+                "X-Goog-Upload-Command": "upload, finalize"
+            }
+            up_resp = requests.put(upload_url, headers=upload_headers, data=f, timeout=120)
+            up_resp.raise_for_status()
+            res_data = up_resp.json()
+            file_info = res_data.get("file", {})
+            file_uri = file_info.get("uri")
+            file_name = file_info.get("name")
+            print(f"✅ Video successfully uploaded to Gemini! File ID: {file_name}")
+
+        # Step 3: Wait for Gemini to finish processing video frames
+        print("⏳ Waiting for Gemini to process the video stream...")
+        for attempt in range(25):
+            time.sleep(2)
+            check_url = f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={gemini_key}"
+            c_resp = requests.get(check_url, timeout=15)
+            if c_resp.status_code == 200:
+                c_json = c_resp.json()
+                state = c_json.get("state")
+                if state == "ACTIVE":
+                    print(f"🎬 [SUCCESS] Video is ACTIVE! Gemini will watch the entire video.")
+                    return file_uri, file_name
+                elif state == "FAILED":
+                    print(f"❌ Video processing failed on Gemini server.")
+                    return None, None
+            print(f"   ...processing video frames ({attempt+1}/25)...")
+
+        return file_uri, file_name
+    except Exception as e:
+        print(f"⚠️ Gemini Files API upload failed: {e}")
+        return None, None
+
+
+def extract_video_keyframes_base64(video_path, num_frames=5):
+    """
+    Fallback visual extractor: extracts keyframes across the video using ffmpeg
+    and encodes them as base64 images so Gemini can visually inspect the action.
+    """
+    frames_b64 = []
+    try:
+        dur = get_media_duration(video_path)
+        if dur <= 1.0:
+            return frames_b64
+        timestamps = [dur * (i + 1) / (num_frames + 1) for i in range(num_frames)]
+        temp_dir = "temp/frames"
+        os.makedirs(temp_dir, exist_ok=True)
+        for idx, ts in enumerate(timestamps):
+            frame_file = os.path.join(temp_dir, f"frame_{idx}.jpg")
+            cmd = [
+                "ffmpeg", "-y", "-ss", f"{ts:.2f}",
+                "-i", video_path,
+                "-vframes", "1",
+                "-q:v", "2",
+                frame_file
+            ]
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if os.path.exists(frame_file) and os.path.getsize(frame_file) > 1000:
+                with open(frame_file, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode("utf-8")
+                    frames_b64.append(b64)
+        if frames_b64:
+            print(f"📸 Extracted {len(frames_b64)} visual frames for Gemini vision analysis.")
+    except Exception as e:
+        print(f"⚠️ Frame extraction notice: {e}")
+    return frames_b64
+
+
+def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", custom_script="", fallback_meta=None, target_duration=20.0):
     """
     Directs the short in American meme/commentary style:
+    - Feeds the ACTUAL VIDEO directly to Gemini Baba using Multimodal Vision.
+    - Gemini watches the real actions, characters, and punchline.
     - Writes energetic, hilarious voiceover commentary matched dynamically to video duration.
     - Writes high-retention Title with emojis & #shorts.
     - Writes 3-5 word ALL CAPS Top Hook Banner.
@@ -318,42 +423,73 @@ def direct_comedy_with_gemini(clip_description, topic, custom_script="", fallbac
 
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if gemini_key:
-        print("🧠 Calling Gemini Baba Comedy Director...")
+        print("🧠 Calling Gemini Baba Multimodal Video Director...")
+
+        # 1. Upload video file so Gemini directly watches it!
+        file_uri = None
+        file_name = None
+        frame_images_b64 = []
+        if video_path and os.path.exists(video_path):
+            file_uri, file_name = upload_video_to_gemini(video_path, gemini_key)
+            if not file_uri:
+                print("🔄 Falling back to visual keyframe extraction for Gemini vision...")
+                frame_images_b64 = extract_video_keyframes_base64(video_path)
+
         system_instruction = (
             "You are an elite YouTube Shorts & TikTok comedy writer in the style of Ray William Johnson, "
             "Daily Dose of Internet, and modern American meme creators ('Bro really thought...', 'Ain't no way').\n"
-            "Your commentary must be fast-paced, witty, highly energetic, and relatable for US/UK/global audiences.\n"
+            "YOU ARE WATCHING THE ACTUAL VIDEO FOOTAGE. Do NOT hallucinate or guess.\n"
+            "Your commentary must accurately reflect the EXACT physical actions and characters happening on screen, "
+            "while being fast-paced, witty, highly energetic, and relatable for US/UK/global audiences.\n"
             "Format your entire response as a single valid JSON object with keys: title, hook_banner, script, description, tags."
         )
-        
+
         user_prompt = f"""
-Analyze this viral comedy clip:
-- Scenario: {clip_description}
+WATCH AND ANALYZE THIS VIRAL VIDEO FOOTAGE CAREFULLY:
+- Video Context / Clues: {clip_description}
 - Genre/Niche: {topic}
 - Target Video Duration: {target_duration:.1f} seconds
 
-Provide JSON with:
-1. "title": High curiosity viral YouTube Shorts title under 60 characters with funny emojis and #shorts (e.g. 'Bro Thought He Was Safe But Wait For The Ending 💀 #shorts').
-2. "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner (e.g. 'WAIT TILL THE END 💀', 'THE PLOT TWIST 😂', 'HE DID NOT SEE THIS COMING 😭').
-3. "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words ({safe_audio_dur:.1f}s spoken at 1.12x speed).
-   - Hook in first 1.5 seconds (create intense curiosity without spoiling what actually happens!).
-   - Middle section: build comedic anticipation and suspense ('Look at him thinking he got away... wait for it...').
-   - Climax & Punchline: land the punchline right at the final 2 seconds as the twist explodes!
-4. "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy #asianmemes.
-5. "tags": 8-10 comma-separated keywords.
+STRICT VIDEO INSPECTION INSTRUCTIONS:
+1. Examine what actually happens across the seconds:
+   - Who or what are the subjects? (e.g. Is it a mother dog and her puppy? A person doing a prank? Street slapstick?).
+   - What is the step-by-step storyline? What starts the scene, what is the development, and what is the climax?
+   - DO NOT make up random things that do not occur on screen!
+   - If a mother dog is putting a puppy on a toilet trainer and then hops on the toilet rim to demonstrate how to use it, TALK SPECIFICALLY ABOUT HER DEMONSTRATING AND SHOWING OFF HER SKILLS!
+
+2. Provide JSON with:
+   - "title": High curiosity viral YouTube Shorts title under 60 characters with funny emojis and #shorts (e.g. 'Dog Mom Gives Human Toilet Demo In 4K 😭💀 #shorts').
+   - "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner matching the visual (e.g. 'MOM GAVE A LIVE DEMO 😂', 'WATCH AND LEARN 💀').
+   - "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words ({safe_audio_dur:.1f}s spoken at 1.12x speed).
+     * Hook in first 1.5 seconds stating the wild situation.
+     * Middle section: build comedic escalation based on the visual actions.
+     * Climax: land the punchline right as the video's ending punchline hits!
+   - "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy #douyin.
+   - "tags": 8-10 comma-separated keywords.
 
 Output ONLY raw JSON. No markdown ticks, no backticks.
 """
+        # Build contents payload with video or visual frames
+        content_parts = []
+        if file_uri:
+            content_parts.append({"fileData": {"fileUri": file_uri, "mimeType": "video/mp4"}})
+            print("👁️ Attaching FULL MP4 VIDEO STREAM to Gemini contents!")
+        elif frame_images_b64:
+            for b64 in frame_images_b64:
+                content_parts.append({"inlineData": {"mimeType": "image/jpeg", "data": b64}})
+            print(f"👁️ Attaching {len(frame_images_b64)} visual frames to Gemini contents!")
+        content_parts.append({"text": user_prompt})
+
         models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
         for mod in models_to_try:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={gemini_key}"
                 payload = {
-                    "contents": [{"parts": [{"text": user_prompt}]}],
+                    "contents": [{"parts": content_parts}],
                     "systemInstruction": {"parts": [{"text": system_instruction}]},
-                    "generationConfig": {"temperature": 0.85, "maxOutputTokens": 600}
+                    "generationConfig": {"temperature": 0.85, "maxOutputTokens": 800}
                 }
-                r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=20)
+                r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=45)
                 if r.status_code == 200:
                     data = r.json()
                     raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
@@ -361,12 +497,25 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                     cleaned = re.sub(r"\s*```$", "", cleaned)
                     parsed = json.loads(cleaned)
                     if "script" in parsed and "title" in parsed:
-                        print(f"🎉 Gemini Baba Director Success! Title: {parsed['title']}")
+                        print(f"🎉 Gemini Baba Multimodal Director Success! Title: {parsed['title']}")
+                        # Clean up uploaded file from Gemini
+                        if file_name:
+                            try:
+                                requests.delete(f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={gemini_key}", timeout=10)
+                            except Exception:
+                                pass
                         return parsed
                 else:
                     print(f"⚠️ Gemini {mod} returned HTTP {r.status_code}: {r.text[:200]}")
             except Exception as e:
                 print(f"⚠️ Gemini {mod} call notice: {e}")
+
+        # Clean up uploaded file if generation failed
+        if file_name:
+            try:
+                requests.delete(f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={gemini_key}", timeout=10)
+            except Exception:
+                pass
 
     # Fallback if Gemini key is missing or quota reached
     print("💡 Using Curated Comedy Script from Vault...")
@@ -802,6 +951,7 @@ def main():
 
     # 2. Gemini Baba Multimodal / Script Direction
     director_output = direct_comedy_with_gemini(
+        video_path=raw_video,
         clip_description=raw_desc,
         topic=args.topic,
         custom_script=args.script,
