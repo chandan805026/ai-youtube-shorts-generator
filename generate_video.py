@@ -973,9 +973,6 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
     # Pure Natural 1.0x Real-Life Speed (Zero fast-forwarding, full authentic motion)
     speed_filter = "setpts=PTS"
     print(f"⚡ Natural Video Speed: 1.0x Real Speed (setpts=PTS, full {target_dur:.2f}s duration)")
-        print(f"⚡ Dynamic Video Speed Scaling: {speed_filter} (100% synced, zero looping)")
-    else:
-        speed_filter = "setpts=0.97*PTS"
 
     # 1. Synthesize background music & 7-effect SFX pack
     bgm_path = "temp/comedy_bgm.wav"
