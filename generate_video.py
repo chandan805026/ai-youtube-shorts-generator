@@ -37,6 +37,18 @@ if sys.stdout.encoding != 'utf-8':
 # ==========================================
 VIRAL_VAULT = [
     {
+        "id": "vault_douyin_china_live",
+        "category": "douyin_direct_china",
+        "title": "Dog Forced To Use Human Toilet In 4K 😭💀 #shorts",
+        "hook_banner": "BRO IS POTTY TRAINED 😂",
+        "description": "An authentic viral Douyin comedy short directly from China where a lazy golden retriever dog is sitting on the human bathroom toilet like a civilized person, making hilarious human-like expressions and refusing to take care of its rebellious puppy.",
+        "fallback_script": "Ain't no way Chinese TikTok just taught a golden retriever to use a human toilet! Look at bro sitting on the porcelain throne contemplating every single life decision! He looks like he's about to ask for the morning newspaper and a hot cup of coffee! And the way he completely ignores the puppy trying to interrupt his private bathroom time is pure comedy gold! Ten out of ten civilized gentleman! 💀",
+        "local_fallback": "assets/vault/douyin_china_live.mp4",
+        "cdn_urls": [
+            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_china_live.mp4"
+        ]
+    },
+    {
         "id": "vault_douyin_slapstick_fresh",
         "category": "asian_comedy",
         "title": "Bro Woke Up To The Ultimate Disrespect In 4K 😭💀 #shorts",
