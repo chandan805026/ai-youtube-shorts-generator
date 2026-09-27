@@ -415,11 +415,11 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
             "tags": "shorts, funny, comedy, viral, meme, hilarious"
         }
 
-    # Calibrate exact word count for natural speech pace (~2.35 words/sec) to match full video length
+    # Calibrate exact word count for natural speech pace (~2.8 words/sec) to match full video length
     safe_audio_dur = max(6.0, target_duration - 1.2)
-    word_target = int(safe_audio_dur * 2.35)
+    word_target = int(safe_audio_dur * 2.8)
     word_min = max(14, word_target - 3)
-    word_max = word_target + 4
+    word_max = word_target + 3
     print(f"🎯 Calibrated Commentary Target: {safe_audio_dur:.1f}s speech ({word_min}-{word_max} words) for full {target_duration:.1f}s video")
 
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
@@ -456,33 +456,31 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
 
         user_prompt = f"""
 WATCH AND ANALYZE THIS VIRAL VIDEO FOOTAGE CAREFULLY:
-- Video Context / Clues: {clip_description}
+- Context Clues: {clip_description}
 - Genre/Niche: {topic}
-- Target Video Duration: {target_duration:.1f} seconds
+- Total Video Duration: {target_duration:.1f} seconds
 
-STRICT VISUAL INSPECTION INSTRUCTIONS:
-1. Examine what actually happens across the seconds:
-   - Exactly WHO are the subjects? Count the people, identify if they are girls/boys/kids/animals.
-   - What are they trying to do? (e.g. sneaking out, climbing down, escaping, playing a prank?).
-   - What goes wrong? Does someone slip, fall, fail, get stuck, or get scared?
-   - How do the other people react? (e.g. do they back off, laugh, or choose another way?).
-   - DO NOT make up random things! Match the REAL story!
+CHRONOLOGICAL PLAY-BY-PLAY DIRECTIVE:
+1. Examine what happens across the video timeline:
+   * 0s - 3s (Opening Hook): Introduce the exact person/subjects and challenge immediately visible on screen.
+   * Middle Seconds (Play-By-Play): Comment directly on the visible actions, techniques, slips, or reactions unfolding on screen in real time as they happen.
+   * Final 2-3s (The Climax): Deliver the punchline and final reaction to the ultimate outcome/twist right before the video ends!
 
 2. SOUNDBOARD SELECTION (As Audio Director):
    - Choose 1 to 3 sound effects from: 'whoosh', 'bonk', 'vine_boom', 'record_scratch', 'buzzer', 'pop', 'ding'.
-   - Pick the EXACT second (e.g. 0.4 for whoosh hook, or 12.3 for slip bonk).
-   - Set zoom: true for the most dramatic punchline/fail moment.
+   - Match the exact timestamp of visual impacts/twists.
+   - Set zoom: true for the most intense climax moment.
 
 3. Provide JSON with:
    - "title": High curiosity viral YouTube Shorts title under 60 characters with funny emojis and #shorts.
    - "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner matching the visual.
-   - "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words ({safe_audio_dur:.1f}s spoken at 1.12x speed).
-     * Hook in first 1.5 seconds stating the exact situation.
-     * Middle section: build comedic escalation based on what the characters are doing.
-     * Climax: land the punchline right as the fail/twist hits!
+   - "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words.
+     * Your words MUST cover the full {safe_audio_dur:.1f} seconds of speech.
+     * Do NOT stop speaking early!
+     * Align your description to the on-screen events so the viewer hears exactly what they see!
    - "sfx_timeline": [
        {{"time": 0.4, "sound": "whoosh", "zoom": false}},
-       {{"time": 12.5, "sound": "bonk", "zoom": true}}
+       {{"time": {min(safe_audio_dur, 12.0):.1f}, "sound": "vine_boom", "zoom": true}}
      ],
    - "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy #douyin.
    - "tags": 8-10 comma-separated keywords.
@@ -962,8 +960,8 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
 
     src_dur = get_media_duration(input_video)
     narration_dur = get_media_duration(narration_audio)
-    # Lock 100% to natural original video duration (plays at full real-life length)
-    target_dur = max(src_dur, narration_dur + 0.6)
+    # 1:1 Video-Audio Perfect Sync: Video ends exactly when narration completes (+ 0.6s punchline ring)
+    target_dur = narration_dur + 0.6
     v_w, v_h = get_video_dimensions(input_video)
     is_landscape = (v_w > v_h) or (v_w / max(v_h, 1) >= 0.85)
 
