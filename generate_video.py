@@ -39,10 +39,10 @@ VIRAL_VAULT = [
     {
         "id": "vault_douyin_slapstick_fresh",
         "category": "asian_comedy",
-        "title": "Bro Tried To Look Tough And Regretted Everything 💀 #shorts",
-        "hook_banner": "WAIT FOR THE KARMA 😂",
-        "description": "A hilarious 24-second high-definition Asian slapstick comedy sketch where a guy tries to act tough and confident, only to suffer an escalating series of instant funny fails and a shocking climax.",
-        "fallback_script": "Bro woke up thinking he was the main character of an action movie! Look at that swagger before the first disaster strikes. But wait until you see the ending... you literally cannot script this! Wait for it... wait for it... AND DOWN HE GOES! His soul just completely exited the building! 💀",
+        "title": "Bro Woke Up To The Ultimate Disrespect In 4K 😭💀 #shorts",
+        "hook_banner": "WORST WAY TO WAKE UP 💀",
+        "description": "A man is fast asleep dreaming peacefully on the couch, when his friend quietly sneaks up with a dirty bare foot and rests it right over his nose and mouth. The sleeping man begins sniffing it thinking it is breakfast, slowly opens his eyes in utter disbelief, and freaks out in horror.",
+        "fallback_script": "Bro was having the most peaceful dream of his entire life... until his friend chose pure biological violence! Look at this man quietly sneaking up and putting his whole bare foot directly on his face! And bro is actually sniffing it in his sleep thinking it's breakfast! Wait for it... wait for it... look at his eyes opening! The exact second reality hits and he realizes what he's smelling, his whole soul exits his body in 4K! You literally cannot make this level of disrespect up! 💀",
         "local_fallback": "assets/vault/douyin_slapstick_fresh.mp4",
         "cdn_urls": [
             "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_slapstick_fresh.mp4"
@@ -332,7 +332,7 @@ Provide JSON with:
 
 Output ONLY raw JSON. No markdown ticks, no backticks.
 """
-        models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
+        models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
         for mod in models_to_try:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={gemini_key}"
@@ -351,6 +351,8 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                     if "script" in parsed and "title" in parsed:
                         print(f"🎉 Gemini Baba Director Success! Title: {parsed['title']}")
                         return parsed
+                else:
+                    print(f"⚠️ Gemini {mod} returned HTTP {r.status_code}: {r.text[:200]}")
             except Exception as e:
                 print(f"⚠️ Gemini {mod} call notice: {e}")
 
@@ -453,11 +455,11 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
     
     clean_spoken_text = strip_emojis(script_text)
     print(f"🎙️ Cleaned TTS Voiceover Text (no emojis spoken):\n   {clean_spoken_text}")
-    print(f"🎙️ Generating voiceover with voice: {voice} at +12% speed...")
+    print(f"🎙️ Generating voiceover with voice: {voice} at +5% speed...")
     cmd = [
         sys.executable, "-m", "edge_tts",
         "--voice", voice,
-        "--rate", "+12%",
+        "--rate", "+5%",
         "--text", clean_spoken_text,
         "--write-media", output_audio,
         "--write-subtitles", vtt_file
