@@ -203,6 +203,47 @@ def try_ytdlp_download(video_url, dest_path):
         print(f"⚠️ [Route 1 - yt-dlp] Exception: {e}")
     return False
 
+def scrape_fresh_douyin_china_feed(dest_path):
+    """
+    Directly queries the live Chinese Douyin ByteDance mobile feed API from China CDN!
+    Bypasses all western blocks and gets 100% authentic, unindexed Chinese clips.
+    """
+    try:
+        print("🌐 [DOUYIN CHINA DIRECT] Scraping live Douyin ByteDance feed API...")
+        url = "https://aweme.snssdk.com/aweme/v1/feed/?count=15"
+        headers = {"User-Agent": "okhttp/3.10.0.1", "Accept": "application/json"}
+        r = requests.get(url, headers=headers, timeout=15)
+        if r.status_code == 200:
+            data = r.json()
+            for item in data.get("aweme_list", []):
+                dur = item.get("duration", 0) / 1000.0
+                video = item.get("video", {})
+                play_urls = video.get("play_addr", {}).get("url_list", [])
+                if 14.0 <= dur <= 35.0 and play_urls:
+                    aweme_id = item.get("aweme_id")
+                    desc = item.get("desc", "Viral Chinese Douyin Comedy")
+                    print(f"✅ Found fresh Douyin clip ID {aweme_id} ({dur:.1f}s)! Downloading from ByteDance China CDN...")
+                    dl_headers = {"User-Agent": "okhttp/3.10.0.1"}
+                    with requests.get(play_urls[0], headers=dl_headers, stream=True, timeout=30) as resp:
+                        resp.raise_for_status()
+                        with open(dest_path, "wb") as f:
+                            for chunk in resp.iter_content(chunk_size=1024*512):
+                                if chunk:
+                                    f.write(chunk)
+                    if os.path.exists(dest_path) and os.path.getsize(dest_path) > 50000:
+                        print(f"🎉 Successfully downloaded live Chinese Douyin video ({os.path.getsize(dest_path)/(1024*1024):.2f} MB)!")
+                        meta = {
+                            "id": f"douyin_{aweme_id}",
+                            "title": "Chinese TikTok Went Too Far 💀 #shorts",
+                            "hook_banner": "WAIT TILL THE END 😂",
+                            "description": desc,
+                            "fallback_script": "Ain't no way Chinese TikTok just did that! Look at the reaction right before disaster strikes. Pure comedy gold in 4K! 💀"
+                        }
+                        return True, meta
+    except Exception as e:
+        print(f"⚠️ Live Douyin feed scrape notice: {e}")
+    return False, None
+
 def ingest_video_dual_route(video_url, topic, history_file="history.json"):
     """
     Dual-Route Ingestion Engine:
@@ -211,6 +252,15 @@ def ingest_video_dual_route(video_url, topic, history_file="history.json"):
     """
     os.makedirs("input", exist_ok=True)
     raw_video_path = os.path.join("input", "source_video.mp4")
+
+    # 0. Live Chinese Douyin Feed (if no specific URL is provided, get fresh live China video)
+    if not video_url or not video_url.strip():
+        print(f"\n=======================================================")
+        print(f"🇨🇳 [CHINA LIVE STREAM] Fetching brand new viral clip directly from Douyin China API...")
+        print(f"=======================================================")
+        ok, live_meta = scrape_fresh_douyin_china_feed(raw_video_path)
+        if ok and live_meta:
+            return raw_video_path, live_meta["title"], live_meta["description"], "douyin_live_china", live_meta
 
     # 1. Route 1: Try user-provided URL
     if video_url and video_url.strip():
