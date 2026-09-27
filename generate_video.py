@@ -415,12 +415,12 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
             "tags": "shorts, funny, comedy, viral, meme, hilarious"
         }
 
-    # Calculate optimal word count for target duration (speech pace ~2.7 words/sec at +12% speed)
-    safe_audio_dur = max(6.0, target_duration - 1.0)
-    word_target = int(safe_audio_dur * 2.7)
-    word_min = max(14, word_target - 4)
+    # Calibrate exact word count for natural speech pace (~2.35 words/sec) to match full video length
+    safe_audio_dur = max(6.0, target_duration - 1.2)
+    word_target = int(safe_audio_dur * 2.35)
+    word_min = max(14, word_target - 3)
     word_max = word_target + 4
-    print(f"🎯 Calibrated Commentary Target: {safe_audio_dur:.1f}s speech ({word_min}-{word_max} words)")
+    print(f"🎯 Calibrated Commentary Target: {safe_audio_dur:.1f}s speech ({word_min}-{word_max} words) for full {target_duration:.1f}s video")
 
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if gemini_key:
@@ -960,20 +960,19 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
     os.makedirs(os.path.dirname(output_video) or ".", exist_ok=True)
     os.makedirs("temp", exist_ok=True)
 
-    narration_dur = get_media_duration(narration_audio)
-    target_dur = narration_dur + 0.6
     src_dur = get_media_duration(input_video)
+    narration_dur = get_media_duration(narration_audio)
+    # Lock 100% to natural original video duration (plays at full real-life length)
+    target_dur = max(src_dur, narration_dur + 0.6)
     v_w, v_h = get_video_dimensions(input_video)
     is_landscape = (v_w > v_h) or (v_w / max(v_h, 1) >= 0.85)
 
-    print(f"⏱️ Video Sync: Source={src_dur:.2f}s | Narration={narration_dur:.2f}s | Target Short={target_dur:.2f}s")
+    print(f"🎬 Video Sync: Source={src_dur:.2f}s | Narration={narration_dur:.2f}s | Target Short={target_dur:.2f}s")
     print(f"📐 Video Dimensions: {v_w}x{v_h} | Layout: {'Studio Ambient Blur Frame (Full Action, Zero Zoom)' if is_landscape else 'Native 9:16 Vertical'}")
 
-    # Dynamic speed scaling: If source video duration is close to target duration,
-    # calibrate PTS so the entire clip plays once from start to finish with zero awkward looping!
-    if src_dur > 0 and 0.70 <= (target_dur / src_dur) <= 1.35:
-        pts_scale = target_dur / src_dur
-        speed_filter = f"setpts={pts_scale:.4f}*PTS"
+    # Pure Natural 1.0x Real-Life Speed (Zero fast-forwarding, full authentic motion)
+    speed_filter = "setpts=PTS"
+    print(f"⚡ Natural Video Speed: 1.0x Real Speed (setpts=PTS, full {target_dur:.2f}s duration)")
         print(f"⚡ Dynamic Video Speed Scaling: {speed_filter} (100% synced, zero looping)")
     else:
         speed_filter = "setpts=0.97*PTS"
@@ -1050,7 +1049,7 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
         amix_labels.append(label)
 
     audio_filter_parts.append(
-        f"{''.join(amix_labels)}amix=inputs={len(amix_labels)}:duration=first:dropout_transition=2[outa]"
+        f"{''.join(amix_labels)}amix=inputs={len(amix_labels)}:duration=longest:dropout_transition=2[outa]"
     )
     audio_mix_filter = "".join(audio_filter_parts)
 
