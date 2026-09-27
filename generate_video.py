@@ -70,10 +70,10 @@ def try_tikwm_download(video_url, dest_path):
 def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.json"):
     """
     100% Dynamic Chinese Douyin Video Ingestion:
-    - Never uses old stale files or hardcoded cartoon vaults.
-    - If user provides URL: downloads that specific video directly.
-    - If auto: queries live Douyin ByteDance China feed API directly from China CDN.
-    - Guarantees zero duplicate videos using history.json memory.
+    - Multi-Swipe Aggregation: scans ~100 candidate videos across ByteDance mobile feeds.
+    - Tier-1 Priority: Blocks commercial ads and targets mega-viral 100K+ Likes videos.
+    - Bulletproof Anti-Duplicate memory matching raw ID and douyin_ prefixed ID.
+    - Direct unwatermarked HD download from ByteDance China CDN.
     """
     os.makedirs("temp", exist_ok=True)
     raw_video_path = os.path.join("temp", "source_video.mp4")
@@ -81,10 +81,10 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
     # 1. Custom URL given by user
     if video_url and video_url.strip():
         url = video_url.strip()
-        print(f"\n🚀 Processing Custom Video URL: {url}")
+        print(f"\n🎯 Processing Custom Video URL: {url}")
         if url.endswith(".mp4") or url.endswith(".webm"):
             if download_file_stream(url, raw_video_path):
-                return raw_video_path, "Viral Comedy Short #shorts", "Watch this hilarious moment unfold 😂", "custom_url", {"id": "custom_url"}
+                return raw_video_path, "Viral Comedy Short #shorts", "Watch this hilarious moment unfold 💀", "custom_url", {"id": "custom_url"}
         if "douyin.com" in url or "tiktok.com" in url:
             ok, det_title = try_tikwm_download(url, raw_video_path)
             if ok:
@@ -92,7 +92,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
     # 2. Live Chinese Douyin ByteDance Feed API (Direct from China CDN)
     print(f"\n=======================================================")
-    print(f"🇨🇳 [CHINA LIVE STREAM] Fetching 100% BRAND NEW video directly from Douyin China API...")
+    print(f"🚀 [CHINA LIVE STREAM] Aggregating 100+ Videos from Douyin Live Stream...")
     print(f"=======================================================")
 
     used_ids = set()
@@ -100,17 +100,21 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         try:
             with open(history_file, "r", encoding="utf-8") as f:
                 for item in json.load(f):
-                    if "clip_id" in item:
-                        used_ids.add(str(item["clip_id"]))
+                    cid = str(item.get("clip_id", "")).strip()
+                    if cid:
+                        used_ids.add(cid)
+                        clean_id = cid.replace("douyin_", "").replace("vault_", "").strip()
+                        if clean_id:
+                            used_ids.add(clean_id)
         except Exception:
             pass
 
     # Keyword mappings for Chinese Douyin topics
     topic_keywords = {
-        "suspense": ["反转", "剧情", "没想到", "搞笑剧情", "反转剧情", "神反转"],
-        "prank": ["整蛊", "搞笑", "整人", "恶作剧"],
-        "pets": ["金毛", "修狗", "萌宠", "狗狗", "猫咪"],
-        "comedy": ["搞笑", "沙雕", "幽默", "段子"]
+        "suspense": ["\u53cd\u8f6c", "\u60ca\u559c", "\u610f\u5916", "\u795e\u8f6c\u6298", "\u6ca1\u60f3\u5230", "\u7ed3\u5c40"],
+        "prank": ["\u6574\u86ca", "\u6076\u641e", "\u6076\u4f5c\u5267", "\u6574\u4eba"],
+        "pets": ["\u840c\u5ba0", "\u72d7\u72d7", "\u732b\u54aa", "\u5ba0\u7269", "\u6c6a\u661f\u4eba"],
+        "comedy": ["\u6c99\u96d5", "\u641e\u7b11", "\u5e7d\u9ed8", "\u7b11\u6599"]
     }
     keywords = []
     if topic and topic.strip().lower() != "auto":
@@ -124,116 +128,160 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
     ]
     headers = {"User-Agent": "okhttp/3.10.0.1", "Accept": "application/json"}
 
-    for attempt in range(8):
-        url = endpoints[attempt % len(endpoints)]
-        try:
-            resp = requests.get(url, headers=headers, timeout=20)
-            if resp.status_code == 200:
-                items = resp.json().get("aweme_list", [])
-                candidates = []
-                ad_words = ["带货", "下单", "直播", "价格", "广告", "同款", "链接", "优惠", "购买", "领券", "店铺", "商用"]
-                viral_tags = ["搞笑", "沙雕", "反转", "没想到", "神操作", "社死", "笑不活了", "名场面", "人类高质量", "狗子", "萌宠"]
+    for attempt in range(4):
+        print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Attempt {attempt+1}/4)...")
+        raw_items = []
+        seen_batch_ids = set()
 
-                for item in items:
-                    aweme_id = str(item.get("aweme_id", ""))
-                    if aweme_id in used_ids:
-                        continue
+        for swipe_idx, ep_url in enumerate(endpoints[:3]):
+            try:
+                sep = "&" if "?" in ep_url else "?"
+                url_with_ts = f"{ep_url}{sep}_rticket={int(time.time() * 1000)}&ts={int(time.time())}"
+                resp = requests.get(url_with_ts, headers=headers, timeout=15)
+                if resp.status_code == 200:
+                    feed_list = resp.json().get("aweme_list", [])
+                    new_count = 0
+                    for it in feed_list:
+                        aid = str(it.get("aweme_id", "")).strip()
+                        if aid and aid not in seen_batch_ids:
+                            seen_batch_ids.add(aid)
+                            raw_items.append(it)
+                            new_count += 1
+                    print(f"   📲 Swipe {swipe_idx+1}: Ingested +{new_count} candidates from ByteDance feed.")
+            except Exception as e:
+                print(f"   ⚠️ Swipe {swipe_idx+1} notice: {e}")
+            time.sleep(0.3)
 
-                    # 1. Skip Commercial Ads and E-Commerce Shopping
-                    if item.get("is_ads") or item.get("commerce_info"):
-                        continue
-                    desc = item.get("desc", "")
-                    if any(w in desc for w in ad_words):
-                        continue
+        print(f"📦 Total Scanned Video Pool: {len(raw_items)} candidates in memory!")
 
-                    # 2. Check Golden Duration (12s to 35s)
-                    dur = item.get("duration", 0) / 1000.0
-                    if not (12.0 <= dur <= 35.0):
-                        continue
+        candidates = []
+        ad_words = ["\u5e26\u8d27", "\u4e0b\u5355", "\u5e7f\u544a", "\u76f4\u64ad", "\u94fe\u63a5", "\u70b9\u51fb", "\u8d2d\u4e70", "\u5305\u90ae", "\u9886\u5238", "\u4f18\u60e0", "\u540c\u6b3e", "\u6a71\u7a97"]
+        viral_tags = ["\u6c99\u96d5", "\u641e\u7b11", "\u53cd\u8f6c", "\u795e\u8f6c\u6298", "\u540d\u573a\u9762", "\u8ff7\u60d1", "\u610f\u60f3\u4e0d\u5230", "\u7b11\u6b7b\u6211\u4e86", "\u4eba\u7c7b\u8ff7\u60d1\u884c\u4e3a", "\u6574\u86ca", "\u6076\u641e"]
 
-                    # 3. Check direct playable stream URL
-                    play_urls = item.get("video", {}).get("play_addr", {}).get("url_list", [])
-                    if not play_urls:
-                        continue
+        for item in raw_items:
+            aweme_id = str(item.get("aweme_id", "")).strip()
+            # Bulletproof duplicate check: check both pure ID and prefixed ID
+            if not aweme_id or aweme_id in used_ids or f"douyin_{aweme_id}" in used_ids:
+                continue
 
-                    # 4. Extract Real Metrics (Likes, Shares, Comments)
-                    stats = item.get("statistics", {})
-                    likes = stats.get("digg_count", 0)
-                    shares = stats.get("share_count", 0)
-                    comments = stats.get("comment_count", 0)
+            # 1. Skip Commercial Ads and E-Commerce Shopping
+            if item.get("is_ads") or item.get("commerce_info"):
+                continue
+            desc = item.get("desc", "")
+            if any(w in desc for w in ad_words):
+                continue
 
-                    # 5. Virality Score calculation (Likes + 10x Shares + 5x Comments)
-                    virality_score = likes + (shares * 10) + (comments * 5)
+            # 2. Check Golden Duration (12s to 35s)
+            dur = item.get("duration", 0) / 1000.0
+            if not (12.0 <= dur <= 35.0):
+                continue
 
-                    # Boost for comedy/twist tags
-                    for vt in viral_tags:
-                        if vt in desc:
-                            virality_score += 50000
+            # 3. Check direct playable stream URL
+            play_urls = item.get("video", {}).get("play_addr", {}).get("url_list", [])
+            if not play_urls:
+                continue
 
-                    # Boost for user topic keywords
-                    for kw in keywords:
-                        if kw in desc:
-                            virality_score += 100000
+            # 4. Extract Real Metrics (Likes, Shares, Comments)
+            stats = item.get("statistics", {})
+            likes = stats.get("digg_count", 0)
+            shares = stats.get("share_count", 0)
+            comments = stats.get("comment_count", 0)
 
-                    # Golden duration sweet spot bonus (15s to 25s)
-                    if 14.0 <= dur <= 26.0:
-                        virality_score += 25000
+            # 5. Virality Score calculation (Likes + 10x Shares + 5x Comments)
+            virality_score = likes + (shares * 10) + (comments * 5)
 
-                    # 50K+ likes threshold priority
-                    is_mega_viral = (likes >= 50000)
+            # Boost for comedy/twist tags
+            for vt in viral_tags:
+                if vt in desc:
+                    virality_score += 50000
 
-                    candidates.append({
-                        "score": virality_score,
-                        "likes": likes,
-                        "shares": shares,
-                        "is_mega_viral": is_mega_viral,
-                        "dur": dur,
-                        "id": aweme_id,
-                        "desc": desc,
-                        "url": play_urls[0]
-                    })
+            # Boost for user topic keywords
+            for kw in keywords:
+                if kw in desc:
+                    virality_score += 100000
 
-                # Prefer candidates with 50K+ likes first, else top virality score
-                if candidates:
-                    mega_candidates = [c for c in candidates if c["is_mega_viral"]]
-                    chosen_pool = mega_candidates if mega_candidates else candidates
-                    chosen_pool.sort(key=lambda x: x["score"], reverse=True)
-                    top_pick = chosen_pool[0]
+            # Golden duration sweet spot bonus (15s to 25s)
+            if 14.0 <= dur <= 26.0:
+                virality_score += 25000
 
-                    score = top_pick["score"]
-                    dur = top_pick["dur"]
-                    aweme_id = top_pick["id"]
-                    desc = top_pick["desc"]
-                    play_url = top_pick["url"]
-                    likes = top_pick["likes"]
-                    shares = top_pick["shares"]
+            is_100k_plus = (likes >= 100000)
+            is_50k_plus = (likes >= 50000)
 
-                    print(f"🔥 [VIRAL QUALITY GATEKEEPER] Selected Rank #1 Clip!")
-                    print(f"   ▶ ID: {aweme_id} ({dur:.1f}s) | Likes: {likes:,} | Shares: {shares:,} | Virality Score: {score:,}")
-                    print(f"   ▶ Chinese Caption: {desc}")
-                    print(f"📥 Downloading directly from ByteDance China CDN...")
+            candidates.append({
+                "score": virality_score,
+                "likes": likes,
+                "shares": shares,
+                "comments": comments,
+                "is_100k_plus": is_100k_plus,
+                "is_50k_plus": is_50k_plus,
+                "dur": dur,
+                "id": aweme_id,
+                "desc": desc,
+                "url": play_urls[0]
+            })
 
-                    dl_headers = {"User-Agent": "okhttp/3.10.0.1"}
-                    with requests.get(play_url, headers=dl_headers, stream=True, timeout=30) as dl_resp:
-                        dl_resp.raise_for_status()
-                        with open(raw_video_path, "wb") as f:
-                            for chunk in dl_resp.iter_content(chunk_size=1024*512):
-                                if chunk:
-                                    f.write(chunk)
+        if candidates:
+            # Tier 1: 100K+ Likes Mega-Viral Blockbusters
+            tier1 = [c for c in candidates if c["is_100k_plus"]]
+            # Tier 2: 50K+ Likes High-Viral Clips
+            tier2 = [c for c in candidates if c["is_50k_plus"]]
 
-                    if os.path.exists(raw_video_path) and os.path.getsize(raw_video_path) > 50000:
-                        file_mb = os.path.getsize(raw_video_path) / (1024 * 1024)
-                        print(f"🎉 Successfully downloaded brand new Chinese Douyin video ({file_mb:.2f} MB)!")
-                        meta = {
-                            "id": f"douyin_{aweme_id}",
-                            "title": "Chinese TikTok Went Too Far 💀 #shorts",
-                            "hook_banner": "WAIT FOR THE TWIST 💀" if "suspense" in (topic or "").lower() else "WAIT TILL THE END 😂",
-                            "description": desc,
-                            "fallback_script": "Ain't no way Chinese TikTok just did that! Pure comedy gold in 4K! 💀"
-                        }
-                        return raw_video_path, meta["title"], desc, "douyin_live_china", meta
-        except Exception as e:
-            print(f"⚠️ Feed attempt {attempt+1} notice: {e}")
+            if tier1:
+                chosen_pool = tier1
+                tier_badge = "🔥 TIER-1 (100K+ MEGA-VIRAL)"
+            elif tier2:
+                chosen_pool = tier2
+                tier_badge = "⚡ TIER-2 (50K+ HIGH-VIRAL)"
+            else:
+                chosen_pool = candidates
+                tier_badge = "✨ TIER-3 (TOP ENGAGEMENT POOL)"
+
+            chosen_pool.sort(key=lambda x: x["score"], reverse=True)
+            top_pick = chosen_pool[0]
+
+            score = top_pick["score"]
+            dur = top_pick["dur"]
+            aweme_id = top_pick["id"]
+            desc = top_pick["desc"]
+            play_url = top_pick["url"]
+            likes = top_pick["likes"]
+            shares = top_pick["shares"]
+            comments = top_pick["comments"]
+            orig_web_url = f"https://www.douyin.com/video/{aweme_id}"
+
+            print(f"\n🏆 [VIRAL QUALITY GATEKEEPER] Selected Rank #1 Clip! [{tier_badge}]")
+            print(f"   🆔 Video ID: {aweme_id} ({dur:.1f}s)")
+            print(f"   👍 Likes: {likes:,} | 🔄 Shares: {shares:,} | 💬 Comments: {comments:,}")
+            print(f"   🚀 Virality Score: {score:,}")
+            print(f"   🔗 Original Douyin Link: {orig_web_url}")
+            print(f"   📝 Caption: {desc}")
+            print(f"⬇️ Downloading direct unwatermarked HD stream from ByteDance China CDN...")
+
+            dl_headers = {"User-Agent": "okhttp/3.10.0.1"}
+            with requests.get(play_url, headers=dl_headers, stream=True, timeout=30) as dl_resp:
+                dl_resp.raise_for_status()
+                with open(raw_video_path, "wb") as f:
+                    for chunk in dl_resp.iter_content(chunk_size=1024*512):
+                        if chunk:
+                            f.write(chunk)
+
+            if os.path.exists(raw_video_path) and os.path.getsize(raw_video_path) > 50000:
+                file_mb = os.path.getsize(raw_video_path) / (1024 * 1024)
+                print(f"✅ Successfully downloaded brand new Chinese Douyin video ({file_mb:.2f} MB)!")
+                meta = {
+                    "id": f"douyin_{aweme_id}",
+                    "aweme_id": aweme_id,
+                    "douyin_url": orig_web_url,
+                    "likes": likes,
+                    "shares": shares,
+                    "title": "Chinese TikTok Went Too Far 💀 #shorts",
+                    "hook_banner": "WAIT FOR THE TWIST 💀" if "suspense" in (topic or "").lower() else "WAIT TILL THE END 💀",
+                    "description": desc,
+                    "fallback_script": "Ain't no way Chinese TikTok just did that! Pure comedy gold in 4K! 💀"
+                }
+                return raw_video_path, meta["title"], desc, "douyin_live_china", meta
+        else:
+            print(f"⚠️ Attempt {attempt+1}: No eligible fresh clips found in this batch. Trying next...")
             time.sleep(2)
 
     raise RuntimeError("Critical: Could not acquire a fresh video from Douyin China API. Retrying...")
