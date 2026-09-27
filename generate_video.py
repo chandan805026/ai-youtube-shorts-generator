@@ -332,7 +332,8 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
             "- Look for fails, slips, falling, escaping, pranks, or surprise twists.\n"
             "- If someone attempts something risky (like climbing down an AC unit) and slips/falls, while their friends watch and react in horror or choose a different safer path, THAT IS THE EXACT STORY! Talk about what ACTUALLY happened!\n"
             "- Keep the commentary fast-paced, witty, highly energetic, and relatable for US/UK/global audiences.\n"
-            "Format your entire response as a single valid JSON object with keys: title, hook_banner, script, description, tags."
+            "- Accurately spot the exact second when the punchline / fail / climax happens, so we can trigger a sound effect.\n"
+            "Format your entire response as a single valid JSON object with keys: title, hook_banner, script, description, tags, climax_sfx."
         )
 
         user_prompt = f"""
@@ -356,6 +357,11 @@ STRICT VISUAL INSPECTION INSTRUCTIONS:
      * Hook in first 1.5 seconds stating the exact situation.
      * Middle section: build comedic escalation based on what the characters are doing.
      * Climax: land the punchline right as the fail/twist hits!
+   - "climax_sfx": {{
+       "type": "bonk", // choose "bonk" for slip/fall/hit, "vine_boom" for sudden shock/reveal/twist, "pop" for cute/playful, or "none"
+       "timestamp": 12.5, // exact second in video where the fail/twist hits (between 2.0 and {safe_audio_dur:.1f})
+       "zoom": true // true if camera should do a 1.1x punch-in zoom during this moment
+     }},
    - "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy #douyin.
    - "tags": 8-10 comma-separated keywords.
 
@@ -657,6 +663,78 @@ def synthesize_comedy_bgm(output_wav, duration_sec):
         wf.writeframes(frames)
     print(f"🎵 Synthesized Royalty-Free Comedy BGM: {output_wav}")
 
+def synthesize_sfx_pack(temp_dir):
+    """
+    Synthesizes crisp, punchy, copyright-free sound effects:
+    1. whoosh.wav (universal hook intro sound)
+    2. bonk.wav (slapstick cartoon fail sound)
+    3. vine_boom.wav (sub-bass meme shock sound)
+    4. pop.wav (playful cute bubble sound)
+    """
+    sample_rate = 44100
+    os.makedirs(temp_dir, exist_ok=True)
+    paths = {
+        "whoosh": os.path.join(temp_dir, "sfx_whoosh.wav"),
+        "bonk": os.path.join(temp_dir, "sfx_bonk.wav"),
+        "vine_boom": os.path.join(temp_dir, "sfx_vine_boom.wav"),
+        "pop": os.path.join(temp_dir, "sfx_pop.wav")
+    }
+
+    # 1. Whoosh SFX (0.35s sweep)
+    if not os.path.exists(paths["whoosh"]):
+        with wave.open(paths["whoosh"], "wb") as wf:
+            wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(sample_rate)
+            dur = 0.35; n = int(sample_rate * dur); frames = bytearray()
+            for i in range(n):
+                t = i / sample_rate
+                env = math.sin(math.pi * (t / dur)) ** 1.8
+                freq = 200 + 1400 * (t / dur) ** 2
+                val = int(32767 * 0.45 * env * math.sin(2 * math.pi * freq * t))
+                frames.extend(struct.pack('<h', max(-32768, min(32767, val))))
+            wf.writeframes(frames)
+
+    # 2. Bonk SFX (0.35s cartoon slapstick pitch drop)
+    if not os.path.exists(paths["bonk"]):
+        with wave.open(paths["bonk"], "wb") as wf:
+            wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(sample_rate)
+            dur = 0.35; n = int(sample_rate * dur); frames = bytearray()
+            for i in range(n):
+                t = i / sample_rate
+                env = math.exp(-t * 12.0)
+                freq = 420.0 * math.exp(-t * 8.0) + 120.0
+                val = int(32767 * 0.65 * env * (0.7 * math.sin(2 * math.pi * freq * t) + 0.3 * math.sin(4 * math.pi * freq * t)))
+                frames.extend(struct.pack('<h', max(-32768, min(32767, val))))
+            wf.writeframes(frames)
+
+    # 3. Vine Boom / Shock Bass Drop (0.75s)
+    if not os.path.exists(paths["vine_boom"]):
+        with wave.open(paths["vine_boom"], "wb") as wf:
+            wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(sample_rate)
+            dur = 0.75; n = int(sample_rate * dur); frames = bytearray()
+            for i in range(n):
+                t = i / sample_rate
+                env = math.exp(-t * 4.5)
+                freq = 75.0 * math.exp(-t * 2.2) + 28.0
+                val = int(32767 * 0.75 * env * (math.sin(2 * math.pi * freq * t) + 0.4 * math.sin(4 * math.pi * freq * t)))
+                frames.extend(struct.pack('<h', max(-32768, min(32767, val))))
+            wf.writeframes(frames)
+
+    # 4. Pop SFX (0.15s bubble pop)
+    if not os.path.exists(paths["pop"]):
+        with wave.open(paths["pop"], "wb") as wf:
+            wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(sample_rate)
+            dur = 0.15; n = int(sample_rate * dur); frames = bytearray()
+            for i in range(n):
+                t = i / sample_rate
+                env = math.exp(-t * 28.0)
+                freq = 600.0 + 900.0 * (1.0 - t / dur)
+                val = int(32767 * 0.55 * env * math.sin(2 * math.pi * freq * t))
+                frames.extend(struct.pack('<h', max(-32768, min(32767, val))))
+            wf.writeframes(frames)
+
+    print("🔊 Synthesized Procedural SFX Pack (Whoosh, Bonk, Vine Boom, Pop)")
+    return paths
+
 # ==========================================
 # 6. FFMPEG TRANSFORMATIVE VIDEO STUDIO
 # ==========================================
@@ -692,16 +770,19 @@ def get_video_dimensions(file_path):
         print(f"⚠️ ffprobe dimension check fallback: {e}")
         return 1920, 1080
 
-def render_transformative_short(input_video, narration_audio, ass_subtitles, hook_banner, output_video, output_thumb):
+def render_transformative_short(input_video, narration_audio, ass_subtitles, hook_banner, output_video, output_thumb, sfx_meta=None):
     """
-    Renders 100% Monetizable YouTube Short with Adaptive Framing:
+    Renders 100% Monetizable YouTube Short with Adaptive Framing & Dynamic SFX:
     - Smart Aspect Ratio Detection:
       * Landscape (16:9): Ambient Blurred Studio Frame (100% full action visible, zero cropping/zooming)
-      * Vertical (9:16): Native 9:16 vertical framing (zero artificial zoom)
+      * Vertical (9:16): Native 9:16 vertical framing with dynamic punch-in zoom on climax moments
     - Horizontal Flip (hflip) & dynamic speed match (setpts)
+    - Dynamic SFX Mixing:
+      * Hook Whoosh at 0.4s
+      * AI-Directed Climax SFX (Bonk, Vine Boom, Pop) at exact timestamp
     - Top Hook Banner Pill Box (ALL CAPS)
     - Burned Hormozi Yellow/White Subtitles
-    - Dual Audio Mixing (Voiceover 1.0 + Upbeat BGM 0.12)
+    - Multi-Track Audio Mixing (Voiceover 1.0 + BGM 0.12 + Hook SFX + Climax SFX)
     """
     os.makedirs(os.path.dirname(output_video) or ".", exist_ok=True)
     os.makedirs("temp", exist_ok=True)
@@ -713,7 +794,7 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
     is_landscape = (v_w > v_h) or (v_w / max(v_h, 1) >= 0.85)
 
     print(f"⏱️ Video Sync: Source={src_dur:.2f}s | Narration={narration_dur:.2f}s | Target Short={target_dur:.2f}s")
-    print(f"📐 Video Dimensions: {v_w}x{v_h} | Layout: {'Studio Ambient Blur Frame (Full Action, Zero Zoom)' if is_landscape else 'Native 9:16 Vertical (Zero Artificial Zoom)'}")
+    print(f"📐 Video Dimensions: {v_w}x{v_h} | Layout: {'Studio Ambient Blur Frame (Full Action, Zero Zoom)' if is_landscape else 'Native 9:16 Vertical'}")
 
     # Dynamic speed scaling: If source video duration is close to target duration,
     # calibrate PTS so the entire clip plays once from start to finish with zero awkward looping!
@@ -724,32 +805,73 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
     else:
         speed_filter = "setpts=0.97*PTS"
 
-    # 1. Synthesize background music
+    # 1. Synthesize background music & SFX pack
     bgm_path = "temp/comedy_bgm.wav"
     synthesize_comedy_bgm(bgm_path, target_dur + 2.0)
+    sfx_pack = synthesize_sfx_pack("temp")
+    whoosh_path = sfx_pack["whoosh"]
+
+    # Resolve Climax SFX & Punch-in Zoom
+    climax_type = (sfx_meta.get("type") or "none").lower() if sfx_meta else "none"
+    climax_ts = float(sfx_meta.get("timestamp") or 0.0) if sfx_meta else 0.0
+    do_zoom = bool(sfx_meta.get("zoom", False)) if sfx_meta else False
+
+    valid_climax = (climax_type in ["bonk", "vine_boom", "pop"]) and (1.5 <= climax_ts <= (target_dur - 1.0))
+    climax_sfx_file = sfx_pack.get(climax_type) if valid_climax else None
+
+    if valid_climax:
+        print(f"💥 Active Climax SFX: {climax_type.upper()} at {climax_ts:.2f}s | Punch-In Zoom: {do_zoom}")
+    else:
+        print("🎧 Standard SFX: Hook Whoosh active (No climax trigger required)")
 
     # 2. Build FFmpeg Filtergraph
     clean_hook = hook_banner.replace("'", "").replace(":", "").upper()
     ass_escaped = ass_subtitles.replace("\\", "/").replace(":", "\\:")
 
+    # Audio Mix Filter
+    cmd_inputs = [
+        "-stream_loop", "-1", "-i", input_video,      # [0:v]
+        "-i", narration_audio,                        # [1:a]
+        "-i", bgm_path,                               # [2:a]
+        "-i", whoosh_path                             # [3:a]
+    ]
+
+    if valid_climax and climax_sfx_file:
+        cmd_inputs.extend(["-i", climax_sfx_file])    # [4:a]
+        climax_ms = int(climax_ts * 1000)
+        audio_mix_filter = (
+            f"[1:a]volume=1.0[voice];"
+            f"[2:a]volume=0.12[bgm];"
+            f"[3:a]adelay=400|400,volume=0.40[whoosh];"
+            f"[4:a]adelay={climax_ms}|{climax_ms},volume=0.60[climax];"
+            f"[voice][bgm][whoosh][climax]amix=inputs=4:duration=first:dropout_transition=2[outa]"
+        )
+    else:
+        audio_mix_filter = (
+            f"[1:a]volume=1.0[voice];"
+            f"[2:a]volume=0.12[bgm];"
+            f"[3:a]adelay=400|400,volume=0.40[whoosh];"
+            f"[voice][bgm][whoosh]amix=inputs=3:duration=first:dropout_transition=2[outa]"
+        )
+
     if is_landscape:
-        # Professional Studio Ambient Blur:
-        # Foreground preserves 100% of the horizontal video (scale=1080:-2), centered vertically
-        # Background is an ambient blurred version of the video filling 1080x1920
-        # 100% of action, faces, and slapstick punchlines are in full view!
+        zoom_filter = ""
+        if valid_climax and do_zoom:
+            t_s = max(0.5, climax_ts - 0.2)
+            t_e = min(target_dur - 0.5, climax_ts + 1.1)
+            zoom_filter = f",crop=w='if(between(t,{t_s:.2f},{t_e:.2f}),in_w*0.88,in_w)':h='if(between(t,{t_s:.2f},{t_e:.2f}),in_h*0.88,in_h)':x=(in_w-out_w)/2:y=(in_h-out_h)/2,scale=1080:-2:flags=lanczos"
+
         filter_complex = (
             f"[0:v]hflip,{speed_filter},split=2[v_bg][v_fg];"
             f"[v_bg]scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
             f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
             f"boxblur=25:8,eq=brightness=-0.15[bg_blur];"
-            f"[v_fg]scale=1080:-2:flags=lanczos[fg_crisp];"
+            f"[v_fg]scale=1080:-2:flags=lanczos{zoom_filter}[fg_crisp];"
             f"[bg_blur][fg_crisp]overlay=0:(H-h)/2[base_comp];"
             f"[base_comp]drawbox=x=(iw-860)/2:y=120:w=860:h=90:color=black@0.75:t=fill,"
             f"drawtext=text='{clean_hook}':fontsize=40:fontcolor=yellow:x=(w-text_w)/2:y=142,"
             f"subtitles='{ass_escaped}'[outv];"
-            f"[1:a]volume=1.0[voice];"
-            f"[2:a]volume=0.12[bgm];"
-            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
+            f"{audio_mix_filter}"
         )
         simpler_filter = (
             f"[0:v]hflip,{speed_filter},split=2[v_bg][v_fg];"
@@ -759,24 +881,26 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
             f"[v_fg]scale=1080:-2:flags=lanczos[fg_crisp];"
             f"[bg_blur][fg_crisp]overlay=0:(H-h)/2[base_comp];"
             f"[base_comp]subtitles='{ass_escaped}'[outv];"
-            f"[1:a]volume=1.0[voice];"
-            f"[2:a]volume=0.12[bgm];"
-            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
+            f"{audio_mix_filter}"
         )
     else:
-        # Native Vertical 9:16 Video:
-        # Scale to 1080x1920 with minimal crop, ZERO artificial zoom
+        # Native Vertical 9:16 Video
+        if valid_climax and do_zoom:
+            t_s = max(0.5, climax_ts - 0.2)
+            t_e = min(target_dur - 0.5, climax_ts + 1.1)
+            crop_logic = f"crop=w='if(between(t,{t_s:.2f},{t_e:.2f}),1080*0.88,1080)':h='if(between(t,{t_s:.2f},{t_e:.2f}),1920*0.88,1920)':x=(in_w-out_w)/2:y=(in_h-out_h)/2,scale=1080:1920:flags=lanczos"
+        else:
+            crop_logic = "crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2"
+
         filter_complex = (
             f"[0:v]hflip,{speed_filter},"
             f"scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
-            f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
+            f"{crop_logic},"
             f"drawbox=x=(iw-860)/2:y=110:w=860:h=90:color=black@0.75:t=fill,"
             f"drawtext=text='{clean_hook}':fontsize=40:fontcolor=yellow:x=(w-text_w)/2:y=132,"
             f"drawbox=x=0:y=1540:w=1080:h=260:color=black@0.85:t=fill,"
             f"subtitles='{ass_escaped}'[outv];"
-            f"[1:a]volume=1.0[voice];"
-            f"[2:a]volume=0.12[bgm];"
-            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
+            f"{audio_mix_filter}"
         )
         simpler_filter = (
             f"[0:v]hflip,{speed_filter},"
@@ -784,16 +908,12 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
             f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
             f"drawbox=x=0:y=1540:w=1080:h=260:color=black@0.85:t=fill,"
             f"subtitles='{ass_escaped}'[outv];"
-            f"[1:a]volume=1.0[voice];"
-            f"[2:a]volume=0.12[bgm];"
-            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
+            f"{audio_mix_filter}"
         )
 
     cmd = [
         "ffmpeg", "-y",
-        "-stream_loop", "-1", "-i", input_video,
-        "-i", narration_audio,
-        "-i", bgm_path,
+        *cmd_inputs,
         "-filter_complex", filter_complex,
         "-map", "[outv]",
         "-map", "[outa]",
@@ -905,14 +1025,15 @@ def main():
         output_ass=ass_path
     )
 
-    # 4. Transformative FFmpeg Editing (Anti-Reused Content)
+    # 4. Transformative FFmpeg Editing (Anti-Reused Content & Dynamic SFX)
     render_transformative_short(
         input_video=raw_video,
         narration_audio=audio_path,
         ass_subtitles=ass_path,
         hook_banner=director_output.get("hook_banner", "WAIT FOR IT 😂"),
         output_video=args.output,
-        output_thumb=args.thumb
+        output_thumb=args.thumb,
+        sfx_meta=director_output.get("climax_sfx", {})
     )
 
     # 5. Save Video Metadata
