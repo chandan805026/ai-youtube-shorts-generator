@@ -2,11 +2,13 @@ name: Generate Viral Meme Comedy Short (100% Cloud Studio)
 
 on:
   schedule:
-    # 2x Daily Automatic Runs at US Peak Traffic Times:
-    # 13:30 UTC = 7:00 PM IST = 9:30 AM EST (US Morning Commute / Coffee break)
-    - cron: '30 13 * * *'
-    # 22:30 UTC = 4:00 AM IST = 6:30 PM EST (US Evening Prime YouTube watching hour)
-    - cron: '30 22 * * *'
+    # 3x Daily Automatic Autonomous Runs Timed for UK Peak Traffic:
+    # Slot 1 (UK Morning Rush): 07:30 UTC = 08:30 AM UK (1:00 PM IST)
+    - cron: '30 7 * * *'
+    # Slot 2 (UK Lunch Break Peak): 12:00 UTC = 01:00 PM UK (5:30 PM IST)
+    - cron: '0 12 * * *'
+    # Slot 3 (UK Prime Evening Hour): 18:00 UTC = 07:00 PM UK (11:30 PM IST)
+    - cron: '0 18 * * *'
   workflow_dispatch:
     inputs:
       video_url:
