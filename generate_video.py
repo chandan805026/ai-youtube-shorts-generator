@@ -320,11 +320,12 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
                 frame_images_b64 = extract_video_keyframes_base64(video_path)
 
         system_instruction = (
-            "You are an elite YouTube Shorts & TikTok comedy writer in the style of Ray William Johnson, "
-            "Daily Dose of Internet, and modern American meme creators ('Bro really thought...', 'Ain't no way').\n"
-            "YOU ARE WATCHING THE ACTUAL VIDEO FOOTAGE. Do NOT hallucinate or guess.\n"
-            "Your commentary must accurately reflect the EXACT physical actions and characters happening on screen, "
-            "while being fast-paced, witty, highly energetic, and relatable for US/UK/global audiences.\n"
+            "You are an elite YouTube Shorts & TikTok comedy writer.\n"
+            "CRITICAL RULE: YOU MUST CAREFULLY WATCH EVERY DETAIL OF THE ACTUAL VIDEO FOOTAGE. Do NOT guess or hallucinate.\n"
+            "- Accurately identify ALL characters on screen: count them, their gender, and what each person is doing.\n"
+            "- Look for fails, slips, falling, escaping, pranks, or surprise twists.\n"
+            "- If someone attempts something risky (like climbing down an AC unit) and slips/falls, while their friends watch and react in horror or choose a different safer path, THAT IS THE EXACT STORY! Talk about what ACTUALLY happened!\n"
+            "- Keep the commentary fast-paced, witty, highly energetic, and relatable for US/UK/global audiences.\n"
             "Format your entire response as a single valid JSON object with keys: title, hook_banner, script, description, tags."
         )
 
@@ -334,20 +335,21 @@ WATCH AND ANALYZE THIS VIRAL VIDEO FOOTAGE CAREFULLY:
 - Genre/Niche: {topic}
 - Target Video Duration: {target_duration:.1f} seconds
 
-STRICT VIDEO INSPECTION INSTRUCTIONS:
+STRICT VISUAL INSPECTION INSTRUCTIONS:
 1. Examine what actually happens across the seconds:
-   - Who or what are the subjects? (e.g. Is it a mother dog and her puppy? A person doing a prank? Street slapstick?).
-   - What is the step-by-step storyline? What starts the scene, what is the development, and what is the climax?
-   - DO NOT make up random things that do not occur on screen!
-   - If a mother dog is putting a puppy on a toilet trainer and then hops on the toilet rim to demonstrate how to use it, TALK SPECIFICALLY ABOUT HER DEMONSTRATING AND SHOWING OFF HER SKILLS!
+   - Exactly WHO are the subjects? Count the people, identify if they are girls/boys/kids/animals.
+   - What are they trying to do? (e.g. sneaking out, climbing down, escaping, playing a prank?).
+   - What goes wrong? Does someone slip, fall, fail, get stuck, or get scared?
+   - How do the other people react? (e.g. do they back off, laugh, or choose another way?).
+   - DO NOT make up random things (like calling three girls escaping a solo 'Spider-Man bro parkour'). Match the REAL story!
 
 2. Provide JSON with:
-   - "title": High curiosity viral YouTube Shorts title under 60 characters with funny emojis and #shorts (e.g. 'Dog Mom Gives Human Toilet Demo In 4K 😭💀 #shorts').
-   - "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner matching the visual (e.g. 'MOM GAVE A LIVE DEMO 😂', 'WATCH AND LEARN 💀').
+   - "title": High curiosity viral YouTube Shorts title under 60 characters with funny emojis and #shorts.
+   - "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner matching the visual.
    - "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words ({safe_audio_dur:.1f}s spoken at 1.12x speed).
-     * Hook in first 1.5 seconds stating the wild situation.
-     * Middle section: build comedic escalation based on the visual actions.
-     * Climax: land the punchline right as the video's ending punchline hits!
+     * Hook in first 1.5 seconds stating the exact situation.
+     * Middle section: build comedic escalation based on what the characters are doing.
+     * Climax: land the punchline right as the fail/twist hits!
    - "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy #douyin.
    - "tags": 8-10 comma-separated keywords.
 
@@ -365,7 +367,7 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
         content_parts.append({"text": user_prompt})
 
         # Dynamic Gemini Model Discovery & Priority to gemini-2.5-flash
-        models_to_try = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash-exp", "gemini-1.5-pro"]
+        models_to_try = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-flash-latest", "gemini-flash-lite-latest"]
         try:
             m_resp = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}", timeout=10)
             if m_resp.status_code == 200:
@@ -375,7 +377,7 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                     methods = m.get("supportedGenerationMethods", [])
                     if "generateContent" in methods:
                         discovered.append(m_name)
-                priority_names = ["gemini-flash-lite-latest", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-2.5-flash"]
+                priority_names = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-flash-latest", "gemini-flash-lite-latest"]
                 top_picks = [p for p in priority_names if p in discovered]
                 rest = [m for m in discovered if m not in top_picks and "tts" not in m and "image" not in m]
                 models_to_try = top_picks + rest
@@ -388,7 +390,7 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                 payload = {
                     "contents": [{"parts": content_parts}],
                     "systemInstruction": {"parts": [{"text": system_instruction}]},
-                    "generationConfig": {"temperature": 0.85, "maxOutputTokens": 800}
+                    "generationConfig": {"temperature": 0.4, "maxOutputTokens": 800}
                 }
                 r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=45)
                 if r.status_code == 200:
