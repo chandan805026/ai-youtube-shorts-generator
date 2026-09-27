@@ -402,14 +402,17 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                 payload = {
                     "contents": [{"parts": content_parts}],
                     "systemInstruction": {"parts": [{"text": system_instruction}]},
-                    "generationConfig": {"temperature": 0.4, "maxOutputTokens": 800}
+                    "generationConfig": {"temperature": 0.4, "maxOutputTokens": 800, "responseMimeType": "application/json"}
                 }
                 r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=45)
                 if r.status_code == 200:
                     data = r.json()
                     raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    cleaned = re.sub(r"^```json\s*", "", raw_text)
+                    cleaned = re.sub(r"^```(?:json)?\s*", "", raw_text, flags=re.I)
                     cleaned = re.sub(r"\s*```$", "", cleaned)
+                    json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+                    if json_match:
+                        cleaned = json_match.group(0)
                     parsed = json.loads(cleaned)
                     if "script" in parsed and "title" in parsed:
                         print(f"🎉 Gemini Baba Multimodal Director Success! Title: {parsed['title']}")
