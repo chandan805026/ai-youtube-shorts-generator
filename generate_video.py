@@ -38,18 +38,6 @@ if sys.stdout.encoding != 'utf-8':
 # ==========================================
 VIRAL_VAULT = [
     {
-        "id": "vault_douyin_fresh_china",
-        "category": "douyin_direct_china",
-        "title": "Chinese TikTok Transformation Went Crazy 💀 #shorts",
-        "hook_banner": "WAIT FOR THE TRANSFORMATION 😂",
-        "description": "An authentic trending Douyin video directly from China (ID 7687882613504036777) featuring a jaw-dropping and hilarious Chinese costume and style transformation challenge to trending music.",
-        "fallback_script": "Ain't no way Chinese TikTok just pulled off this insane transformation! Watch the transition right before the beat drops! The confidence, the style, the facial expression is pure gold! You can't even make this level of creativity up! Ten out of ten viral masterpiece! 💀",
-        "local_fallback": "assets/vault/douyin_fresh_china.mp4",
-        "cdn_urls": [
-            "https://raw.githubusercontent.com/chandan805026/ai-youtube-shorts-generator/main/assets/vault/douyin_fresh_china.mp4"
-        ]
-    },
-    {
         "id": "vault_douyin_china_live",
         "category": "douyin_direct_china",
         "title": "Dog Mom Gives Human Toilet Demo In 4K 😭💀 #shorts",
@@ -346,11 +334,13 @@ def ingest_video_dual_route(video_url, topic, history_file="history.json"):
         except Exception as e:
             print(f"⚠️ CDN download attempt failed: {e}")
 
-    # Fallback to local starter clip
-    if os.path.exists("assets/vault/starter_comedy.mp4"):
-        import shutil
-        shutil.copy("assets/vault/starter_comedy.mp4", raw_video_path)
-        return raw_video_path, chosen_clip["title"], chosen_clip["description"], "route_2", chosen_clip
+    # Fallback to verified local Douyin Chinese clips
+    for backup_clip in ["assets/vault/douyin_hd_bad_luck.mp4", "assets/vault/douyin_china_live.mp4", "assets/vault/douyin_hd_prank.mp4"]:
+        if os.path.exists(backup_clip):
+            print(f"🔄 Using verified authentic Douyin Chinese backup: {backup_clip}")
+            import shutil
+            shutil.copy(backup_clip, raw_video_path)
+            return raw_video_path, chosen_clip["title"], chosen_clip["description"], "route_2", chosen_clip
 
     raise RuntimeError("Critical: Unable to acquire video clip from either Route 1 or Route 2!")
 
