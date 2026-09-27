@@ -70,8 +70,8 @@ def try_tikwm_download(video_url, dest_path):
 def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.json"):
     """
     100% Dynamic Chinese Douyin Video Ingestion:
-    - Multi-Swipe Aggregation: scans ~100 candidate videos across ByteDance mobile feeds.
-    - Tier-1 Priority: Blocks commercial ads and targets mega-viral 100K+ Likes videos.
+    - Multi-Swipe Aggregation: swipes high-yield ByteDance mobile endpoints.
+    - Strict Virality Gatekeeper: Only accepts Mega-Viral clips (100K+ Likes Priority, 50K+ floor).
     - Bulletproof Anti-Duplicate memory matching raw ID and douyin_ prefixed ID.
     - Direct unwatermarked HD download from ByteDance China CDN.
     """
@@ -92,7 +92,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
     # 2. Live Chinese Douyin ByteDance Feed API (Direct from China CDN)
     print(f"\n=======================================================")
-    print(f"🚀 [CHINA LIVE STREAM] Aggregating 100+ Videos from Douyin Live Stream...")
+    print(f"🚀 [CHINA LIVE STREAM] Scanning Live Douyin for 100K+ Likes Mega-Clips...")
     print(f"=======================================================")
 
     used_ids = set()
@@ -124,20 +124,25 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         "https://aweme.snssdk.com/aweme/v1/feed/?count=35",
         "https://api.amemv.com/aweme/v1/feed/?count=35",
         "https://api3-normal-c-hl.amemv.com/aweme/v1/feed/?count=35",
-        "https://aweme.snssdk.com/aweme/v1/feed/?count=35&type=0"
+        "https://aweme.snssdk.com/aweme/v1/feed/?count=35&type=0",
+        "https://aweme.snssdk.com/aweme/v1/feed/?count=35&feed_style=0&filter_warn=0",
+        "https://aweme.snssdk.com/aweme/v1/feed/?count=35&device_platform=android&version_code=190000"
     ]
     headers = {"User-Agent": "okhttp/3.10.0.1", "Accept": "application/json"}
 
-    for attempt in range(4):
-        print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Attempt {attempt+1}/4)...")
+    ad_words = ["\u5e26\u8d27", "\u4e0b\u5355", "\u5e7f\u544a", "\u76f4\u64ad", "\u94fe\u63a5", "\u70b9\u51fb", "\u8d2d\u4e70", "\u5305\u90ae", "\u9886\u5238", "\u4f18\u60e0", "\u540c\u6b3e", "\u6a71\u7a97"]
+    viral_tags = ["\u6c99\u96d5", "\u641e\u7b11", "\u53cd\u8f6c", "\u795e\u8f6c\u6298", "\u540d\u573a\u9762", "\u8ff7\u60d1", "\u610f\u60f3\u4e0d\u5230", "\u7b11\u6b7b\u6211\u4e86", "\u4eba\u7c7b\u8ff7\u60d1\u884c\u4e3a", "\u6574\u86ca", "\u6076\u641e"]
+
+    for attempt in range(5):
+        print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/5)...")
         raw_items = []
         seen_batch_ids = set()
 
-        for swipe_idx, ep_url in enumerate(endpoints[:3]):
+        for swipe_idx, ep_url in enumerate(endpoints):
             try:
                 sep = "&" if "?" in ep_url else "?"
                 url_with_ts = f"{ep_url}{sep}_rticket={int(time.time() * 1000)}&ts={int(time.time())}"
-                resp = requests.get(url_with_ts, headers=headers, timeout=15)
+                resp = requests.get(url_with_ts, headers=headers, timeout=12)
                 if resp.status_code == 200:
                     feed_list = resp.json().get("aweme_list", [])
                     new_count = 0
@@ -147,17 +152,14 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
                             seen_batch_ids.add(aid)
                             raw_items.append(it)
                             new_count += 1
-                    print(f"   📲 Swipe {swipe_idx+1}: Ingested +{new_count} candidates from ByteDance feed.")
+                    print(f"   📲 Swipe {swipe_idx+1}: +{new_count} candidates (Running total: {len(raw_items)})")
             except Exception as e:
                 print(f"   ⚠️ Swipe {swipe_idx+1} notice: {e}")
-            time.sleep(0.3)
+            time.sleep(0.2)
 
-        print(f"📦 Total Scanned Video Pool: {len(raw_items)} candidates in memory!")
+        print(f"📦 Total Unique Scanned Pool: {len(raw_items)} candidate clips in memory!")
 
         candidates = []
-        ad_words = ["\u5e26\u8d27", "\u4e0b\u5355", "\u5e7f\u544a", "\u76f4\u64ad", "\u94fe\u63a5", "\u70b9\u51fb", "\u8d2d\u4e70", "\u5305\u90ae", "\u9886\u5238", "\u4f18\u60e0", "\u540c\u6b3e", "\u6a71\u7a97"]
-        viral_tags = ["\u6c99\u96d5", "\u641e\u7b11", "\u53cd\u8f6c", "\u795e\u8f6c\u6298", "\u540d\u573a\u9762", "\u8ff7\u60d1", "\u610f\u60f3\u4e0d\u5230", "\u7b11\u6b7b\u6211\u4e86", "\u4eba\u7c7b\u8ff7\u60d1\u884c\u4e3a", "\u6574\u86ca", "\u6076\u641e"]
-
         for item in raw_items:
             aweme_id = str(item.get("aweme_id", "")).strip()
             # Bulletproof duplicate check: check both pure ID and prefixed ID
@@ -220,22 +222,25 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
                 "url": play_urls[0]
             })
 
-        if candidates:
-            # Tier 1: 100K+ Likes Mega-Viral Blockbusters
-            tier1 = [c for c in candidates if c["is_100k_plus"]]
-            # Tier 2: 50K+ Likes High-Viral Clips
-            tier2 = [c for c in candidates if c["is_50k_plus"]]
+        # Strict Quality Gatekeeper: Prefer 100K+ Likes, Fallback to 50K+
+        tier1 = [c for c in candidates if c["is_100k_plus"]]
+        tier2 = [c for c in candidates if c["is_50k_plus"]]
 
-            if tier1:
-                chosen_pool = tier1
-                tier_badge = "🔥 TIER-1 (100K+ MEGA-VIRAL)"
-            elif tier2:
-                chosen_pool = tier2
-                tier_badge = "⚡ TIER-2 (50K+ HIGH-VIRAL)"
-            else:
-                chosen_pool = candidates
-                tier_badge = "✨ TIER-3 (TOP ENGAGEMENT POOL)"
+        chosen_pool = None
+        tier_badge = ""
 
+        if tier1:
+            chosen_pool = tier1
+            tier_badge = f"🔥 TIER-1 (100K+ MEGA-VIRAL: {len(tier1)} found)"
+        elif tier2:
+            chosen_pool = tier2
+            tier_badge = f"⚡ TIER-2 (50K+ HIGH-VIRAL: {len(tier2)} found)"
+        elif attempt == 4 and candidates:
+            # Absolute last resort after 5 rounds
+            chosen_pool = candidates
+            tier_badge = "✨ TIER-3 (TOP ENGAGEMENT POOL)"
+
+        if chosen_pool:
             chosen_pool.sort(key=lambda x: x["score"], reverse=True)
             top_pick = chosen_pool[0]
 
@@ -281,8 +286,8 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
                 }
                 return raw_video_path, meta["title"], desc, "douyin_live_china", meta
         else:
-            print(f"⚠️ Attempt {attempt+1}: No eligible fresh clips found in this batch. Trying next...")
-            time.sleep(2)
+            print(f"⚠️ Round {attempt+1}: No 50K+/100K+ clip in this pool. Swiping again for mega-viral clip...")
+            time.sleep(1)
 
     raise RuntimeError("Critical: Could not acquire a fresh video from Douyin China API. Retrying...")
 
