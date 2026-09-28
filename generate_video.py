@@ -579,7 +579,7 @@ def extract_video_keyframes_base64(video_path, num_frames=5):
     return frames_b64
 
 
-def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", custom_script="", fallback_meta=None, target_duration=20.0):
+def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", custom_script="", fallback_meta=None, target_duration=20.0, voice=""): 
     """
     Directs the short in American meme/commentary style:
     - Feeds the ACTUAL VIDEO directly to Gemini Baba using Multimodal Vision.
@@ -863,6 +863,94 @@ async def generate_edge_tts_with_word_boundaries_async(text, voice, output_audio
                     words_timing.append((start_sec, end_sec, word))
     return words_timing
 
+
+def parse_dialogue_lines(script_text):
+    """
+    Parses dialogue scripts with characters like:
+    Bob: ...
+    Karen: ...
+    or
+    Jolly: ...
+    Champa: ...
+    Returns list of (role, speaker_name, line_text) and bool has_dialogue.
+    """
+    lines = script_text.strip().split('\n')
+    parsed = []
+    male_names = {'bob', 'jolly', 'dave', 'gary', 'boy', 'guy', 'male', 'he', 'husband', 'dad', 'bhai'}
+    female_names = {'karen', 'champa', 'sarah', 'girl', 'female', 'she', 'wife', 'mom', 'bhabhi', 'didi'}
+    has_dialogue = False
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line:
+            continue
+        m = re.match(r'^([A-Za-z\s]+)[:：]\s*(.+)$', line)
+        if m:
+            spk = m.group(1).strip()
+            txt = m.group(2).strip()
+            spk_l = spk.lower()
+            if any(x in spk_l for x in male_names):
+                parsed.append(('male', spk, txt))
+                has_dialogue = True
+            elif any(x in spk_l for x in female_names):
+                parsed.append(('female', spk, txt))
+                has_dialogue = True
+            else:
+                parsed.append(('narrator', spk, txt))
+                has_dialogue = True
+        else:
+            if parsed:
+                parsed[-1] = (parsed[-1][0], parsed[-1][1], parsed[-1][2] + ' ' + line)
+            else:
+                parsed.append(('narrator', 'Narrator', line))
+    return parsed, has_dialogue
+
+async def generate_multispeaker_edge_tts_async(dialogue_segments, male_voice, female_voice, default_voice, output_audio, rate="+5%"):
+    """
+    Renders alternating dialogue with distinct male & female voices,
+    stitching audio and maintaining millisecond word boundaries.
+    """
+    import edge_tts
+    all_words_timing = []
+    current_time_offset = 0.0
+    
+    with open(output_audio, "wb") as master_out:
+        for idx, (role, speaker, text) in enumerate(dialogue_segments):
+            clean_text = strip_emojis(text)
+            if not clean_text:
+                continue
+            if role == 'male':
+                chosen_voice = male_voice
+            elif role == 'female':
+                chosen_voice = female_voice
+            else:
+                chosen_voice = default_voice
+                
+            print(f"🎙️ [DUAL-VOICE] {speaker} ({chosen_voice}): '{clean_text[:40]}...'")
+            communicate = edge_tts.Communicate(clean_text, chosen_voice, rate=rate, boundary="WordBoundary")
+            segment_audio = bytearray()
+            segment_words = []
+            
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    segment_audio.extend(chunk["data"])
+                elif chunk["type"] == "WordBoundary":
+                    w_start = (chunk["offset"] / 10_000_000.0) + current_time_offset
+                    w_dur = chunk["duration"] / 10_000_000.0
+                    w_end = w_start + w_dur
+                    word = chunk["text"].strip()
+                    if word:
+                        segment_words.append((w_start, w_end, word))
+                        
+            if segment_audio:
+                master_out.write(segment_audio)
+                all_words_timing.extend(segment_words)
+                if segment_words:
+                    current_time_offset = segment_words[-1][1] + 0.12
+                else:
+                    current_time_offset += 1.5
+                    
+    return all_words_timing
+
 def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
     """
     Generates Microsoft Edge TTS speech with real-time WordBoundary 1:1 millisecond lock,
@@ -875,16 +963,48 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
     print(f"🎙️ Cleaned TTS Voiceover Text (no emojis spoken):\n   {clean_spoken_text}")
     print(f"🎙️ Generating voiceover with voice: {voice} at +5% speed...")
 
+    dialogue_segments, has_dialogue = parse_dialogue_lines(script_text)
+    
+    # Determine voice pairs
+    v_lower = voice.lower()
+    if "hindi" in v_lower or "hi-in" in v_lower:
+        male_voice = "hi-IN-MadhurNeural"
+        female_voice = "hi-IN-SwaraNeural"
+        default_voice = "hi-IN-MadhurNeural"
+    elif "uk" in v_lower or "en-gb" in v_lower:
+        male_voice = "en-GB-RyanNeural"
+        female_voice = "en-GB-SoniaNeural"
+        default_voice = "en-GB-RyanNeural"
+    else:
+        male_voice = "en-US-GuyNeural"
+        female_voice = "en-US-JennyNeural"
+        default_voice = voice if voice and "dual" not in v_lower else "en-US-GuyNeural"
+
     words_timing = []
-    # 1. Try Direct Python WordBoundary Async Hook (Millisecond Precision)
-    try:
-        words_timing = asyncio.run(
-            generate_edge_tts_with_word_boundaries_async(clean_spoken_text, voice, output_audio, rate="+5%")
-        )
-        if words_timing and os.path.exists(output_audio) and os.path.getsize(output_audio) > 1000:
-            print(f"⚡ [WORD-LOCK SYNC] Successfully captured {len(words_timing)} word timestamps directly from Edge TTS engine!")
-    except Exception as e:
-        print(f"⚠️ Direct async TTS notice: {e}, attempting CLI fallback...")
+    if has_dialogue and len(dialogue_segments) > 1:
+        print(f"🎭 Detected multi-character dialogue ({len(dialogue_segments)} lines)! Activating Dual-Voice Studio...")
+        print(f"   👦 Male Voice: {male_voice} | 👧 Female Voice: {female_voice}")
+        try:
+            words_timing = asyncio.run(
+                generate_multispeaker_edge_tts_async(dialogue_segments, male_voice, female_voice, default_voice, output_audio, rate="+5%")
+            )
+            if words_timing and os.path.exists(output_audio) and os.path.getsize(output_audio) > 1000:
+                print(f"⚡ [DUAL-VOICE SYNC] Successfully stitched {len(dialogue_segments)} dialogue chunks with {len(words_timing)} word timestamps!")
+        except Exception as e:
+            print(f"⚠️ Dual-voice async notice: {e}, falling back to single voice...")
+            words_timing = []
+
+    # Fallback to single voice if no dialogue or dual voice failed
+    if not words_timing:
+        # 1. Try Direct Python WordBoundary Async Hook (Millisecond Precision)
+        try:
+            words_timing = asyncio.run(
+                generate_edge_tts_with_word_boundaries_async(clean_spoken_text, default_voice, output_audio, rate="+5%")
+            )
+            if words_timing and os.path.exists(output_audio) and os.path.getsize(output_audio) > 1000:
+                print(f"⚡ [WORD-LOCK SYNC] Successfully captured {len(words_timing)} word timestamps directly from Edge TTS engine!")
+        except Exception as e:
+            print(f"⚠️ Direct async TTS notice: {e}, attempting CLI fallback...")
 
     # 2. Fallback to CLI if async didn't produce valid audio
     if not words_timing or not os.path.exists(output_audio) or os.path.getsize(output_audio) < 1000:
@@ -1405,7 +1525,8 @@ def main():
         topic=args.topic,
         custom_script=args.script,
         fallback_meta=vault_meta,
-        target_duration=src_dur
+        target_duration=src_dur,
+        voice=args.voice
     )
     
     print("\n🎭 --- DIRECTED SHORT DETAILS ---")
