@@ -703,7 +703,7 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                 valid_discovered = [
                     m for m in discovered 
                     if m.startswith("gemini-") 
-                    and not any(x in m for x in ["antigravity", "deep-research", "robotics", "lyria", "computer-use", "preview-0", "preview-1"])
+                    and not any(x in m for x in ["image", "imagen", "embedding", "antigravity", "deep-research", "robotics", "lyria", "computer-use", "preview"])
                 ]
                 top_picks = [p for p in models_to_try if p in valid_discovered]
                 rest = [m for m in valid_discovered if m not in top_picks]
@@ -752,6 +752,36 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
 
     # Fallback if Gemini key is missing or quota reached
     print("💡 Using Curated Comedy Script from Vault...")
+    if is_dual:
+        if is_hindi:
+            dual_fallback_script = (
+                "Jolly: Champa! Ye wala smart Chinese kitchen gadget dekh! Poore mohalle mein kisi ke paas nahi hai!\n"
+                "Champa: Jolly, tu fir se faltu panga le raha hai na? Kal hi microwave ka button tod diya tha!\n"
+                "Jolly: Arre dekh toh sahi, do second mein sab cut ho jayega! Masterchef hoon main!\n"
+                "Champa: Haha! Dekh Jolly, machine toot gayi aur ungli bach gayi! Jolly aaj bhi challenge haar gaya! 😂"
+            )
+            return {
+                "title": "Champa Ne Jolly Ka Challenge Harwa Diya 😂 #shorts",
+                "hook_banner": "JOLLY HAR GAYA 😂",
+                "script": dual_fallback_script,
+                "description": "Hilarious Champa and Jolly kitchen gadget challenge! #shorts #viral #funny #comedy #douyin",
+                "tags": "shorts, funny, comedy, viral, meme, gadgets, kitchen, champa, jolly"
+            }
+        else:
+            dual_fallback_script = (
+                "Bob: Karen! Look what I just ordered from China! An automatic smart vegetable slicer!\n"
+                "Karen: Bob, you broke the microwave yesterday! Step away from the kitchen table right now!\n"
+                "Bob: Relax woman, watch the master at work... wait, how do you even turn this machine off?!\n"
+                "Karen: Brilliant Bob! You just sliced the dining table in half! Tell me in the comments, should I kick him out? 😂"
+            )
+            return {
+                "title": "Karen Warned Bob About The Kitchen Gadget 😂 #shorts",
+                "hook_banner": "KAREN WARNED HIM 😂",
+                "script": dual_fallback_script,
+                "description": "Hilarious Bob and Karen kitchen gadget comedy! #shorts #viral #funny #comedy #douyin",
+                "tags": "shorts, funny, comedy, viral, meme, gadgets, kitchen, bob, karen"
+            }
+
     if fallback_meta:
         return {
             "title": fallback_meta["title"],
@@ -1010,7 +1040,7 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
     if not words_timing or not os.path.exists(output_audio) or os.path.getsize(output_audio) < 1000:
         cmd = [
             sys.executable, "-m", "edge_tts",
-            "--voice", voice,
+            "--voice", default_voice,
             "--rate", "+5%",
             "--text", clean_spoken_text,
             "--write-media", output_audio,
