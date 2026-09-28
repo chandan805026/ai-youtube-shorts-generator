@@ -25,6 +25,8 @@ import math
 import struct
 import wave
 import base64
+import asyncio
+import shutil
 
 # Ensure UTF-8 output
 if sys.stdout.encoding != 'utf-8':
@@ -66,6 +68,175 @@ def try_tikwm_download(video_url, dest_path):
     except Exception as e:
         print(f"⚠️ [TikWM] Error: {e}")
     return False, ""
+
+def get_media_duration(file_path):
+    """Probes media duration in seconds via ffprobe."""
+    try:
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            file_path
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return float(res.stdout.strip())
+    except Exception:
+        return 20.0
+
+def get_video_dimensions(file_path):
+    """Probes video width and height via ffprobe."""
+    try:
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=width,height",
+            "-of", "csv=s=x:p=0",
+            file_path
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        parts = res.stdout.strip().split("x")
+        w, h = int(parts[0]), int(parts[1])
+        return w, h
+    except Exception as e:
+        print(f"⚠️ ffprobe dimension check fallback: {e}")
+        return 1920, 1080
+
+def extract_preview_frames(video_path, num_frames=2):
+    """Extracts lightweight JPEG frames from a video for fast Gemini multimodal vision inspection."""
+    frames = []
+    dur = get_media_duration(video_path)
+    for i in range(1, num_frames + 1):
+        t = max(0.5, (dur / (num_frames + 1)) * i)
+        out_f = f"{video_path}_frame_{i}.jpg"
+        cmd = [
+            "ffmpeg", "-y", "-ss", f"{t:.2f}",
+            "-i", video_path, "-vframes", "1",
+            "-q:v", "4", out_f
+        ]
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.path.exists(out_f) and os.path.getsize(out_f) > 1000:
+            with open(out_f, "rb") as f:
+                b64_data = base64.b64encode(f.read()).decode("utf-8")
+                frames.append(b64_data)
+            try:
+                os.remove(out_f)
+            except Exception:
+                pass
+    return frames
+
+def audition_candidates_with_gemini(candidates, gemini_key):
+    """
+    AI Executive Producer & Quality Judge:
+    Auditions top viral candidates using Gemini Multimodal Vision to pick the single best winner based on:
+    1. US, UK & Western viral appeal (funny pets, physical comedy, fails, instant karma).
+    2. Zero or minimal burned-in Chinese dialogue subtitles / text watermarks.
+    3. Immediate 2-second swipe-stopper visual hook.
+    """
+    os.makedirs("temp/audition", exist_ok=True)
+    audition_data = []
+
+    dl_headers = {"User-Agent": "okhttp/3.10.0.1"}
+    for idx, c in enumerate(candidates):
+        cand_path = os.path.join("temp", "audition", f"cand_{idx}.mp4")
+        try:
+            with requests.get(c["url"], headers=dl_headers, stream=True, timeout=20) as r:
+                r.raise_for_status()
+                with open(cand_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=1024*256):
+                        if chunk:
+                            f.write(chunk)
+            if os.path.exists(cand_path) and os.path.getsize(cand_path) > 30000:
+                frames_b64 = extract_preview_frames(cand_path, num_frames=2)
+                if frames_b64:
+                    audition_data.append({
+                        "index": idx + 1,
+                        "candidate": c,
+                        "video_path": cand_path,
+                        "frames": frames_b64
+                    })
+        except Exception as e:
+            print(f"⚠️ Audition candidate {idx+1} download notice: {e}")
+
+    if not audition_data:
+        return candidates[0]
+    if len(audition_data) == 1:
+        audition_data[0]["candidate"]["pre_downloaded_path"] = audition_data[0]["video_path"]
+        return audition_data[0]["candidate"]
+
+    content_parts = [{
+        "text": (
+            "You are the Executive Producer & Quality Judge for an international viral YouTube Shorts studio "
+            "targeting audiences in the US, UK, and Western countries.\n\n"
+            "Evaluate the candidate video clips below (each candidate has 2 visual frames shown):\n"
+        )
+    }]
+
+    for item in audition_data:
+        c = item["candidate"]
+        content_parts.append({
+            "text": f"\n--- CANDIDATE #{item['index']} ---\nCaption: {c['desc']}\nLikes: {c['likes']:,} | Shares: {c['shares']:,}\nVisual Frames:"
+        })
+        for f_b64 in item["frames"]:
+            content_parts.append({
+                "inlineData": {
+                    "mimeType": "image/jpeg",
+                    "data": f_b64
+                }
+            })
+
+    content_parts.append({
+        "text": (
+            "\n=======================================================\n"
+            "SELECTION CRITERIA:\n"
+            "1. 🇬🇧/🇺🇸 WESTERN AUDIENCE HOOK (45%): Which video is universally funny, relatable, and entertaining to English/Western viewers (e.g. hilarious pets, gym/sports fails, physical comedy, instant karma, unexpected funny reactions)?\n"
+            "2. 🚫 ZERO CHINESE TEXT (45%): Strictly penalize videos with burned-in Chinese dialogue subtitles, watermarks, or Chinese text banners. Favor clips that are 100% clean of Chinese text.\n"
+            "3. 🧲 RETENTION HOOK (10%): Instant visual curiosity in the opening.\n\n"
+            "Respond in valid JSON format:\n"
+            "{\n"
+            '  "winner_index": 1,\n'
+            '  "winner_reason": "Candidate #X has zero Chinese text and features a universal funny dog moment that US/UK viewers will love.",\n'
+            '  "cleanliness_score": 10,\n'
+            '  "western_appeal_score": 9\n'
+            "}\n"
+        )
+    })
+
+    models_to_try = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-flash-latest", "gemini-flash-lite-latest"]
+    for mod in models_to_try:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={gemini_key}"
+            payload = {
+                "contents": [{"parts": content_parts}],
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 400, "responseMimeType": "application/json"}
+            }
+            r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=25)
+            if r.status_code == 200:
+                data = r.json()
+                raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                cleaned = re.sub(r"^```(?:json)?\s*", "", raw_text, flags=re.I)
+                cleaned = re.sub(r"\s*```$", "", cleaned)
+                json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+                if json_match:
+                    cleaned = json_match.group(0)
+                parsed = json.loads(cleaned)
+                w_idx = int(parsed.get("winner_index", 1))
+                reason = parsed.get("winner_reason", "Selected by AI Producer")
+                clean_sc = parsed.get("cleanliness_score", "N/A")
+                west_sc = parsed.get("western_appeal_score", "N/A")
+
+                chosen = next((item for item in audition_data if item["index"] == w_idx), audition_data[0])
+                print(f"🏆 [AI AUDITION PRODUCER] Winner Selected: Candidate #{chosen['index']}!")
+                print(f"   🇬🇧/🇺🇸 Western Appeal: {west_sc}/10 | 🚫 Cleanliness: {clean_sc}/10")
+                print(f"   💡 Reason: {reason}")
+
+                chosen["candidate"]["pre_downloaded_path"] = chosen["video_path"]
+                return chosen["candidate"]
+        except Exception as e:
+            print(f"⚠️ Gemini audition {mod} notice: {e}")
+
+    # Fallback to first available candidate
+    audition_data[0]["candidate"]["pre_downloaded_path"] = audition_data[0]["video_path"]
+    return audition_data[0]["candidate"]
 
 def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.json"):
     """
@@ -242,7 +413,15 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
         if chosen_pool:
             chosen_pool.sort(key=lambda x: x["score"], reverse=True)
+            gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+
             top_pick = chosen_pool[0]
+            if len(chosen_pool) >= 2 and gemini_key:
+                audition_pool = chosen_pool[:3]
+                print(f"\n🎬 [AI AUDITION PRODUCER] Auditioning Top {len(audition_pool)} Finalists for US/UK Appeal & Zero Chinese Text...")
+                winner = audition_candidates_with_gemini(audition_pool, gemini_key)
+                if winner:
+                    top_pick = winner
 
             score = top_pick["score"]
             dur = top_pick["dur"]
@@ -260,15 +439,19 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             print(f"   🚀 Virality Score: {score:,}")
             print(f"   🔗 Original Douyin Link: {orig_web_url}")
             print(f"   📝 Caption: {desc}")
-            print(f"⬇️ Downloading direct unwatermarked HD stream from ByteDance China CDN...")
 
-            dl_headers = {"User-Agent": "okhttp/3.10.0.1"}
-            with requests.get(play_url, headers=dl_headers, stream=True, timeout=30) as dl_resp:
-                dl_resp.raise_for_status()
-                with open(raw_video_path, "wb") as f:
-                    for chunk in dl_resp.iter_content(chunk_size=1024*512):
-                        if chunk:
-                            f.write(chunk)
+            if top_pick.get("pre_downloaded_path") and os.path.exists(top_pick["pre_downloaded_path"]):
+                print("⚡ Using pre-downloaded HD stream from AI Audition...")
+                shutil.copyfile(top_pick["pre_downloaded_path"], raw_video_path)
+            else:
+                print(f"⬇️ Downloading direct unwatermarked HD stream from ByteDance China CDN...")
+                dl_headers = {"User-Agent": "okhttp/3.10.0.1"}
+                with requests.get(play_url, headers=dl_headers, stream=True, timeout=30) as dl_resp:
+                    dl_resp.raise_for_status()
+                    with open(raw_video_path, "wb") as f:
+                        for chunk in dl_resp.iter_content(chunk_size=1024*512):
+                            if chunk:
+                                f.write(chunk)
 
             if os.path.exists(raw_video_path) and os.path.getsize(raw_video_path) > 50000:
                 file_mb = os.path.getsize(raw_video_path) / (1024 * 1024)
@@ -578,14 +761,14 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
 # 4. MICROSOFT EDGE TTS & HORMOZI SUBTITLES
 # ==========================================
 def parse_vtt_timestamps(vtt_file):
-    """Parses WebVTT subtitle cues generated by edge-tts into word/phrase segments."""
+    """Parses SRT/WebVTT subtitle cues generated by edge-tts into word/phrase segments."""
     cues = []
     if not os.path.exists(vtt_file):
         return cues
     try:
         with open(vtt_file, "r", encoding="utf-8") as f:
             lines = f.readlines()
-        time_pat = re.compile(r"(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})")
+        time_pat = re.compile(r"(\d{1,2}:?\d{2}:\d{2}[.,]\d{3})\s*-->\s*(\d{1,2}:?\d{2}:\d{2}[.,]\d{3})")
         current_start = None
         current_end = None
         for line in lines:
@@ -594,23 +777,29 @@ def parse_vtt_timestamps(vtt_file):
             if m:
                 current_start = m.group(1)
                 current_end = m.group(2)
-            elif current_start and current_end and line and not line.startswith("WEBVTT"):
-                # Clean formatting tags
+            elif current_start and current_end and line and not line.isdigit() and not line.startswith("WEBVTT"):
                 clean_text = re.sub(r"<[^>]+>", "", line).strip()
                 if clean_text:
-                    cues.append((current_start, current_end, clean_text))
+                    cues.append((vtt_time_to_seconds(current_start), vtt_time_to_seconds(current_end), clean_text))
                 current_start = None
                 current_end = None
     except Exception as e:
-        print(f"⚠️ Error parsing VTT: {e}")
+        print(f"⚠️ Error parsing subtitles: {e}")
     return cues
 
 def vtt_time_to_seconds(ts):
+    ts = str(ts).strip().replace(",", ".")
     parts = ts.split(":")
-    h = float(parts[0])
-    m = float(parts[1])
-    s = float(parts[2])
-    return h * 3600 + m * 60 + s
+    if len(parts) == 3:
+        h = float(parts[0])
+        m = float(parts[1])
+        s = float(parts[2])
+        return h * 3600 + m * 60 + s
+    elif len(parts) == 2:
+        m = float(parts[0])
+        s = float(parts[1])
+        return m * 60 + s
+    return float(ts)
 
 def seconds_to_ass_time(sec):
     h = int(sec // 3600)
@@ -644,73 +833,114 @@ def strip_emojis(text):
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
 
+async def generate_edge_tts_with_word_boundaries_async(text, voice, output_audio, rate="+5%"):
+    """Hooks directly into Microsoft Edge TTS websocket stream to extract exact millisecond word boundaries."""
+    import edge_tts
+    communicate = edge_tts.Communicate(text, voice, rate=rate, boundary="WordBoundary")
+    words_timing = []
+    with open(output_audio, "wb") as f:
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                f.write(chunk["data"])
+            elif chunk["type"] == "WordBoundary":
+                start_sec = chunk["offset"] / 10_000_000.0
+                dur_sec = chunk["duration"] / 10_000_000.0
+                end_sec = start_sec + dur_sec
+                word = chunk["text"].strip()
+                if word:
+                    words_timing.append((start_sec, end_sec, word))
+    return words_timing
+
 def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
     """
-    Generates Microsoft Edge TTS speech with +12% meme pace,
+    Generates Microsoft Edge TTS speech with real-time WordBoundary 1:1 millisecond lock,
     and builds an animated yellow/white Hormozi ASS subtitle file.
     """
     os.makedirs(os.path.dirname(output_audio) or ".", exist_ok=True)
-    vtt_file = output_audio.replace(".mp3", ".vtt")
+    srt_file = output_audio.replace(".mp3", ".srt")
     
     clean_spoken_text = strip_emojis(script_text)
     print(f"🎙️ Cleaned TTS Voiceover Text (no emojis spoken):\n   {clean_spoken_text}")
     print(f"🎙️ Generating voiceover with voice: {voice} at +5% speed...")
-    cmd = [
-        sys.executable, "-m", "edge_tts",
-        "--voice", voice,
-        "--rate", "+5%",
-        "--text", clean_spoken_text,
-        "--write-media", output_audio,
-        "--write-subtitles", vtt_file
-    ]
-    tts_success = False
-    for tts_attempt in range(3):
-        try:
-            subprocess.run(cmd, check=True)
-            if os.path.exists(output_audio) and os.path.getsize(output_audio) > 1000:
-                tts_success = True
-                break
-        except Exception as e:
-            print(f"⚠️ Edge TTS attempt {tts_attempt+1} notice: {e}")
-            time.sleep(2)
-    if not tts_success:
-        print("🔄 Edge TTS fallback: attempting with en-US-ChristopherNeural...")
-        fallback_cmd = [
+
+    words_timing = []
+    # 1. Try Direct Python WordBoundary Async Hook (Millisecond Precision)
+    try:
+        words_timing = asyncio.run(
+            generate_edge_tts_with_word_boundaries_async(clean_spoken_text, voice, output_audio, rate="+5%")
+        )
+        if words_timing and os.path.exists(output_audio) and os.path.getsize(output_audio) > 1000:
+            print(f"⚡ [WORD-LOCK SYNC] Successfully captured {len(words_timing)} word timestamps directly from Edge TTS engine!")
+    except Exception as e:
+        print(f"⚠️ Direct async TTS notice: {e}, attempting CLI fallback...")
+
+    # 2. Fallback to CLI if async didn't produce valid audio
+    if not words_timing or not os.path.exists(output_audio) or os.path.getsize(output_audio) < 1000:
+        cmd = [
             sys.executable, "-m", "edge_tts",
-            "--voice", "en-US-ChristopherNeural",
+            "--voice", voice,
             "--rate", "+5%",
             "--text", clean_spoken_text,
             "--write-media", output_audio,
-            "--write-subtitles", vtt_file
+            "--write-subtitles", srt_file
         ]
-        subprocess.run(fallback_cmd, check=True)
+        tts_success = False
+        for tts_attempt in range(3):
+            try:
+                subprocess.run(cmd, check=True)
+                if os.path.exists(output_audio) and os.path.getsize(output_audio) > 1000:
+                    tts_success = True
+                    break
+            except Exception as e:
+                print(f"⚠️ Edge TTS attempt {tts_attempt+1} notice: {e}")
+                time.sleep(2)
+        if not tts_success:
+            print("🔄 Edge TTS fallback: attempting with en-US-ChristopherNeural...")
+            fallback_cmd = [
+                sys.executable, "-m", "edge_tts",
+                "--voice", "en-US-ChristopherNeural",
+                "--rate", "+5%",
+                "--text", clean_spoken_text,
+                "--write-media", output_audio,
+                "--write-subtitles", srt_file
+            ]
+            subprocess.run(fallback_cmd, check=True)
 
-    # Parse cues
-    cues = parse_vtt_timestamps(vtt_file)
-    print(f"📝 Parsed {len(cues)} subtitle cues from Edge TTS.")
+    # 3. Parse cues if words_timing not available
+    cues = []
+    if not words_timing and os.path.exists(srt_file):
+        cues = parse_vtt_timestamps(srt_file)
+        print(f"📝 Parsed {len(cues)} subtitle cues from SRT fallback.")
 
-    # Group into punchy 2-4 word cards for high retention
+    # 4. Group into punchy 2-3 word cards for high retention
     ass_cards = []
     chunk_size = 3
-    if cues:
+    if words_timing:
+        for i in range(0, len(words_timing), chunk_size):
+            chunk = words_timing[i:i + chunk_size]
+            start_sec = chunk[0][0]
+            end_sec = max(chunk[-1][1], start_sec + 0.3)
+            card_words = [w[2] for w in chunk]
+            ass_cards.append((start_sec, end_sec, card_words))
+    elif cues:
         for i in range(0, len(cues), chunk_size):
             chunk = cues[i:i + chunk_size]
-            start_sec = vtt_time_to_seconds(chunk[0][0])
-            end_sec = vtt_time_to_seconds(chunk[-1][1])
+            start_sec = chunk[0][0]
+            end_sec = chunk[-1][1]
             card_words = [w[2] for w in chunk]
             ass_cards.append((start_sec, end_sec, card_words))
     else:
-        # Fallback if VTT empty: estimate from words
-        words = script_text.split()
-        total_dur = 20.0
-        w_dur = total_dur / max(len(words), 1)
+        # Dynamic probe fallback: probe ACTUAL audio duration, NEVER fixed 20s!
+        actual_dur = get_media_duration(output_audio)
+        words = clean_spoken_text.split()
+        w_dur = actual_dur / max(len(words), 1)
         for i in range(0, len(words), chunk_size):
             chunk = words[i:i + chunk_size]
             s = i * w_dur
-            e = (i + len(chunk)) * w_dur
+            e = min(actual_dur, (i + len(chunk)) * w_dur)
             ass_cards.append((s, e, chunk))
 
-    # Write ASS File with Hormozi Yellow/White typography
+    # 5. Write ASS File with Hormozi Yellow/White typography in Golden Eye-Level Zone
     with open(output_ass, "w", encoding="utf-8") as f:
         f.write("[Script Info]\n")
         f.write("ScriptType: v4.00+\n")
@@ -742,7 +972,7 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
                 
             f.write(f"Dialogue: 0,{start_ts},{end_ts},Hormozi,,0,0,0,,{styled_text}\n")
             
-    print(f"✅ Generated Hormozi ASS Subtitles: {output_ass}")
+    print(f"✅ Generated {len(ass_cards)} Hormozi ASS Subtitle Cards (1:1 Word Sync): {output_ass}")
 
 # ==========================================
 # 5. AUDIO SYNTHESIS (COMEDY BGM & SFX)
@@ -908,38 +1138,6 @@ def synthesize_sfx_pack(temp_dir):
 # ==========================================
 # 6. FFMPEG TRANSFORMATIVE VIDEO STUDIO
 # ==========================================
-def get_media_duration(file_path):
-    """Probes media duration in seconds via ffprobe."""
-    try:
-        cmd = [
-            "ffprobe", "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            file_path
-        ]
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return float(res.stdout.strip())
-    except Exception:
-        return 20.0
-
-def get_video_dimensions(file_path):
-    """Probes video width and height via ffprobe."""
-    try:
-        cmd = [
-            "ffprobe", "-v", "error",
-            "-select_streams", "v:0",
-            "-show_entries", "stream=width,height",
-            "-of", "csv=s=x:p=0",
-            file_path
-        ]
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        parts = res.stdout.strip().split("x")
-        w, h = int(parts[0]), int(parts[1])
-        return w, h
-    except Exception as e:
-        print(f"⚠️ ffprobe dimension check fallback: {e}")
-        return 1920, 1080
-
 def render_transformative_short(input_video, narration_audio, ass_subtitles, hook_banner, output_video, output_thumb, sfx_timeline=None):
     """
     Renders 100% Monetizable YouTube Short with Adaptive Framing & Dynamic AI Soundboard:
