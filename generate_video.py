@@ -720,8 +720,8 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
         
         f.write("[V4+ Styles]\n")
         f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
-        # Bold yellow & white text, thick black outline, center bottom alignment (Alignment 2)
-        f.write("Style: Hormozi,DejaVu Sans,58,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,2,2,40,40,320,1\n\n")
+        # Premium Hormozi Floating Subtitles: Bold yellow & white, thick black outline (5px) + 3D drop shadow (3px), Golden Center / Eye-Level Zone (MarginV 680)
+        f.write("Style: Hormozi,DejaVu Sans,60,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,5,3,2,50,50,680,1\n\n")
         
         f.write("[Events]\n")
         f.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
@@ -1064,9 +1064,7 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
             f"boxblur=25:8,eq=brightness=-0.15[bg_blur];"
             f"[v_fg]scale=1080:-2:flags=lanczos{zoom_filter}[fg_crisp];"
             f"[bg_blur][fg_crisp]overlay=0:(H-h)/2[base_comp];"
-            f"[base_comp]drawbox=x=(iw-860)/2:y=120:w=860:h=90:color=black@0.75:t=fill,"
-            f"drawtext=text='{clean_hook}':fontsize=40:fontcolor=yellow:x=(w-text_w)/2:y=142,"
-            f"subtitles='{ass_escaped}'[outv];"
+            f"[base_comp]subtitles='{ass_escaped}'[outv];"
             f"{audio_mix_filter}"
         )
         simpler_filter = (
@@ -1080,7 +1078,7 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
             f"{audio_mix_filter}"
         )
     else:
-        # Native Vertical 9:16 Video
+        # Native Vertical 9:16 Video (Clean Ultra-Premium Fullscreen, Zero Black Bars)
         if do_zoom:
             t_s = max(0.5, zoom_time - 0.2)
             t_e = min(target_dur - 0.5, zoom_time + 1.1)
@@ -1092,9 +1090,6 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
             f"[0:v]hflip,{speed_filter},"
             f"scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
             f"{crop_logic},"
-            f"drawbox=x=(iw-860)/2:y=110:w=860:h=90:color=black@0.75:t=fill,"
-            f"drawtext=text='{clean_hook}':fontsize=40:fontcolor=yellow:x=(w-text_w)/2:y=132,"
-            f"drawbox=x=0:y=1540:w=1080:h=260:color=black@0.85:t=fill,"
             f"subtitles='{ass_escaped}'[outv];"
             f"{audio_mix_filter}"
         )
@@ -1102,7 +1097,6 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
             f"[0:v]hflip,{speed_filter},"
             f"scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
             f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2,"
-            f"drawbox=x=0:y=1540:w=1080:h=260:color=black@0.85:t=fill,"
             f"subtitles='{ass_escaped}'[outv];"
             f"{audio_mix_filter}"
         )
