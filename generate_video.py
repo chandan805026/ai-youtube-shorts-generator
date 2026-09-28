@@ -344,9 +344,9 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             if any(w in desc for w in ad_words):
                 continue
 
-            # 2. Check Golden Duration (12s to 35s)
+            # 2. Strict High-Retention Duration Gatekeeper: Minimum 16.0s (16.0s to 50.0s)
             dur = item.get("duration", 0) / 1000.0
-            if not (12.0 <= dur <= 35.0):
+            if not (16.0 <= dur <= 50.0):
                 continue
 
             # 3. Check direct playable stream URL
@@ -373,9 +373,9 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
                 if kw in desc:
                     virality_score += 100000
 
-            # Golden duration sweet spot bonus (15s to 25s)
-            if 14.0 <= dur <= 26.0:
-                virality_score += 25000
+            # Golden duration sweet spot bonus (18s to 35s)
+            if 18.0 <= dur <= 35.0:
+                virality_score += 50000
 
             is_100k_plus = (likes >= 100000)
             is_50k_plus = (likes >= 50000)
@@ -465,7 +465,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
                     "title": "Chinese TikTok Went Too Far 💀 #shorts",
                     "hook_banner": "WAIT FOR THE TWIST 💀" if "suspense" in (topic or "").lower() else "WAIT TILL THE END 💀",
                     "description": desc,
-                    "fallback_script": "Ain't no way Chinese TikTok just did that! Pure comedy gold in 4K! 💀"
+                    "fallback_script": "Wait for it, because bro really thought he had the master plan! Look at that unmatched confidence right before disaster strikes. The way he froze the second everything went completely wrong is pure comedy gold! You can literally see his whole soul leaving his body in 4K! What would you even do if this happened to you? Tell me in the comments right now! 💀"
                 }
                 return raw_video_path, meta["title"], desc, "douyin_live_china", meta
         else:
@@ -681,8 +681,15 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
             print(f"👁️ Attaching {len(frame_images_b64)} visual frames to Gemini contents!")
         content_parts.append({"text": user_prompt})
 
-        # Dynamic Gemini Model Discovery & Priority to gemini-2.5-flash
-        models_to_try = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-flash-latest", "gemini-flash-lite-latest"]
+        # Stable Model Priority: Direct priority to gemini-2.5-flash and gemini-flash-latest
+        models_to_try = [
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
+            "gemini-flash-latest",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-flash-lite-latest"
+        ]
         try:
             m_resp = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}", timeout=10)
             if m_resp.status_code == 200:
@@ -692,9 +699,14 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                     methods = m.get("supportedGenerationMethods", [])
                     if "generateContent" in methods:
                         discovered.append(m_name)
-                priority_names = ["gemini-3.8-flash", "gemini-3.8-flash-lite", "gemini-3.1-pro-preview", "gemini-flash-latest", "gemini-flash-lite-latest"]
-                top_picks = [p for p in priority_names if p in discovered]
-                rest = [m for m in discovered if m not in top_picks and "tts" not in m and "image" not in m]
+                # Filter out broken preview/research models
+                valid_discovered = [
+                    m for m in discovered 
+                    if m.startswith("gemini-") 
+                    and not any(x in m for x in ["antigravity", "deep-research", "robotics", "lyria", "computer-use", "preview-0", "preview-1"])
+                ]
+                top_picks = [p for p in models_to_try if p in valid_discovered]
+                rest = [m for m in valid_discovered if m not in top_picks]
                 models_to_try = top_picks + rest
         except Exception as e:
             print(f"⚠️ Dynamic model discovery notice: {e}")
