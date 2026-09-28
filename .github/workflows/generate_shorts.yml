@@ -25,6 +25,11 @@ on:
         default: 'en-US-GuyNeural'
         type: choice
         options:
+          - 'dual-uk'
+          - 'dual-hindi'
+          - 'dual-us'
+          - 'en-GB-RyanNeural'
+          - 'en-GB-SoniaNeural'
           - 'en-US-GuyNeural'
           - 'en-US-ChristopherNeural'
           - 'en-US-JennyNeural'
@@ -97,8 +102,8 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add history.json || true
           git commit -m "Update video memory vault (anti-repetition) [skip ci]" || true
-          git pull --rebase origin main || true
-          git push origin main || true
+          git pull --rebase origin ${GITHUB_REF_NAME:-test-dual-voice} || true
+          git push origin ${GITHUB_REF_NAME:-test-dual-voice} || true
 
       - name: 🌐 Prepare Web Player (Anti-Cache)
         run: |
