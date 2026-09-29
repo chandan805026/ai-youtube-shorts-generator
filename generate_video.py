@@ -369,9 +369,11 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             if any(nw in desc for nw in negative_words):
                 continue
 
-            # 2. Strict High-Retention Duration Gatekeeper: 14.0s to 35.0s
+            # 2. Dynamic Duration Gatekeeper based on round:
             dur = item.get("duration", 0) / 1000.0
-            if not (14.0 <= dur <= 35.0):
+            min_dur = 13.0 if attempt < 2 else (9.0 if attempt < 4 else 6.5)
+            max_dur = 35.0 if attempt < 2 else (45.0 if attempt < 4 else 60.0)
+            if not (min_dur <= dur <= max_dur):
                 continue
 
             # 3. Check direct playable stream URL
@@ -379,9 +381,9 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             if not play_urls:
                 continue
 
-            # 4. In rounds 1-3, enforce viral comedy/fail/gadget tags
+            # 4. In rounds 1-2, enforce viral comedy/fail/gadget tags
             has_viral_tag = any(vt in desc for vt in viral_tags)
-            if attempt < 3 and not has_viral_tag:
+            if attempt < 2 and not has_viral_tag:
                 continue
 
             # 4. Extract Real Metrics (Likes, Shares, Comments)
@@ -423,7 +425,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
                 "url": play_urls[0]
             })
 
-        # Strict Quality Gatekeeper: Prefer 100K+ Likes, Fallback to 50K+
+        # Strict Quality Gatekeeper: Prefer 100K+ Likes, Fallback to 50K+, then Top Engagement
         tier1 = [c for c in candidates if c["is_100k_plus"]]
         tier2 = [c for c in candidates if c["is_50k_plus"]]
 
@@ -436,10 +438,34 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         elif tier2:
             chosen_pool = tier2
             tier_badge = f"⚡ TIER-2 (50K+ HIGH-VIRAL: {len(tier2)} found)"
-        elif attempt == 4 and candidates:
-            # Absolute last resort after 5 rounds
+        elif attempt >= 2 and candidates:
             chosen_pool = candidates
-            tier_badge = "✨ TIER-3 (TOP ENGAGEMENT POOL)"
+            tier_badge = f"✨ TIER-3 (TOP ENGAGEMENT POOL: {len(candidates)} found)"
+        elif attempt == 4 and not chosen_pool and raw_items:
+            # Emergency fallback: pick any clean video that is not ads or negative words
+            emergency = [
+                it for it in raw_items 
+                if not it.get("is_ads") 
+                and not any(w in it.get("desc", "") for w in ad_words)
+                and not any(nw in it.get("desc", "") for nw in negative_words)
+                and it.get("video", {}).get("play_addr", {}).get("url_list")
+            ]
+            if emergency:
+                emergency.sort(key=lambda x: x.get("statistics", {}).get("digg_count", 0), reverse=True)
+                top_em = emergency[0]
+                chosen_pool = [{
+                    "score": top_em.get("statistics", {}).get("digg_count", 0),
+                    "likes": top_em.get("statistics", {}).get("digg_count", 0),
+                    "shares": top_em.get("statistics", {}).get("share_count", 0),
+                    "comments": top_em.get("statistics", {}).get("comment_count", 0),
+                    "is_100k_plus": False,
+                    "is_50k_plus": False,
+                    "dur": top_em.get("duration", 0) / 1000.0,
+                    "id": str(top_em.get("aweme_id", "")).strip(),
+                    "desc": top_em.get("desc", ""),
+                    "url": top_em.get("video", {}).get("play_addr", {}).get("url_list", [])[0]
+                }]
+                tier_badge = "🛡️ EMERGENCY CLEAN FALLBACK"
 
         if chosen_pool:
             chosen_pool.sort(key=lambda x: x["score"], reverse=True)
