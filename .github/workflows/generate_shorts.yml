@@ -97,6 +97,7 @@ jobs:
             --thumb "output/thumbnail.jpg"
 
       - name: 🧠 Persist Video History Memory Vault
+        if: ${{ github.event_name == 'schedule' || (inputs.upload_to_youtube == true || inputs.upload_to_youtube == 'true') }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
