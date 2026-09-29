@@ -261,6 +261,17 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             if ok:
                 return raw_video_path, det_title or "Viral Asian Comedy #shorts", "Viral Douyin comedy clip", "custom_url", {"id": "custom_url"}
 
+        # Generic universal extractor using yt-dlp (YouTube Shorts, TikTok, Douyin, etc.)
+        if any(d in url for d in ["youtube.com", "youtu.be", "tiktok.com", "douyin.com"]):
+            print(f"🎬 [YT-DLP] Extracting video stream from: {url}")
+            try:
+                cmd = ["yt-dlp", "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best", "--no-warnings", "-o", raw_video_path, url]
+                subprocess.run(cmd, check=True)
+                if os.path.exists(raw_video_path) and os.path.getsize(raw_video_path) > 10000:
+                    return raw_video_path, "Smart Kitchen Gadgets & Viral Inventions 😂 #shorts", "Smart Chinese Kitchen Gadgets and Utensils comedy challenge", "custom_url", {"id": "custom_url"}
+            except Exception as e:
+                print(f"⚠️ yt-dlp download notice: {e}")
+
     # 2. Live Chinese Douyin ByteDance Feed API (Direct from China CDN)
     print(f"\n=======================================================")
     print(f"🚀 [CHINA LIVE STREAM] Scanning Live Douyin for 100K+ Likes Mega-Clips...")
