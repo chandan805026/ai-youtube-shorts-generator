@@ -188,13 +188,13 @@ def audition_candidates_with_gemini(candidates, gemini_key):
         "text": (
             "\n=======================================================\n"
             "SELECTION CRITERIA:\n"
-            "1. 🇬🇧/🇺🇸 WESTERN AUDIENCE HOOK (45%): Which video is universally funny, relatable, and entertaining to English/Western viewers (e.g. hilarious pets, gym/sports fails, physical comedy, instant karma, unexpected funny reactions)?\n"
-            "2. 🚫 ZERO CHINESE TEXT (45%): Strictly penalize videos with burned-in Chinese dialogue subtitles, watermarks, or Chinese text banners. Favor clips that are 100% clean of Chinese text.\n"
+            "1. 🇬🇧/🇺🇸 PURE COMEDY, SLAPSTICK, SMART GADGET FAILS & VIRAL MOMENTS (50%): Which video is genuinely hilarious, surprising, slapstick, smart gadget fail, funny pet mischief, or instant karma? STRICTLY REJECT sports, marathons, athletics, news, serious exercise, or walking/talking.\n"
+            "2. 🚫 ZERO CHINESE TEXT & WATERMARKS (40%): Strictly penalize videos with burned-in Chinese dialogue subtitles, watermarks, or Chinese text banners. Favor clips that are 100% clean of Chinese text.\n"
             "3. 🧲 RETENTION HOOK (10%): Instant visual curiosity in the opening.\n\n"
             "Respond in valid JSON format:\n"
             "{\n"
             '  "winner_index": 1,\n'
-            '  "winner_reason": "Candidate #X has zero Chinese text and features a universal funny dog moment that US/UK viewers will love.",\n'
+            '  "winner_reason": "Candidate #X has zero Chinese text and features a universal funny moment that US/UK viewers will love.",\n'
             '  "cleanliness_score": 10,\n'
             '  "western_appeal_score": 9\n'
             "}\n"
@@ -268,7 +268,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
                 cmd = ["yt-dlp", "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best", "--no-warnings", "-o", raw_video_path, url]
                 subprocess.run(cmd, check=True)
                 if os.path.exists(raw_video_path) and os.path.getsize(raw_video_path) > 10000:
-                    return raw_video_path, "Smart Kitchen Gadgets & Viral Inventions 😂 #shorts", "Smart Chinese Kitchen Gadgets and Utensils comedy challenge", "custom_url", {"id": "custom_url"}
+                    return raw_video_path, "Viral Asian Comedy Short #shorts", "Hilarious viral comedy moment", "custom_url", {"id": "custom_url"}
             except Exception as e:
                 print(f"⚠️ yt-dlp download notice: {e}")
 
@@ -313,7 +313,18 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
     headers = {"User-Agent": "okhttp/3.10.0.1", "Accept": "application/json"}
 
     ad_words = ["\u5e26\u8d27", "\u4e0b\u5355", "\u5e7f\u544a", "\u76f4\u64ad", "\u94fe\u63a5", "\u70b9\u51fb", "\u8d2d\u4e70", "\u5305\u90ae", "\u9886\u5238", "\u4f18\u60e0", "\u540c\u6b3e", "\u6a71\u7a97"]
-    viral_tags = ["\u6c99\u96d5", "\u641e\u7b11", "\u53cd\u8f6c", "\u795e\u8f6c\u6298", "\u540d\u573a\u9762", "\u8ff7\u60d1", "\u610f\u60f3\u4e0d\u5230", "\u7b11\u6b7b\u6211\u4e86", "\u4eba\u7c7b\u8ff7\u60d1\u884c\u4e3a", "\u6574\u86ca", "\u6076\u641e"]
+    negative_words = [
+        "马拉松", "跑步", "田径", "新闻", "比赛", "足球", "篮球", "排球", "运动会", 
+        "天气", "采访", "事故", "警情", "车祸", "时政", "跳舞", "舞蹈", "逝世", 
+        "去世", "缅怀", "纪念", "悼念", "合唱", "走好", "抗疫", "疫情", "防疫", 
+        "阅兵", "会议", "讲座", "发布会", "通报", "落网", "抓获", "辟谣", "哀悼"
+    ]
+    viral_tags = [
+        "沙雕", "搞笑", "幽默", "整蛊", "神转折", "爆笑", "迷惑", "翻车", "好物", 
+        "神器", "作死", "反转", "名场面", "人类迷惑行为", "笑死我了", "意外", 
+        "尴尬", "熊孩子", "狗子", "猫咪", "戏精", "演我", "整人", "黑科技", "生活技巧",
+        "奇葩", "萌宠", "宠物", "汪星人", "喵星人", "好笑", "太逗了", "逗比", "段子"
+    ]
 
     for attempt in range(5):
         print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/5)...")
@@ -348,21 +359,28 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             if not aweme_id or aweme_id in used_ids or f"douyin_{aweme_id}" in used_ids:
                 continue
 
-            # 1. Skip Commercial Ads and E-Commerce Shopping
+            # 1. Skip Commercial Ads, E-Commerce, and Serious/Sports/News
             if item.get("is_ads") or item.get("commerce_info"):
                 continue
             desc = item.get("desc", "")
             if any(w in desc for w in ad_words):
                 continue
+            if any(nw in desc for nw in negative_words):
+                continue
 
-            # 2. Strict High-Retention Duration Gatekeeper: Minimum 16.0s (16.0s to 50.0s)
+            # 2. Strict High-Retention Duration Gatekeeper: 14.0s to 35.0s
             dur = item.get("duration", 0) / 1000.0
-            if not (16.0 <= dur <= 50.0):
+            if not (14.0 <= dur <= 35.0):
                 continue
 
             # 3. Check direct playable stream URL
             play_urls = item.get("video", {}).get("play_addr", {}).get("url_list", [])
             if not play_urls:
+                continue
+
+            # 4. In rounds 1-3, enforce viral comedy/fail/gadget tags
+            has_viral_tag = any(vt in desc for vt in viral_tags)
+            if attempt < 3 and not has_viral_tag:
                 continue
 
             # 4. Extract Real Metrics (Likes, Shares, Comments)
@@ -599,6 +617,9 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
     - Writes high-retention Title with emojis & #shorts.
     - Writes 3-5 word ALL CAPS Top Hook Banner.
     """
+    is_dual = "dual" in (voice or "").lower()
+    is_hindi = "hindi" in (voice or "").lower() or "hi-" in (voice or "").lower()
+
     if custom_script and custom_script.strip():
         print("🎬 Using user-provided custom script...")
         return {
@@ -648,6 +669,23 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
             "Format your entire response as a single valid JSON object with keys: title, hook_banner, script, description, tags, sfx_timeline."
         )
 
+        if is_dual:
+            script_instruction = (
+                f'   - "script": DUAL-VOICE DIALOGUE (CRITICAL). Format as alternating dialogue lines with speaker prefixes:\n'
+                f'     {"Jolly" if is_hindi else "Bob"}: <line commenting on action>\n'
+                f'     {"Champa" if is_hindi else "Karen"}: <funny reaction/punchline>\n'
+                f'     * Characters are actively watching and reacting to the exact actions on screen in real time!\n'
+                f'     * Total word count across ALL dialogue lines combined MUST be between {word_min} and {word_max} words.\n'
+                f'     * Must cover the full {safe_audio_dur:.1f} seconds of speech.'
+            )
+        else:
+            script_instruction = (
+                f'   - "script": Fast, hilarious comedic voiceover commentary of EXACTLY {word_min} to {word_max} words.\n'
+                f'     * Your words MUST cover the full {safe_audio_dur:.1f} seconds of speech.\n'
+                f'     * Do NOT stop speaking early!\n'
+                f'     * Align your description to the on-screen events so the viewer hears exactly what they see!'
+            )
+
         user_prompt = f"""
 WATCH AND ANALYZE THIS VIRAL VIDEO FOOTAGE CAREFULLY:
 - Context Clues: {clip_description}
@@ -668,10 +706,7 @@ CHRONOLOGICAL PLAY-BY-PLAY DIRECTIVE:
 3. Provide JSON with:
    - "title": High curiosity viral YouTube Shorts title under 60 characters with funny emojis and #shorts.
    - "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner matching the visual.
-   - "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words.
-     * Your words MUST cover the full {safe_audio_dur:.1f} seconds of speech.
-     * Do NOT stop speaking early!
-     * Align your description to the on-screen events so the viewer hears exactly what they see!
+{script_instruction}
    - "sfx_timeline": [
        {{"time": 0.4, "sound": "whoosh", "zoom": false}},
        {{"time": {min(safe_audio_dur, 12.0):.1f}, "sound": "vine_boom", "zoom": true}}
