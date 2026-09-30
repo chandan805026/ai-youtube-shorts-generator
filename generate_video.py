@@ -279,7 +279,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             print("🚀 [PLAYWRIGHT STEALTH INGESTION] Searching Douyin for Couple Comedy...")
             print("=======================================================")
             import playwright_douyin
-            search_term = "夫妻搞笑" if "couple" in topic.lower() else "整蛊搞笑"
+            search_term = "情侣吵架搞笑" if "couple" in topic.lower() else "整蛊搞笑"
             scraped = playwright_douyin.scrape_douyin_couple_video(dest_path=raw_video_path, keyword=search_term)
             if scraped and os.path.exists(raw_video_path) and os.path.getsize(raw_video_path) > 50000:
                 meta = {
@@ -1024,24 +1024,21 @@ async def generate_edge_tts_with_word_boundaries_async(text, voice, output_audio
 
 def parse_dialogue_lines(script_text):
     """
-    Parses dialogue scripts with characters like:
-    Bob: ...
-    Karen: ...
-    or
-    Jolly: ...
-    Champa: ...
-    Returns list of (role, speaker_name, line_text) and bool has_dialogue.
+    Parses dialogue scripts with alternating characters like Guy & Jenny or Bob & Karen.
+    Handles both newline-separated AND inline-separated dialogues robustly.
     """
-    lines = script_text.strip().split('\n')
+    import re
+    # Split whenever a speaker name followed by colon appears
+    parts = re.split(r'(?=(?:^|\s+)[A-Za-z]+[:：]\s*)', script_text.strip())
     parsed = []
-    male_names = {'bob', 'jolly', 'jholi', 'dave', 'gary', 'boy', 'guy', 'male', 'he', 'husband', 'dad', 'bhai'}
-    female_names = {'karen', 'champa', 'sarah', 'jenny', 'girl', 'female', 'she', 'wife', 'mom', 'bhabhi', 'didi'}
+    male_names = {'bob', 'jolly', 'jholi', 'dave', 'gary', 'boy', 'guy', 'male', 'he', 'husband', 'dad', 'bhai', 'man'}
+    female_names = {'karen', 'champa', 'sarah', 'jenny', 'girl', 'female', 'she', 'wife', 'mom', 'bhabhi', 'didi', 'woman'}
     has_dialogue = False
-    for raw_line in lines:
-        line = raw_line.strip()
-        if not line:
+    for raw_part in parts:
+        part = raw_part.strip()
+        if not part:
             continue
-        m = re.match(r'^([A-Za-z\s]+)[:：]\s*(.+)$', line)
+        m = re.match(r'^([A-Za-z]+)[:：]\s*(.+)$', part, re.DOTALL)
         if m:
             spk = m.group(1).strip()
             txt = m.group(2).strip()
@@ -1057,9 +1054,9 @@ def parse_dialogue_lines(script_text):
                 has_dialogue = True
         else:
             if parsed:
-                parsed[-1] = (parsed[-1][0], parsed[-1][1], parsed[-1][2] + ' ' + line)
+                parsed[-1] = (parsed[-1][0], parsed[-1][1], parsed[-1][2] + ' ' + part)
             else:
-                parsed.append(('narrator', 'Narrator', line))
+                parsed.append(('narrator', 'Narrator', part))
     return parsed, has_dialogue
 
 async def generate_multispeaker_edge_tts_async(dialogue_segments, male_voice, female_voice, default_voice, output_audio, rate="+5%"):
