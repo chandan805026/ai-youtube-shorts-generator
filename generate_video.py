@@ -668,16 +668,11 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
     ]
 
+        # STRICT GENRE WHITELIST: ONLY Comedy, Suspense, and Plot Twist content allowed
     viral_tags = [
-
-        "沙雕", "搞笑", "幽默", "整蛊", "神转折", "爆笑", "迷惑", "翻车", "好物", 
-
-        "神器", "作死", "反转", "名场面", "人类迷惑行为", "笑死我了", "意外", 
-
-        "尴尬", "熊孩子", "狗子", "猫咪", "戏精", "演我", "整人", "黑科技", "生活技巧",
-
-        "奇葩", "萌宠", "宠物", "汪星人", "喵星人", "好笑", "太逗了", "逗比", "段子"
-
+        "反转", "神反转", "意想不到的结局", "结局反转", "搞笑反转",  # Plot Twist
+        "没想到", "神转折", "意外", "悬疑",                      # Suspense & Shock
+        "搞笑", "沙雕", "整蛊", "恶搞", "笑死我了", "名场面"      # Pure Comedy & Pranks
     ]
 
 
@@ -774,7 +769,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
             max_dur = 35.0 if attempt < 2 else (45.0 if attempt < 4 else 60.0)
 
-            if not (min_dur <= dur <= max_dur):
+            if not (15.0 <= dur <= 28.5):
 
                 continue
 
@@ -1349,14 +1344,12 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
 
     # Calibrate exact word count for natural speech pace (~2.8 words/sec) to match full video length
 
-    safe_audio_dur = max(6.0, target_duration - 1.2)
-
+        # STRICT 15s - 28.5s TIMING & WORD LIMIT CALIBRATION (Never exceed 28.5s, Never under 15.0s)
+    clamped_target = min(28.0, max(15.0, target_duration))
+    safe_audio_dur = max(13.5, min(26.0, clamped_target - 1.2))
     word_target = int(safe_audio_dur * 2.8)
-
-    word_min = max(14, word_target - 3)
-
-    word_max = word_target + 3
-
+    word_min = max(38, word_target - 4)
+    word_max = min(72, word_target + 4)
     print(f"🎯 Calibrated Commentary Target: {safe_audio_dur:.1f}s speech ({word_min}-{word_max} words) for full {target_duration:.1f}s video")
 
 
@@ -2786,6 +2779,8 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
     # 1:1 Video-Audio Perfect Sync: Video ends exactly when narration completes (+ 0.6s punchline ring)
 
     target_dur = narration_dur + 0.6
+    # STRICT HARD CLAMP: Final short is strictly between 15.0s and 28.5s (<30.0s)
+    target_dur = min(28.5, max(15.0, target_dur))
 
     v_w, v_h = get_video_dimensions(input_video)
 
