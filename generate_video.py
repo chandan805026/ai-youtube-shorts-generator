@@ -626,20 +626,17 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
                 frame_images_b64 = extract_video_keyframes_base64(video_path)
 
         system_instruction = (
-            "You are an elite YouTube Shorts & TikTok comedy writer and Hollywood Sound Director.\n"
-            "CRITICAL RULE: YOU MUST CAREFULLY WATCH EVERY DETAIL OF THE ACTUAL VIDEO FOOTAGE. Do NOT guess or hallucinate.\n"
-            "- Accurately identify ALL characters on screen: count them, their gender, and what each person is doing.\n"
-            "- Look for fails, slips, falling, escaping, pranks, cosplay/glow-up transformations, or surprise twists.\n"
-            "- Keep the commentary fast-paced, witty, highly energetic, and relatable for US/UK/global audiences.\n"
-            "- AS SOUND DIRECTOR: You have access to our Studio Soundboard with 7 effects:\n"
-            "  * 'whoosh': Intro air sweep for video hook (at 0.3s-0.5s) or rapid action\n"
-            "  * 'bonk': Cartoon slapstick sound for physical slips, falls, collisions\n"
-            "  * 'vine_boom': Deep sub-bass shock boom for sudden twists, epic reveals, cosplay glow-ups\n"
-            "  * 'record_scratch': Vinyl scratch for sudden pauses, freeze moments, 'wait what just happened'\n"
-            "  * 'buzzer': Wrong choice buzzer when someone makes a bad decision or gets caught\n"
-            "  * 'pop': Playful bubble pop for cute pet actions or light jokes\n"
-            "  * 'ding': Clean chime bell for smart idea, victory, or success\n"
-            "Provide an 'sfx_timeline' array of 1 to 3 audio cues with exact timestamps and zoom flags.\n"
+            "You are a master YouTube Shorts retention director, viral TikTok comedy creator, and Hollywood audio engineer.\n"
+            "YOUR #1 GOAL: MAKE EVERY VIEWER WATCH UNTIL THE FINAL SECOND (100%+ RETENTION), EVEN IF THE FOOTAGE IS AVERAGE.\n"
+            "CRITICAL PSYCHOLOGICAL HOOK LAWS:\n"
+            "1. THE 3-SECOND CURIOSITY GAP: In the first 3 seconds, NEVER explain the ending or spoil what happens! Instead, set a high-stakes hook, tease a hidden detail, or pose a challenge (e.g. 'He thought he had this completely figured out...', 'Watch his face the exact moment he looks down...').\n"
+            "2. RISING MID-VIDEO TENSION: Between 4s and 12s, build fast-paced anticipation. Point out subtle details that make the viewer stare closely at the screen so their eyes never wander.\n"
+            "3. THE PAYOFF CLIMAX (Final 2-3s): Land a massive, satisfying laugh, savage roast, or shocking punchline right at the final visual moment!\n"
+            "4. SEAMLESS LOOP CLOSER: The last phrase should feel crisp, funny, and naturally flow into the beginning if looped.\n"
+            "5. SOUNDBOARD AUDIO HOOKS:\n"
+            "  * 'whoosh': ALWAYS placed at 0.3s-0.5s to snap the viewer's ears into focus.\n"
+            "  * 'record_scratch' or 'pop' or 'buzzer': Middle moment for comedic doubt.\n"
+            "  * 'vine_boom' or 'bonk' with zoom: true: Placed at the exact punchline timestamp.\n"
             "Format your entire response as a single valid JSON object with keys: title, hook_banner, script, description, tags, sfx_timeline."
         )
 
@@ -649,11 +646,17 @@ WATCH AND ANALYZE THIS VIRAL VIDEO FOOTAGE CAREFULLY:
 - Genre/Niche: {topic}
 - Total Video Duration: {target_duration:.1f} seconds
 
-CHRONOLOGICAL PLAY-BY-PLAY DIRECTIVE:
-1. Examine what happens across the video timeline:
-   * 0s - 3s (Opening Hook): Introduce the exact person/subjects and challenge immediately visible on screen.
-   * Middle Seconds (Play-By-Play): Comment directly on the visible actions, techniques, slips, or reactions unfolding on screen in real time as they happen.
-   * Final 2-3s (The Climax): Deliver the punchline and final reaction to the ultimate outcome/twist right before the video ends!
+CHRONOLOGICAL PSYCHOLOGICAL RETENTION DIRECTIVE:
+1. HOW TO HOOK & HOLD THE VIEWER:
+   * 0s - 3s (The Information Gap Hook): Hook the viewer immediately! Do NOT spoil the surprise. Tease the situation so the viewer CANNOT scroll away.
+   * Middle Seconds (Rising Tension): Describe the action with high-speed American meme sarcasm, building excitement toward the climax.
+   * Final 2-3s (The Punchline / Twist Climax): Deliver the explosive funny punchline or shocking revelation right before the cut!
+   * Seamless Infinite Loop: End with a punchy closer that loops smoothly.
+
+2. TOP HOOK BANNER RULES:
+   - Must be 3-5 words in ALL CAPS with an expressive emoji.
+   - Examples of irresistible stop-scroll banners:
+     "DON'T BLINK AT THE END 💀", "HE DID NOT SEE THIS COMING 😂", "WAIT FOR HIS REACTION 💀", "BRO THOUGHT HE WAS SAFE 😂", "NO WAY THIS JUST HAPPENED 😳"
 
 2. SOUNDBOARD SELECTION (As Audio Director):
    - Choose 1 to 3 sound effects from: 'whoosh', 'bonk', 'vine_boom', 'record_scratch', 'buzzer', 'pop', 'ding'.
@@ -689,8 +692,8 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
 
         # Stable Model Priority: Direct priority to gemini-2.5-flash and gemini-flash-latest
         models_to_try = [
-            "gemini-2.5-flash",
-            "gemini-2.5-pro",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
             "gemini-flash-latest",
             "gemini-1.5-flash",
             "gemini-1.5-pro",
