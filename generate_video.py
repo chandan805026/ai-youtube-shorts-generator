@@ -293,6 +293,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
     # Keyword mappings for Chinese Douyin topics
     topic_keywords = {
+        "couples": ["夫妻", "情侣", "老婆", "老公", "女友", "男友", "整蛊", "日常", "神转折", "爆笑", "反转", "相处"],
         "suspense": ["\u53cd\u8f6c", "\u60ca\u559c", "\u610f\u5916", "\u795e\u8f6c\u6298", "\u6ca1\u60f3\u5230", "\u7ed3\u5c40"],
         "prank": ["\u6574\u86ca", "\u6076\u641e", "\u6076\u4f5c\u5267", "\u6574\u4eba"],
         "pets": ["\u840c\u5ba0", "\u72d7\u72d7", "\u732b\u54aa", "\u5ba0\u7269", "\u6c6a\u661f\u4eba"],
@@ -399,6 +400,11 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             for vt in viral_tags:
                 if vt in desc:
                     virality_score += 50000
+
+            # When topic is couples, enforce strict couple keywords in early rounds
+            if topic and "couple" in topic.lower() and attempt < 3:
+                if not any(kw in desc for kw in keywords):
+                    continue
 
             # Boost for user topic keywords
             for kw in keywords:
@@ -715,12 +721,17 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
                 )
             else:
                 script_instruction = (
-                    f'   - "script": DUAL-VOICE DIALOGUE (CRITICAL). Format as alternating dialogue lines with speaker prefixes:\n'
-                    f'     Bob: <line commenting on action>\n'
-                    f'     Karen: <funny reaction/punchline>\n'
-                    f'     * Characters are actively watching and reacting to the exact actions on screen in real time!\n'
+                    f'   - "script": DUAL-VOICE COUPLE COMEDY DIALOGUE (CRITICAL)!\n'
+                    f'     * Format: Alternating funny lines between Guy (Boyfriend/Husband) and Jenny (Girlfriend/Wife):\n'
+                    f'       Guy: <trying to be smart / boasting / starting trick>\n'
+                    f'       Jenny: <sarcastic reaction / calling out his fail>\n'
+                    f'       Guy: <shocked reaction to getting caught/failing>\n'
+                    f'       Jenny: <savage roast & laughing at him> 😂\n'
+                    f'     * Characters MUST actively react to the real couple action unfolding on screen!\n'
                     f'     * Total word count across ALL dialogue lines combined MUST be between {word_min} and {word_max} words.\n'
-                    f'     * Must cover the full {safe_audio_dur:.1f} seconds of speech.'
+                    f'     * Must cover the full {safe_audio_dur:.1f} seconds of speech.\n'
+                    f'   - "title": Viral couple comedy title like "He Really Thought She Wouldn\'t Notice 💀 #shorts" or "Instant Karma For The Husband 😂 #shorts".\n'
+                    f'   - "hook_banner": 3-5 words ALL CAPS hook banner like "HUSBAND GOT CAUGHT 😂" or "SHE PLAYED HIM 💀".'
                 )
         else:
             script_instruction = (
@@ -999,7 +1010,7 @@ def parse_dialogue_lines(script_text):
     lines = script_text.strip().split('\n')
     parsed = []
     male_names = {'bob', 'jolly', 'jholi', 'dave', 'gary', 'boy', 'guy', 'male', 'he', 'husband', 'dad', 'bhai'}
-    female_names = {'karen', 'champa', 'sarah', 'girl', 'female', 'she', 'wife', 'mom', 'bhabhi', 'didi'}
+    female_names = {'karen', 'champa', 'sarah', 'jenny', 'girl', 'female', 'she', 'wife', 'mom', 'bhabhi', 'didi'}
     has_dialogue = False
     for raw_line in lines:
         line = raw_line.strip()
