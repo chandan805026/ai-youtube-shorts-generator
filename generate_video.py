@@ -677,9 +677,9 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
 
 
-    for attempt in range(5):
+    for attempt in range(6):
 
-        print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/5)...")
+        print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/6)...")
 
         raw_items = []
 
