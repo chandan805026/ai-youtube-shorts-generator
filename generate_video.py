@@ -207,7 +207,7 @@ def audition_candidates_with_gemini(candidates, gemini_key):
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": content_parts}],
-                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 400, "responseMimeType": "application/json"}
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048, "responseMimeType": "application/json"}
             }
             r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=25)
             if r.status_code == 200:
@@ -302,10 +302,15 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
     headers = {"User-Agent": "okhttp/3.10.0.1", "Accept": "application/json"}
 
     ad_words = ["\u5e26\u8d27", "\u4e0b\u5355", "\u5e7f\u544a", "\u76f4\u64ad", "\u94fe\u63a5", "\u70b9\u51fb", "\u8d2d\u4e70", "\u5305\u90ae", "\u9886\u5238", "\u4f18\u60e0", "\u540c\u6b3e", "\u6a71\u7a97"]
-    viral_tags = ["\u6c99\u96d5", "\u641e\u7b11", "\u53cd\u8f6c", "\u795e\u8f6c\u6298", "\u540d\u573a\u9762", "\u8ff7\u60d1", "\u610f\u60f3\u4e0d\u5230", "\u7b11\u6b7b\u6211\u4e86", "\u4eba\u7c7b\u8ff7\u60d1\u884c\u4e3a", "\u6574\u86ca", "\u6076\u641e"]
+        # STRICT GENRE WHITELIST: ONLY Comedy, Suspense, and Plot Twist content allowed
+    viral_tags = [
+        "反转", "神反转", "意想不到的结局", "结局反转", "搞笑反转",  # Plot Twist
+        "没想到", "神转折", "意外", "悬疑",                      # Suspense & Shock
+        "搞笑", "沙雕", "整蛊", "恶搞", "笑死我了", "名场面"      # Pure Comedy & Pranks
+    ]
 
-    for attempt in range(5):
-        print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/5)...")
+    for attempt in range(6):
+        print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/6)...")
         raw_items = []
         seen_batch_ids = set()
 
@@ -344,9 +349,9 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             if any(w in desc for w in ad_words):
                 continue
 
-            # 2. Strict High-Retention Duration Gatekeeper: Minimum 16.0s (16.0s to 50.0s)
+            # 2. STRICT 15.0s - 28.5s DURATION GATEKEEPER (Both Boundaries Hard-Locked: 15.0s <= dur <= 28.5s)
             dur = item.get("duration", 0) / 1000.0
-            if not (16.0 <= dur <= 50.0):
+            if not (15.0 <= dur <= 28.5):
                 continue
 
             # 3. Check direct playable stream URL
@@ -406,7 +411,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         elif tier2:
             chosen_pool = tier2
             tier_badge = f"⚡ TIER-2 (50K+ HIGH-VIRAL: {len(tier2)} found)"
-        elif attempt == 4 and candidates:
+        elif attempt == 5 and candidates:
             # Absolute last resort after 5 rounds
             chosen_pool = candidates
             tier_badge = "✨ TIER-3 (TOP ENGAGEMENT POOL)"
@@ -598,11 +603,12 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
             "tags": "shorts, funny, comedy, viral, meme, hilarious"
         }
 
-    # Calibrate exact word count for natural speech pace (~2.8 words/sec) to match full video length
-    safe_audio_dur = max(6.0, target_duration - 1.2)
+    # STRICT 15s - 28.5s TIMING & WORD LIMIT CALIBRATION (Never exceed 28.5s, Never under 15.0s)
+    clamped_target = min(28.0, max(15.0, target_duration))
+    safe_audio_dur = max(13.5, min(26.0, clamped_target - 1.2))
     word_target = int(safe_audio_dur * 2.8)
-    word_min = max(14, word_target - 3)
-    word_max = word_target + 3
+    word_min = max(38, word_target - 4)
+    word_max = min(72, word_target + 4)
     print(f"🎯 Calibrated Commentary Target: {safe_audio_dur:.1f}s speech ({word_min}-{word_max} words) for full {target_duration:.1f}s video")
 
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
@@ -717,7 +723,7 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                 payload = {
                     "contents": [{"parts": content_parts}],
                     "systemInstruction": {"parts": [{"text": system_instruction}]},
-                    "generationConfig": {"temperature": 0.4, "maxOutputTokens": 800, "responseMimeType": "application/json"}
+                    "generationConfig": {"temperature": 0.4, "maxOutputTokens": 2048, "responseMimeType": "application/json"}
                 }
                 r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=45)
                 if r.status_code == 200:
@@ -1172,6 +1178,8 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
     narration_dur = get_media_duration(narration_audio)
     # 1:1 Video-Audio Perfect Sync: Video ends exactly when narration completes (+ 0.6s punchline ring)
     target_dur = narration_dur + 0.6
+    # STRICT HARD CLAMP: Final short is strictly between 15.0s and 28.5s (<30.0s)
+    target_dur = min(28.5, max(15.0, target_dur))
     v_w, v_h = get_video_dimensions(input_video)
     is_landscape = (v_w > v_h) or (v_w / max(v_h, 1) >= 0.85)
 
