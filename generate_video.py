@@ -272,6 +272,31 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             except Exception as e:
                 print(f"⚠️ yt-dlp download notice: {e}")
 
+    # 1.5. Playwright Stealth Ingestion (Dedicated for Curated Topics & Couple Comedy)
+    if topic and ("couple" in topic.lower() or "prank" in topic.lower()):
+        try:
+            print("\n=======================================================")
+            print("🚀 [PLAYWRIGHT STEALTH INGESTION] Searching Douyin for Couple Comedy...")
+            print("=======================================================")
+            import playwright_douyin
+            search_term = "夫妻搞笑" if "couple" in topic.lower() else "整蛊搞笑"
+            scraped = playwright_douyin.scrape_douyin_couple_video(dest_path=raw_video_path, keyword=search_term)
+            if scraped and os.path.exists(raw_video_path) and os.path.getsize(raw_video_path) > 50000:
+                meta = {
+                    "id": scraped["id"],
+                    "aweme_id": scraped["id"].replace("douyin_", ""),
+                    "douyin_url": f"https://www.douyin.com/video/{scraped['id'].replace('douyin_', '')}",
+                    "likes": scraped.get("likes", 100000),
+                    "shares": 25000,
+                    "title": scraped["title"],
+                    "hook_banner": "SHE CAUGHT HIM 💀",
+                    "description": scraped["desc"],
+                    "fallback_script": "Watch what happens when he tries to pull off this stunt!"
+                }
+                return raw_video_path, meta["title"], scraped["desc"], "playwright_stealth", meta
+        except Exception as e:
+            print(f"⚠️ Playwright stealth ingestion notice: {e}, falling back to live feed...")
+
     # 2. Live Chinese Douyin ByteDance Feed API (Direct from China CDN)
     print(f"\n=======================================================")
     print(f"🚀 [CHINA LIVE STREAM] Scanning Live Douyin for 100K+ Likes Mega-Clips...")
