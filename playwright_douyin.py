@@ -11,7 +11,7 @@ import json
 import random
 import requests
 
-def scrape_douyin_couple_video(dest_path="temp/source_video.mp4", keyword="夫妻搞笑"):
+def scrape_douyin_couple_video(dest_path="temp/source_video.mp4", keyword="情侣吵架搞笑"):
     """
     Launches headless Chromium using Playwright with stealth settings,
     navigates to Douyin search or creator page, intercepts ByteDance's internal API
@@ -106,7 +106,7 @@ def scrape_douyin_couple_video(dest_path="temp/source_video.mp4", keyword="夫�
 
         # Search URLs to try
         search_encoded = requests.utils.quote(keyword)
-        target_url = f"https://www.douyin.com/search/{search_encoded}?type=video"
+        target_url = f"https://www.douyin.com/search/{search_encoded}?type=general"
 
         print(f"🌐 Navigating to Douyin: {target_url}")
         try:
@@ -157,7 +157,7 @@ def scrape_douyin_couple_video(dest_path="temp/source_video.mp4", keyword="夫�
             print(f"✅ [PLAYWRIGHT SUCCESS] Downloaded Couple Short ({file_mb:.2f} MB)!")
             return {
                 "path": dest_path,
-                "title": f"When Husband Tries To Prank His Wife 💀 #shorts",
+                "title": f"When The Couple Fight Goes Too Far 💀 #shorts",
                 "desc": winner["desc"],
                 "id": f"douyin_{winner['id']}",
                 "likes": winner["likes"],
