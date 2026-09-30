@@ -532,7 +532,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
             try:
 
-                cmd = ["yt-dlp", "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best", "--extractor-args", "youtube:player_client=android,web", "--no-check-certificates", "--no-warnings", "-o", raw_video_path, url]
+                cmd = ["yt-dlp", "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best", "--extractor-args", "youtube:player_client=visionos,android,web", "--no-check-certificates", "--no-warnings", "-o", raw_video_path, url]
 
                 subprocess.run(cmd, check=True)
 
