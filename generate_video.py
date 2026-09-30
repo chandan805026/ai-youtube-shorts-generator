@@ -677,9 +677,9 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
 
 
-    for attempt in range(6):
+    for attempt in range(10):
 
-        print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/6)...")
+        print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/10)...")
 
         raw_items = []
 
@@ -910,7 +910,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
             tier_badge = f"✨ TIER-3 (TOP ENGAGEMENT POOL: {len(candidates)} found)"
 
-        elif attempt == 4 and not chosen_pool and raw_items:
+        elif attempt == 9 and not chosen_pool and raw_items:
 
             # Emergency fallback: pick any clean video that is not ads or negative words
 
