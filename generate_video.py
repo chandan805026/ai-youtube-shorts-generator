@@ -715,19 +715,12 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
                 )
             else:
                 script_instruction = (
-                    f'   - "script": DUAL-VOICE DIALOGUE (CRITICAL). Format as alternating dialogue lines with speaker prefixes:\n'
-                    f'     Bob: <line commenting on action>\n'
-                    f'     Karen: <funny reaction/punchline>\n'
-                    f'     * Characters are actively watching and reacting to the exact actions on screen in real time!\n'
-                    f'     * Total word count across ALL dialogue lines combined MUST be between {word_min} and {word_max} words.\n'
-                    f'     * Must cover the full {safe_audio_dur:.1f} seconds of speech.'
-                )
-        else:
-            script_instruction = (
-                f'   - "script": Fast, hilarious comedic voiceover commentary of EXACTLY {word_min} to {word_max} words.\n'
-                f'     * Your words MUST cover the full {safe_audio_dur:.1f} seconds of speech.\n'
-                f'     * Do NOT stop speaking early!\n'
-                f'     * Align your description to the on-screen events so the viewer hears exactly what they see!'
+                f'   - "script": High-energy, sarcastic American TikTok/Shorts meme roast commentary of EXACTLY {word_min} to {word_max} words.\n'
+                f'     * STYLE: Relatable Gen-Z / American meme humor (like Dylan Anderson or Luke Did It).\n'
+                f'     * CRITICAL: NEVER just narrate or describe obvious on-screen movements like a robot! (DO NOT say "He is walking, now he grabs the item").\n'
+                f'     * Instead, ROAST the fail, react to their hilarious facial expressions and ego, build suspense, and deliver a savage punchline.\n'
+                f'     * Use natural viral hooks: "Bro thought he was him 💀", "Tell me why he really thought this was a good idea...", "Look at his face, instant regret! 😂".\n'
+                f'     * Your spoken words MUST cover the full {safe_audio_dur:.1f} seconds of speech.\n'
             )
 
         user_prompt = f"""
