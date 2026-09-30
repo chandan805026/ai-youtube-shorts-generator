@@ -296,7 +296,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         "suspense": ["\u53cd\u8f6c", "\u60ca\u559c", "\u610f\u5916", "\u795e\u8f6c\u6298", "\u6ca1\u60f3\u5230", "\u7ed3\u5c40"],
         "prank": ["\u6574\u86ca", "\u6076\u641e", "\u6076\u4f5c\u5267", "\u6574\u4eba"],
         "pets": ["\u840c\u5ba0", "\u72d7\u72d7", "\u732b\u54aa", "\u5ba0\u7269", "\u6c6a\u661f\u4eba"],
-        "comedy": ["沙雕", "搞笑", "幽默", "笑料"],
+        "comedy": ["疯狂小杨哥", "张国伟", "整蛊", "翻车", "沙雕", "搞笑", "神转折", "爆笑", "人类迷惑行为"],
         "village": ["农村", "乡村", "夫妻", "日常", "整蛊", "生活", "神转折", "爆笑"]
     }
     keywords = []
