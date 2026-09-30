@@ -2,13 +2,11 @@ name: Generate Viral Meme Comedy Short (100% Cloud Studio)
 
 on:
   schedule:
-    # 3x Daily Automatic Autonomous Runs Timed for UK Peak Traffic:
-    # Slot 1 (UK Morning Rush): 07:30 UTC = 08:30 AM UK (1:00 PM IST)
-    - cron: '30 7 * * *'
-    # Slot 2 (UK Lunch Break Peak): 12:00 UTC = 01:00 PM UK (5:30 PM IST)
-    - cron: '0 12 * * *'
-    # Slot 3 (UK Prime Evening Hour): 18:00 UTC = 07:00 PM UK (11:30 PM IST)
-    - cron: '0 18 * * *'
+    # 2x Daily Automatic Autonomous Uploads Timed for US/Tier-1 Viral Peak:
+    # Slot 1 (US Lunch & UK Evening Peak): 16:00 UTC = 09:30 PM IST (12:00 PM US EDT / 05:00 PM UK)
+    - cron: '0 16 * * *'
+    # Slot 2 (US Golden Prime Night Peak): 20:00 UTC = 01:30 AM IST (04:00 PM US EDT -> 06:00-08:30 PM Peak Blast)
+    - cron: '0 20 * * *'
   workflow_dispatch:
     inputs:
       video_url:
@@ -190,14 +188,14 @@ jobs:
           </html>
           EOF
 
-      - name: 📺 Auto-Upload to Cosmic Vault (YouTube Shorts)
+      - name: 📺 Auto-Upload to Crazy Vault (YouTube Shorts)
         if: ${{ github.event_name == 'schedule' || (inputs.upload_to_youtube == true || inputs.upload_to_youtube == 'true') }}
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: |
-          echo "🚀 Running YouTube Auto-Uploader for Cosmic Vault..."
+          echo "🚀 Running YouTube Auto-Uploader for Crazy Vault..."
           python upload_to_youtube.py \
             --video "output/final_video.mp4" \
             --thumb "output/thumbnail.jpg" \
