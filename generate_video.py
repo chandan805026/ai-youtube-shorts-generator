@@ -309,8 +309,8 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         "搞笑", "沙雕", "整蛊", "恶搞", "笑死我了", "名场面"      # Pure Comedy & Pranks
     ]
 
-    for attempt in range(6):
-        print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/6)...")
+    for attempt in range(10):
+        print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/10)...")
         raw_items = []
         seen_batch_ids = set()
 
@@ -411,7 +411,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         elif tier2:
             chosen_pool = tier2
             tier_badge = f"⚡ TIER-2 (50K+ HIGH-VIRAL: {len(tier2)} found)"
-        elif attempt == 5 and candidates:
+        elif attempt == 9 and candidates:
             # Absolute last resort after 5 rounds
             chosen_pool = candidates
             tier_badge = "✨ TIER-3 (TOP ENGAGEMENT POOL)"
