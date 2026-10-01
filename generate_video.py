@@ -614,7 +614,7 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
     # STRICT 15s - 28.5s TIMING & WORD LIMIT CALIBRATION (Never exceed 28.5s, Never under 15.0s)
     clamped_target = min(28.0, max(15.0, target_duration))
     safe_audio_dur = max(13.5, min(26.0, clamped_target - 1.2))
-    word_target = int(safe_audio_dur * 2.8)
+    word_target = int(safe_audio_dur * 3.1)
     word_min = max(38, word_target - 4)
     word_max = min(72, word_target + 4)
     print(f"🎯 Calibrated Commentary Target: {safe_audio_dur:.1f}s speech ({word_min}-{word_max} words) for full {target_duration:.1f}s video")
@@ -640,7 +640,11 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
             "1. THE 3-SECOND CURIOSITY GAP: In the first 3 seconds, NEVER explain the ending or spoil what happens! Instead, set a high-stakes hook, tease a hidden detail, or pose a challenge (e.g. 'He thought he had this completely figured out...', 'Watch his face the exact moment he looks down...').\n"
             "2. RISING MID-VIDEO TENSION: Between 4s and 12s, build fast-paced anticipation. Point out subtle details that make the viewer stare closely at the screen so their eyes never wander.\n"
             "3. THE PAYOFF CLIMAX (Final 2-3s): Land a massive, satisfying laugh, savage roast, or shocking punchline right at the final visual moment!\n"
-            "4. SEAMLESS LOOP CLOSER: The last phrase should feel crisp, funny, and naturally flow into the beginning if looped.\n"
+            "4. THE 110%+ INFINITE LOOP SECRET (CRITICAL TO ESCAPE 1.5K VIEW CAP):
+  * YouTube Shorts locks videos at 1.5K views if Average Percentage Viewed is below 85%.
+  * To achieve 110%-120% retention, NEVER conclude or wrap up the video! NO "look at that", NO "subscribe", NO final sign-off.
+  * The final sentence MUST cut off in a way that naturally flows straight into the opening sentence of the loop.
+  * The viewer must not realize the video restarted until 2-3 seconds into the replay!\n"
             "5. SOUNDBOARD AUDIO HOOKS:\n"
             "  * 'whoosh': ALWAYS placed at 0.3s-0.5s to snap the viewer's ears into focus.\n"
             "  * 'record_scratch' or 'pop' or 'buzzer': Middle moment for comedic doubt.\n"
@@ -866,7 +870,7 @@ def strip_emojis(text):
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
 
-async def generate_edge_tts_with_word_boundaries_async(text, voice, output_audio, rate="+5%"):
+async def generate_edge_tts_with_word_boundaries_async(text, voice, output_audio, rate="+16%"):
     """Hooks directly into Microsoft Edge TTS websocket stream to extract exact millisecond word boundaries."""
     import edge_tts
     communicate = edge_tts.Communicate(text, voice, rate=rate, boundary="WordBoundary")
@@ -884,7 +888,7 @@ async def generate_edge_tts_with_word_boundaries_async(text, voice, output_audio
                     words_timing.append((start_sec, end_sec, word))
     return words_timing
 
-def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
+def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass, hook_banner=""): 
     """
     Generates Microsoft Edge TTS speech with real-time WordBoundary 1:1 millisecond lock,
     and builds an animated yellow/white Hormozi ASS subtitle file.
@@ -894,13 +898,13 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
     
     clean_spoken_text = strip_emojis(script_text)
     print(f"🎙️ Cleaned TTS Voiceover Text (no emojis spoken):\n   {clean_spoken_text}")
-    print(f"🎙️ Generating voiceover with voice: {voice} at +5% speed...")
+    print(f"🎙️ Generating voiceover with voice: {voice} at +16% high-energy speed...")
 
     words_timing = []
     # 1. Try Direct Python WordBoundary Async Hook (Millisecond Precision)
     try:
         words_timing = asyncio.run(
-            generate_edge_tts_with_word_boundaries_async(clean_spoken_text, voice, output_audio, rate="+5%")
+            generate_edge_tts_with_word_boundaries_async(clean_spoken_text, voice, output_audio, rate="+16%")
         )
         if words_timing and os.path.exists(output_audio) and os.path.getsize(output_audio) > 1000:
             print(f"⚡ [WORD-LOCK SYNC] Successfully captured {len(words_timing)} word timestamps directly from Edge TTS engine!")
@@ -984,10 +988,18 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass):
         f.write("[V4+ Styles]\n")
         f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
         # Premium Hormozi Floating Subtitles: Bold yellow & white, thick black outline (5px) + 3D drop shadow (3px), Golden Center / Eye-Level Zone (MarginV 680)
-        f.write("Style: Hormozi,DejaVu Sans,60,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,5,3,2,50,50,680,1\n\n")
+        f.write("Style: Hormozi,DejaVu Sans,60,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,5,3,2,50,50,680,1\n")
+        # Top Hook Banner: High-contrast yellow & white text on dark pill box, eye-level top safe zone (MarginV 200, Alignment 8)
+        f.write("Style: TopHook,DejaVu Sans,50,&H0000FFFF,&H00FFFFFF,&H00000000,&HA0000000,-1,0,0,0,100,100,2,0,3,10,0,8,40,40,200,1\n\n")
         
         f.write("[Events]\n")
         f.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
+        
+        # ⚡ PERSISTENT TOP HOOK BANNER: Displayed from 0.0s to stop the 2-second swipe-away!
+        if hook_banner and hook_banner.strip():
+            clean_hook = hook_banner.strip().upper()
+            total_end = seconds_to_ass_time(ass_cards[-1][1] if ass_cards else 30.0)
+            f.write(f"Dialogue: 0,0:00:00.00,{total_end},TopHook,,0,0,0,,{clean_hook}\n")
         
         for start_s, end_s, words in ass_cards:
             start_ts = seconds_to_ass_time(start_s)
@@ -1234,14 +1246,18 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
                 if zm and zoom_time is None:
                     zoom_time = t
 
-    # Ensure intro hook whoosh if not present
+    # Ensure intro hook whoosh at 0.10s for instantaneous ear grab (Zero dead silence at 0.0s)
     if not any(c["sound"] == "whoosh" for c in active_cues):
         active_cues.insert(0, {
             "sound": "whoosh",
             "file": sfx_pack["whoosh"],
-            "time": 0.4,
+            "time": 0.10,
             "zoom": False
         })
+    else:
+        for c in active_cues:
+            if c["sound"] == "whoosh" and c["time"] > 0.2:
+                c["time"] = 0.10
 
     active_cues.sort(key=lambda x: x["time"])
     active_cues = active_cues[:4]
@@ -1445,7 +1461,8 @@ def main():
         script_text=director_output.get("script", ""),
         voice=args.voice,
         output_audio=audio_path,
-        output_ass=ass_path
+        output_ass=ass_path,
+        hook_banner=director_output.get("hook_banner", "WAIT FOR IT 😂")
     )
 
     # 4. Transformative FFmpeg Editing (Anti-Reused Content & Full Soundboard)
