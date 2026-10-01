@@ -187,11 +187,17 @@ def audition_candidates_with_gemini(candidates, gemini_key):
     content_parts.append({
         "text": (
             "\n=======================================================\n"
+            "STRICT BRAND MANDATE (Crazy Vault Channel):\n"
+            "We ONLY publish high-stakes COMEDY, insane PRANKS, hilarious FAILS, or shocking PLOT TWISTS.\n"
+            "DISQUALIFY (Score = 0) ANY candidate showing:\n"
+            "- Art, drawings, sculptures, visual craft displays (like giant corn/sand art).\n"
+            "- Cooking, food recipes, eating, or agriculture.\n"
+            "- Makeup, outfits, dancing, or slow scenic vlogs.\n\n"
             "SELECTION CRITERIA:\n"
-            "1. 🇬🇧/🇺🇸 WESTERN AUDIENCE HOOK (45%): Which video is universally funny, relatable, and entertaining to English/Western viewers (e.g. hilarious pets, gym/sports fails, physical comedy, instant karma, unexpected funny reactions)?\n"
-            "2. 🚫 ZERO CHINESE TEXT (45%): Strictly penalize videos with burned-in Chinese dialogue subtitles, watermarks, or Chinese text banners. Favor clips that are 100% clean of Chinese text.\n"
-            "3. 🧲 RETENTION HOOK (10%): Instant visual curiosity in the opening.\n\n"
-            "Respond in valid JSON format:\n"
+            "1. 🎭 COMEDY / TWIST PURITY (60%): Candidate MUST have a clear comedic situation, prank, or shocking twist punchline!\n"
+            "2. 🚫 ZERO CHINESE TEXT (30%): Clean footage with zero burned-in Chinese subtitles.\n"
+            "3. 🧲 INSTANT HOOK (10%): High curiosity opening.\n\n"
+            Respond in valid JSON format:\n"
             "{\n"
             '  "winner_index": 1,\n'
             '  "winner_reason": "Candidate #X has zero Chinese text and features a universal funny dog moment that US/UK viewers will love.",\n'
@@ -301,12 +307,29 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
     ]
     headers = {"User-Agent": "okhttp/3.10.0.1", "Accept": "application/json"}
 
-    ad_words = ["\u5e26\u8d27", "\u4e0b\u5355", "\u5e7f\u544a", "\u76f4\u64ad", "\u94fe\u63a5", "\u70b9\u51fb", "\u8d2d\u4e70", "\u5305\u90ae", "\u9886\u5238", "\u4f18\u60e0", "\u540c\u6b3e", "\u6a71\u7a97"]
+        # BRAND PURITY BLACKLIST: Zero tolerance for ads, crafts, farming, cooking, makeup, or vlogs
+    brand_exclusion_blacklist = [
+        # Commercial / Ads
+        "带货", "下单", "广告", "直播", "链接", "点击", "购买", "包邮", "领券", "优惠", "同款", "橱窗",
+        # Art, Painting, Sculpture, Crafts (Zero corn art / drawing reveals!)
+        "画", "画画", "沙画", "微缩", "雕刻", "非遗", "手艺", "手工", "书法", "手绘", "刺绣", "木工", "国风",
+        # Agriculture, Farming, Harvest
+        "庄稼", "农", "农民", "玉米", "丰收", "农村", "种地", "麦子", "田地", "农活",
+        # Food, Cooking, Mukbang, Recipes
+        "做饭", "美食", "烹饪", "吃播", "探店", "食谱", "教程", "厨房", "家常菜",
+        # Beauty, Makeup, Fashion, Dance
+        "美妆", "穿搭", "变装", "美甲", "发型", "跳舞", "舞蹈", "热舞", "颜值",
+        # News, Documentaries, Life Vlogs
+        "新闻", "正能量", "感动", "演讲", "记录生活", "记录美好生活", "日常vlog", "随手拍"
+    ]
         # STRICT GENRE WHITELIST: ONLY Comedy, Suspense, and Plot Twist content allowed
     viral_tags = [
-        "反转", "神反转", "意想不到的结局", "结局反转", "搞笑反转",  # Plot Twist
-        "没想到", "神转折", "意外", "悬疑",                      # Suspense & Shock
-        "搞笑", "沙雕", "整蛊", "恶搞", "笑死我了", "名场面"      # Pure Comedy & Pranks
+        # Pure Comedy & Viral Fails
+        "搞笑", "沙雕", "整蛊", "恶搞", "笑死我了", "笑死", "互怼", "名场面", "翻车", "大冤种", "搞笑视频", "逗比", "幽默",
+        # Plot Twists & Mind-bending Surprises
+        "反转", "神反转", "意想不到的结局", "结局反转", "搞笑反转", "没想到", "神转折", "意外", "万万没想到",
+        # Suspense & Shock
+        "悬疑", "惊险", "反差", "打脸"
     ]
 
     for attempt in range(10):
@@ -346,7 +369,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             if item.get("is_ads") or item.get("commerce_info"):
                 continue
             desc = item.get("desc", "")
-            if any(w in desc for w in ad_words):
+            if any(w in desc for w in brand_exclusion_blacklist):
                 continue
 
             # 2. STRICT 15.0s - 28.5s DURATION GATEKEEPER (Both Boundaries Hard-Locked: 15.0s <= dur <= 28.5s)
