@@ -202,10 +202,11 @@ def audition_candidates_with_gemini(candidates, gemini_key):
             "- Art, drawings, sculptures, visual craft displays (like giant corn/sand art).\n"
             "- Cooking, food recipes, eating, or agriculture.\n"
             "- Makeup, outfits, dancing, or slow scenic vlogs.\n\n"
+            "PRIMARY TARGET AUDIENCE: 🇺🇸 UNITED STATES (USA - 50%+ Core Demographic)!\n"
             "SELECTION CRITERIA:\n"
-            "1. 🎭 COMEDY / TWIST PURITY (60%): Candidate MUST have a clear comedic situation, prank, or shocking twist punchline!\n"
-            "2. 🚫 ZERO CHINESE TEXT (30%): Clean footage with zero burned-in Chinese subtitles.\n"
-            "3. 🧲 INSTANT HOOK (10%): High curiosity opening.\n\n"
+            "1. 🇺🇸 USA VIRAL COMEDY & TWIST DNA (60%): Must have maximum appeal to American viewers (hilarious pet chaos, savage couple pranks, gym/sports fails, 'bro thought he was slick' fails, instant karma, and shocking plot twists)!\n"
+            "2. 🚫 ZERO CHINESE TEXT (30%): Clean visual footage with zero burned-in Chinese dialogue subtitles.\n"
+            "3. 🧲 2-SECOND AMERICAN HOOK (10%): Opening visual that instantly stops a scrolling American teenager or young adult.\n\n"
             Respond in valid JSON format:\n"
             "{\n"
             '  "winner_index": 1,\n'
@@ -670,7 +671,8 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
                 frame_images_b64 = extract_video_keyframes_base64(video_path)
 
         system_instruction = (
-            "You are a master YouTube Shorts retention director, viral TikTok comedy creator, and Hollywood audio engineer.\n"
+            "You are a top-tier viral American YouTube Shorts comedy creator (think Kai Cenat, Daily Dose of Internet, and Penguinz0 reaction style) talking directly to a 🇺🇸 UNITED STATES audience (Gen-Z & Millennials).
+USE AUTHENTIC AMERICAN MEME SLANG: "Bro really thought...", "Ain't no way...", "Caught in 4K", "My guy was fighting for his life 💀", "Intrusive thoughts won", "The level of disrespect is crazy". Make every single line feel like a hilarious American friend reacting live to an unbelievable moment!\n"
             "YOUR #1 GOAL: MAKE EVERY VIEWER WATCH UNTIL THE FINAL SECOND (100%+ RETENTION), EVEN IF THE FOOTAGE IS AVERAGE.\n"
             "CRITICAL PSYCHOLOGICAL HOOK LAWS:\n"
             "1. THE 3-SECOND CURIOSITY GAP: In the first 3 seconds, NEVER explain the ending or spoil what happens! Instead, set a high-stakes hook, tease a hidden detail, or pose a challenge (e.g. 'He thought he had this completely figured out...', 'Watch his face the exact moment he looks down...').\n"
