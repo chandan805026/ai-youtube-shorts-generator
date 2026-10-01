@@ -317,44 +317,45 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         keywords = topic_keywords.get(topic.strip().lower(), [topic.strip().lower()])
 
     endpoints = [
-        "https://aweme.snssdk.com/aweme/v1/feed/?count=35",
-        "https://api.amemv.com/aweme/v1/feed/?count=35",
-        "https://api3-normal-c-hl.amemv.com/aweme/v1/feed/?count=35",
-        "https://aweme.snssdk.com/aweme/v1/feed/?count=35&type=0",
+        "https://aweme.snssdk.com/aweme/v1/feed/?count=35&pull_type=2",
+        "https://api.amemv.com/aweme/v1/feed/?count=35&pull_type=1",
+        "https://aweme.snssdk.com/aweme/v1/feed/?count=35&type=0&max_cursor=0",
+        "https://api3-normal-c-hl.amemv.com/aweme/v1/feed/?count=35&channel_id=0",
         "https://aweme.snssdk.com/aweme/v1/feed/?count=35&feed_style=0&filter_warn=0",
-        "https://aweme.snssdk.com/aweme/v1/feed/?count=35&device_platform=android&version_code=190000"
+        "https://aweme.snssdk.com/aweme/v1/feed/?count=35&device_platform=android&version_code=250000"
     ]
     headers = {"User-Agent": "okhttp/3.10.0.1", "Accept": "application/json"}
 
-        # BRAND PURITY BLACKLIST: Zero tolerance for ads, crafts, farming, cooking, makeup, vlogs, weddings, talking heads
+        # BRAND PURITY BLACKLIST: Zero tolerance for ads, crafts, farming, cooking, makeup, vlogs, weddings
     brand_exclusion_blacklist = [
         # Commercial / Ads / E-Commerce
         "带货", "下单", "广告", "直播", "链接", "点击", "购买", "包邮", "领券", "优惠", "同款", "橱窗",
         # Art, Painting, Sculpture, Crafts (Zero corn art / drawing reveals!)
-        "画", "画画", "沙画", "微缩", "雕刻", "非遗", "手艺", "手工", "书法", "手绘", "刺绣", "木工", "国风",
+        "画画", "沙画", "微缩", "雕刻", "非遗", "手艺", "手工制作", "书法", "手绘", "刺绣", "木工", "国风",
         # Agriculture, Farming, Harvest
-        "庄稼", "农", "农民", "玉米", "丰收", "农村", "种地", "麦子", "田地", "农活",
+        "庄稼", "玉米地", "丰收", "种地", "麦子", "田地", "农活",
         # Food, Cooking, Mukbang, Recipes
-        "做饭", "美食", "烹饪", "吃播", "探店", "食谱", "教程", "厨房", "家常菜",
+        "做饭", "美食制作", "烹饪", "吃播", "探店", "食谱", "教程", "厨房", "家常菜",
         # Vlogs, Daily Life, Talking Heads, Selfies, Cringe Diaries (Zero Vlogs Allowed!)
-        "vlog", "Vlog", "VLOG", "日常", "生活记录", "记录生活", "记录美好生活", "碎碎念", "自拍", "随手拍", 
-        "沉浸式", "沉浸", "开箱", "好物", "分享", "测评", "种草", "打卡", "闺蜜", "小姐姐", "自媒体", 
-        "独居", "一个人", "治愈", "慢生活", "生活碎片", "今天长这样", "今日份", "聊天", "随笔", "心情", "感悟",
-        # Weddings, Romance, Brides, Grooms, Couple Drama (Zero Wedding / Love Vlogs!)
-        "婚礼", "结婚", "新娘", "新郎", "伴娘", "伴郎", "接亲", "敬酒", "婚纱", "婚宴", "领证", "求婚", "情话", "秀恩爱", "恋爱", "相亲",
-        # Beauty, Makeup, Fashion, Outfits, Haircuts, Transformations (Zero Beauty / Makeovers!)
-        "化妆", "美妆", "变身", "变装", "换装", "改造", "变帅", "变美", "穿搭", "发型", "理发", "剪发", "洗头", "美甲", "护肤", "素颜", "卸妆", "整容", "跳舞", "舞蹈", "热舞", "颜值",
-        # News, Documentaries, Speeches, Interviews
-        "新闻", "正能量", "感动", "演讲", "采访", "街访", "观点", "情感", "文案", "语录"
+        "vlog", "Vlog", "VLOG", "生活记录", "记录生活", "记录美好生活", "碎碎念", "沉浸式化妆", "开箱", "好物分享", 
+        "测评", "种草", "打卡", "自媒体", "独居生活", "一个人生活", "治愈系", "慢生活", "生活碎片",
+        # Weddings, Romance, Brides, Grooms (Zero Wedding / Love Vlogs!)
+        "婚礼", "结婚现场", "新娘", "新郎", "伴娘", "伴郎", "接亲", "敬酒", "婚纱", "婚宴", "领证", "求婚", "秀恩爱",
+        # Beauty, Makeup, Transformations (Zero Beauty / Makeovers!)
+        "化妆教程", "美妆博主", "变装秀", "换装秀", "改造前后", "变帅", "变美", "穿搭分享", "发型设计", "美甲", "护肤心得", "整容",
+        # News, Speeches, Interviews
+        "新闻联播", "正能量", "演讲", "采访", "街访", "文案语录"
     ]
-        # STRICT GENRE WHITELIST: ONLY Hardcore Comedy Fails, Slapstick, Pranks, and Animal Chaos
+    # STRICT GENRE WHITELIST: Hardcore Comedy Fails, Slapstick, Pranks, Animal Chaos & Viral Humor
     viral_tags = [
-        # Explicit Physical Fails & Instant Karma (Must have real visual action/fail)
+        # Explicit Physical Fails & Instant Karma
         "翻车", "翻车现场", "翻车瞬间", "打脸", "大冤种", "社死", "社死现场", "名场面",
         # Pure Slapstick Comedy & Pranks
-        "沙雕", "整蛊", "恶搞", "搞笑翻车", "笑死我了", "笑死", "互怼", "纯搞笑", "逗比", "逗乐", "逆天操作",
-        # Pet & Animal Fails
-        "修狗翻车", "猫咪翻车", "萌宠翻车", "动物搞笑"
+        "搞笑", "沙雕", "整蛊", "恶搞", "搞笑翻车", "笑死我了", "笑死", "互怼", "纯搞笑", "逗比", "逗乐", "逆天操作", "反转", "幽默", "神操作", "笑抽", "哈哈",
+        # Pet & Animal Chaos
+        "修狗", "猫咪", "萌宠", "宠物搞笑", "修狗翻车", "猫咪翻车", "萌宠翻车", "动物搞笑",
+        # Viral expressions
+        "看了一百遍", "笑不活了", "蚌埠住了", "绷不住了", "破防了", "绝了"
     ]
 
     # CUMULATIVE MULTI-ROUND MEMORY POOL: Collects viral clips across all 10 rounds without losing any
@@ -400,9 +401,9 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             if any(w in desc for w in brand_exclusion_blacklist):
                 continue
 
-            # 2. STRICT 15.0s - 28.5s DURATION GATEKEEPER (Both Boundaries Hard-Locked: 15.0s <= dur <= 28.5s)
+            # 2. SWEET SPOT 10.0s - 38.0s DURATION GATEKEEPER
             dur = item.get("duration", 0) / 1000.0
-            if not (15.0 <= dur <= 28.5):
+            if not (10.0 <= dur <= 38.0):
                 continue
 
             # 3. Check direct playable stream URL
@@ -469,13 +470,13 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         if tier1:
             chosen_pool = tier1
             tier_badge = f"🔥 TIER-1 (100K+ MEGA-VIRAL: {len(tier1)} candidates across {attempt+1} rounds)"
-        elif tier2 and (attempt >= 3 or len(tier2) >= 2):
+        elif tier2 and (attempt >= 2 or len(tier2) >= 2):
             chosen_pool = tier2
             tier_badge = f"⚡ TIER-2 (50K+ HIGH-VIRAL: {len(tier2)} candidates across {attempt+1} rounds)"
-        elif attempt == 9 and all_accumulated_candidates:
-            # Absolute safety net: Pick highest scoring comedy/twist clip from all 10 rounds
+        elif attempt >= 4 and all_accumulated_candidates:
+            # Pick highest scoring comedy clip once we have accumulated multiple rounds
             chosen_pool = all_accumulated_candidates
-            tier_badge = f"✨ TIER-3 (TOP COMEDY ENGAGEMENT: {len(all_accumulated_candidates)} pool)"
+            tier_badge = f"✨ TIER-3 (TOP COMEDY ENGAGEMENT: {len(all_accumulated_candidates)} pool across {attempt+1} rounds)"
 
         if chosen_pool:
             chosen_pool.sort(key=lambda x: x["score"], reverse=True)
