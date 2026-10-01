@@ -207,7 +207,7 @@ def audition_candidates_with_gemini(candidates, gemini_key):
             "1. 🇺🇸 USA VIRAL COMEDY & TWIST DNA (60%): Must have maximum appeal to American viewers (hilarious pet chaos, savage couple pranks, gym/sports fails, 'bro thought he was slick' fails, instant karma, and shocking plot twists)!\n"
             "2. 🚫 ZERO CHINESE TEXT (30%): Clean visual footage with zero burned-in Chinese dialogue subtitles.\n"
             "3. 🧲 2-SECOND AMERICAN HOOK (10%): Opening visual that instantly stops a scrolling American teenager or young adult.\n\n"
-            Respond in valid JSON format:\n"
+            "Respond in valid JSON format:\n"
             "{\n"
             '  "winner_index": 1,\n'
             '  "winner_reason": "Candidate #X has zero Chinese text and features a universal funny dog moment that US/UK viewers will love.",\n'
@@ -343,7 +343,8 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
     ]
 
     # CUMULATIVE MULTI-ROUND MEMORY POOL: Collects viral clips across all 10 rounds without losing any
-    all_accumulated_    seen_candidate_ids = set()
+    all_accumulated_candidates = []
+    seen_candidate_ids = set()
 
     for attempt in range(10):
         print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/10)...")
@@ -371,7 +372,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
         print(f"📦 Total Unique Scanned Pool: {len(raw_items)} candidate clips in memory!")
 
-                for item in raw_items:
+        for item in raw_items:
             aweme_id = str(item.get("aweme_id", "")).strip()
             # Bulletproof duplicate check: check both pure ID and prefixed ID
             if not aweme_id or aweme_id in used_ids or f"douyin_{aweme_id}" in used_ids:
@@ -671,18 +672,18 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
                 frame_images_b64 = extract_video_keyframes_base64(video_path)
 
         system_instruction = (
-            "You are a top-tier viral American YouTube Shorts comedy creator (think Kai Cenat, Daily Dose of Internet, and Penguinz0 reaction style) talking directly to a 🇺🇸 UNITED STATES audience (Gen-Z & Millennials).
-USE AUTHENTIC AMERICAN MEME SLANG: "Bro really thought...", "Ain't no way...", "Caught in 4K", "My guy was fighting for his life 💀", "Intrusive thoughts won", "The level of disrespect is crazy". Make every single line feel like a hilarious American friend reacting live to an unbelievable moment!\n"
+            "You are a top-tier viral American YouTube Shorts comedy creator (think Kai Cenat, Daily Dose of Internet, and Penguinz0 reaction style) talking directly to a 🇺🇸 UNITED STATES audience (Gen-Z & Millennials).\n"
+            "USE AUTHENTIC AMERICAN MEME SLANG: 'Bro really thought...', 'Ain\'t no way...', 'Caught in 4K', 'My guy was fighting for his life 💀', 'Intrusive thoughts won', 'The level of disrespect is crazy'. Make every single line feel like a hilarious American friend reacting live to an unbelievable moment!\n"
             "YOUR #1 GOAL: MAKE EVERY VIEWER WATCH UNTIL THE FINAL SECOND (100%+ RETENTION), EVEN IF THE FOOTAGE IS AVERAGE.\n"
             "CRITICAL PSYCHOLOGICAL HOOK LAWS:\n"
             "1. THE 3-SECOND CURIOSITY GAP: In the first 3 seconds, NEVER explain the ending or spoil what happens! Instead, set a high-stakes hook, tease a hidden detail, or pose a challenge (e.g. 'He thought he had this completely figured out...', 'Watch his face the exact moment he looks down...').\n"
             "2. RISING MID-VIDEO TENSION: Between 4s and 12s, build fast-paced anticipation. Point out subtle details that make the viewer stare closely at the screen so their eyes never wander.\n"
             "3. THE PAYOFF CLIMAX (Final 2-3s): Land a massive, satisfying laugh, savage roast, or shocking punchline right at the final visual moment!\n"
-            "4. THE 110%+ INFINITE LOOP SECRET (CRITICAL TO ESCAPE 1.5K VIEW CAP):
-  * YouTube Shorts locks videos at 1.5K views if Average Percentage Viewed is below 85%.
-  * To achieve 110%-120% retention, NEVER conclude or wrap up the video! NO "look at that", NO "subscribe", NO final sign-off.
-  * The final sentence MUST cut off in a way that naturally flows straight into the opening sentence of the loop.
-  * The viewer must not realize the video restarted until 2-3 seconds into the replay!\n"
+            "4. THE 110%+ INFINITE LOOP SECRET (CRITICAL TO ESCAPE 1.5K VIEW CAP):\n"
+            "  * YouTube Shorts locks videos at 1.5K views if Average Percentage Viewed is below 85%.\n"
+            "  * To achieve 110%-120% retention, NEVER conclude or wrap up the video! NO 'look at that', NO 'subscribe', NO final sign-off.\n"
+            "  * The final sentence MUST cut off in a way that naturally flows straight into the opening sentence of the loop.\n"
+            "  * The viewer must not realize the video restarted until 2-3 seconds into the replay!\n"
             "5. SOUNDBOARD AUDIO HOOKS:\n"
             "  * 'whoosh': ALWAYS placed at 0.3s-0.5s to snap the viewer's ears into focus.\n"
             "  * 'record_scratch' or 'pop' or 'buzzer': Middle moment for comedic doubt.\n"
