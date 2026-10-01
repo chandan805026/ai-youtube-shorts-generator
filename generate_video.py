@@ -101,13 +101,22 @@ def get_video_dimensions(file_path):
         print(f"⚠️ ffprobe dimension check fallback: {e}")
         return 1920, 1080
 
-def extract_preview_frames(video_path, num_frames=2):
-    """Extracts lightweight JPEG frames from a video for fast Gemini multimodal vision inspection."""
+def extract_preview_frames(video_path, num_frames=4):
+    """
+    Extracts 4 story-arc JPEG keyframes (Hook, Setup, Rising Tension, Climax Punchline)
+    giving Gemini Baba complete visual story context in milliseconds.
+    """
     frames = []
     dur = get_media_duration(video_path)
-    for i in range(1, num_frames + 1):
-        t = max(0.5, (dur / (num_frames + 1)) * i)
-        out_f = f"{video_path}_frame_{i}.jpg"
+    # Story-arc checkpoints: 8% (Hook), 35% (Setup), 65% (Tension), 90% (Punchline/Twist)
+    checkpoints = [
+        max(0.4, dur * 0.08),
+        dur * 0.35,
+        dur * 0.65,
+        min(dur - 0.5, dur * 0.90)
+    ]
+    for idx, t in enumerate(checkpoints):
+        out_f = f"{video_path}_frame_{idx+1}.jpg"
         cmd = [
             "ffmpeg", "-y", "-ss", f"{t:.2f}",
             "-i", video_path, "-vframes", "1",
@@ -146,7 +155,7 @@ def audition_candidates_with_gemini(candidates, gemini_key):
                         if chunk:
                             f.write(chunk)
             if os.path.exists(cand_path) and os.path.getsize(cand_path) > 30000:
-                frames_b64 = extract_preview_frames(cand_path, num_frames=2)
+                frames_b64 = extract_preview_frames(cand_path, num_frames=4)
                 if frames_b64:
                     audition_data.append({
                         "index": idx + 1,
@@ -167,7 +176,7 @@ def audition_candidates_with_gemini(candidates, gemini_key):
         "text": (
             "You are the Executive Producer & Quality Judge for an international viral YouTube Shorts studio "
             "targeting audiences in the US, UK, and Western countries.\n\n"
-            "Evaluate the candidate video clips below (each candidate has 2 visual frames shown):\n"
+            "Evaluate the candidate video clips below (each candidate has 4 chronological story-arc frames shown: Hook, Setup, Tension, Punchline):\n"
         )
     }]
 
