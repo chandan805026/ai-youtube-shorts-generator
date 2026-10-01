@@ -197,14 +197,16 @@ def audition_candidates_with_gemini(candidates, gemini_key):
         "text": (
             "\n=======================================================\n"
             "STRICT BRAND MANDATE (Crazy Vault Channel):\n"
-            "We ONLY publish high-stakes COMEDY, insane PRANKS, hilarious FAILS, or shocking PLOT TWISTS.\n"
-            "DISQUALIFY (Score = 0) ANY candidate showing:\n"
-            "- Art, drawings, sculptures, visual craft displays (like giant corn/sand art).\n"
-            "- Cooking, food recipes, eating, or agriculture.\n"
-            "- Makeup, outfits, dancing, or slow scenic vlogs.\n\n"
+            "We ONLY publish high-stakes PHYSICAL COMEDY, insane PRANKS, hilarious FAILS, or crazy ANIMAL CHAOS.\n"
+            "ABSOLUTE DISQUALIFICATION (Score = 0 - NEVER SELECT):\n"
+            "- ANY personal vlog, girl/guy talking to camera, selfie video, or daily lifestyle vlog.\n"
+            "- ANY wedding, bride, groom, bridesmaid, couple, romance, or relationship video.\n"
+            "- ANY makeup, beauty makeover, transformation, glowup, haircut, or outfit change.\n"
+            "- ANY art, crafts, drawing, cooking, food, or farming.\n"
+            "MUST SELECT ONLY: Candidates with CLEAR, OBVIOUS physical comedy action (someone falling, failing, getting startled, pets acting crazy, or instant karma fails)!\n\n"
             "PRIMARY TARGET AUDIENCE: 🇺🇸 UNITED STATES (USA - 50%+ Core Demographic)!\n"
             "SELECTION CRITERIA:\n"
-            "1. 🇺🇸 USA VIRAL COMEDY & TWIST DNA (60%): Must have maximum appeal to American viewers (hilarious pet chaos, savage couple pranks, gym/sports fails, 'bro thought he was slick' fails, instant karma, and shocking plot twists)!\n"
+            "1. 🇺🇸 USA VIRAL COMEDY & TWIST DNA (60%): Must have maximum appeal to American viewers (hilarious pet chaos, savage pranks, gym/sports fails, 'bro thought he was slick' fails, instant karma)!\n"
             "2. 🚫 ZERO CHINESE TEXT (30%): Clean visual footage with zero burned-in Chinese dialogue subtitles.\n"
             "3. 🧲 2-SECOND AMERICAN HOOK (10%): Opening visual that instantly stops a scrolling American teenager or young adult.\n\n"
             "Respond in valid JSON format:\n"
@@ -317,9 +319,9 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
     ]
     headers = {"User-Agent": "okhttp/3.10.0.1", "Accept": "application/json"}
 
-        # BRAND PURITY BLACKLIST: Zero tolerance for ads, crafts, farming, cooking, makeup, or vlogs
+        # BRAND PURITY BLACKLIST: Zero tolerance for ads, crafts, farming, cooking, makeup, vlogs, weddings, talking heads
     brand_exclusion_blacklist = [
-        # Commercial / Ads
+        # Commercial / Ads / E-Commerce
         "带货", "下单", "广告", "直播", "链接", "点击", "购买", "包邮", "领券", "优惠", "同款", "橱窗",
         # Art, Painting, Sculpture, Crafts (Zero corn art / drawing reveals!)
         "画", "画画", "沙画", "微缩", "雕刻", "非遗", "手艺", "手工", "书法", "手绘", "刺绣", "木工", "国风",
@@ -327,19 +329,25 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         "庄稼", "农", "农民", "玉米", "丰收", "农村", "种地", "麦子", "田地", "农活",
         # Food, Cooking, Mukbang, Recipes
         "做饭", "美食", "烹饪", "吃播", "探店", "食谱", "教程", "厨房", "家常菜",
-        # Beauty, Makeup, Fashion, Dance
-        "美妆", "穿搭", "变装", "美甲", "发型", "跳舞", "舞蹈", "热舞", "颜值",
-        # News, Documentaries, Life Vlogs
-        "新闻", "正能量", "感动", "演讲", "记录生活", "记录美好生活", "日常vlog", "随手拍"
+        # Vlogs, Daily Life, Talking Heads, Selfies, Cringe Diaries (Zero Vlogs Allowed!)
+        "vlog", "Vlog", "VLOG", "日常", "生活记录", "记录生活", "记录美好生活", "碎碎念", "自拍", "随手拍", 
+        "沉浸式", "沉浸", "开箱", "好物", "分享", "测评", "种草", "打卡", "闺蜜", "小姐姐", "自媒体", 
+        "独居", "一个人", "治愈", "慢生活", "生活碎片", "今天长这样", "今日份", "聊天", "随笔", "心情", "感悟",
+        # Weddings, Romance, Brides, Grooms, Couple Drama (Zero Wedding / Love Vlogs!)
+        "婚礼", "结婚", "新娘", "新郎", "伴娘", "伴郎", "接亲", "敬酒", "婚纱", "婚宴", "领证", "求婚", "情话", "秀恩爱", "恋爱", "相亲",
+        # Beauty, Makeup, Fashion, Outfits, Haircuts, Transformations (Zero Beauty / Makeovers!)
+        "化妆", "美妆", "变身", "变装", "换装", "改造", "变帅", "变美", "穿搭", "发型", "理发", "剪发", "洗头", "美甲", "护肤", "素颜", "卸妆", "整容", "跳舞", "舞蹈", "热舞", "颜值",
+        # News, Documentaries, Speeches, Interviews
+        "新闻", "正能量", "感动", "演讲", "采访", "街访", "观点", "情感", "文案", "语录"
     ]
-        # STRICT GENRE WHITELIST: ONLY Comedy, Suspense, and Plot Twist content allowed
+        # STRICT GENRE WHITELIST: ONLY Hardcore Comedy Fails, Slapstick, Pranks, and Animal Chaos
     viral_tags = [
-        # Pure Comedy & Viral Fails
-        "搞笑", "沙雕", "整蛊", "恶搞", "笑死我了", "笑死", "互怼", "名场面", "翻车", "大冤种", "搞笑视频", "逗比", "幽默",
-        # Plot Twists & Mind-bending Surprises
-        "反转", "神反转", "意想不到的结局", "结局反转", "搞笑反转", "没想到", "神转折", "意外", "万万没想到",
-        # Suspense & Shock
-        "悬疑", "惊险", "反差", "打脸"
+        # Explicit Physical Fails & Instant Karma (Must have real visual action/fail)
+        "翻车", "翻车现场", "翻车瞬间", "打脸", "大冤种", "社死", "社死现场", "名场面",
+        # Pure Slapstick Comedy & Pranks
+        "沙雕", "整蛊", "恶搞", "搞笑翻车", "笑死我了", "笑死", "互怼", "纯搞笑", "逗比", "逗乐", "逆天操作",
+        # Pet & Animal Fails
+        "修狗翻车", "猫咪翻车", "萌宠翻车", "动物搞笑"
     ]
 
     # CUMULATIVE MULTI-ROUND MEMORY POOL: Collects viral clips across all 10 rounds without losing any
@@ -693,21 +701,25 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
 
         user_prompt = f"""
 WATCH AND ANALYZE THIS VIRAL VIDEO FOOTAGE CAREFULLY:
-- Context Clues: {clip_description}
-- Genre/Niche: {topic}
 - Total Video Duration: {target_duration:.1f} seconds
+- Channel Genre: High-Energy Viral Comedy & Physical Fails
+
+CRITICAL VISUAL REALITY INSTRUCTION (NO HALLUCINATIONS):
+- Base your commentary 100% on what is ACTUALLY VISIBLE on screen!
+- Describe the exact characters (e.g. cat, dog, man, kid), actions, and fail/prank you see with your own eyes.
+- NEVER make up stories or talk about events, weddings, makeovers, or people that are not visibly in the footage!
 
 CHRONOLOGICAL PSYCHOLOGICAL RETENTION DIRECTIVE:
 1. HOW TO HOOK & HOLD THE VIEWER:
-   * 0s - 3s (The Information Gap Hook): Hook the viewer immediately! Do NOT spoil the surprise. Tease the situation so the viewer CANNOT scroll away.
-   * Middle Seconds (Rising Tension): Describe the action with high-speed American meme sarcasm, building excitement toward the climax.
-   * Final 2-3s (The Punchline / Twist Climax): Deliver the explosive funny punchline or shocking revelation right before the cut!
+   * 0s - 3s (The Information Gap Hook): Hook the viewer immediately based on the visible action! Do NOT spoil the fail/punchline. Tease the exact situation on screen so the viewer CANNOT scroll away.
+   * Middle Seconds (Rising Tension): Describe the visible action with high-speed American meme sarcasm, building excitement toward the climax.
+   * Final 2-3s (The Punchline / Climax): Deliver the explosive funny punchline or roast matching the exact visual fail before the cut!
    * Seamless Infinite Loop: End with a punchy closer that loops smoothly.
 
 2. TOP HOOK BANNER RULES:
-   - Must be 3-5 words in ALL CAPS with an expressive emoji.
+   - Must be 3-5 words in ALL CAPS with an expressive emoji matching the exact scene.
    - Examples of irresistible stop-scroll banners:
-     "DON'T BLINK AT THE END 💀", "HE DID NOT SEE THIS COMING 😂", "WAIT FOR HIS REACTION 💀", "BRO THOUGHT HE WAS SAFE 😂", "NO WAY THIS JUST HAPPENED 😳"
+     "DON'T BLINK AT THE END 💀", "HE DID NOT SEE THIS COMING 😂", "WAIT FOR HIS REACTION 💀", "INSTANT REGRET CAUGHT IN 4K 😭", "NO WAY THIS JUST HAPPENED 😳"
 
 2. SOUNDBOARD SELECTION (As Audio Director):
    - Choose 1 to 3 sound effects from: 'whoosh', 'bonk', 'vine_boom', 'record_scratch', 'buzzer', 'pop', 'ding'.
@@ -717,11 +729,12 @@ CHRONOLOGICAL PSYCHOLOGICAL RETENTION DIRECTIVE:
 3. Provide JSON with:
    - "title": High-curiosity American/Western viral meme title under 60 characters with funny emojis (💀, 😂, 😭) and #shorts.
      * STRICT TITLE VIRALITY LAWS:
+       - The title MUST match the actual physical subject of the video (if animal, mention animal; if sports/gym, mention that).
+       - NEVER use a mismatched or unrelated title.
        - NEVER include country flags (NO 🇨🇳, 🇺🇸, 🇮🇳, etc.).
-       - NEVER use boring documentary/craft words (NO 'art', 'sculpture', 'reveal', 'china').
-       - Frame as high-tension suspense, comedy, or disbelief (e.g. 'Bro Really Thought He Was Safe 💀 #shorts', 'Wait Till You See What Happened 😂 #shorts', 'Nobody Expected This Ending 💀 #shorts', 'He Really Risked It All For This 💀 #shorts').
+       - Frame as high-tension suspense, comedy, or disbelief.
    - "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner matching the visual.
-   - "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words.
+   - "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words describing what is visually happening.
      * Your words MUST cover the full {safe_audio_dur:.1f} seconds of speech.
      * Do NOT stop speaking early!
      * Align your description to the on-screen events so the viewer hears exactly what they see!
