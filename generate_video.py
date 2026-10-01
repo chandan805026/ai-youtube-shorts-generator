@@ -332,6 +332,9 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         "悬疑", "惊险", "反差", "打脸"
     ]
 
+    # CUMULATIVE MULTI-ROUND MEMORY POOL: Collects viral clips across all 10 rounds without losing any
+    all_accumulated_    seen_candidate_ids = set()
+
     for attempt in range(10):
         print(f"\n🔄 [MULTI-SWIPE INGESTION] Aggregating massive video pool (Round {attempt+1}/10)...")
         raw_items = []
@@ -358,8 +361,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
 
         print(f"📦 Total Unique Scanned Pool: {len(raw_items)} candidate clips in memory!")
 
-        candidates = []
-        for item in raw_items:
+                for item in raw_items:
             aweme_id = str(item.get("aweme_id", "")).strip()
             # Bulletproof duplicate check: check both pure ID and prefixed ID
             if not aweme_id or aweme_id in used_ids or f"douyin_{aweme_id}" in used_ids:
@@ -416,36 +418,38 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             is_100k_plus = (likes >= 100000)
             is_50k_plus = (likes >= 50000)
 
-            candidates.append({
-                "score": virality_score,
-                "likes": likes,
-                "shares": shares,
-                "comments": comments,
-                "is_100k_plus": is_100k_plus,
-                "is_50k_plus": is_50k_plus,
-                "dur": dur,
-                "id": aweme_id,
-                "desc": desc,
-                "url": play_urls[0]
-            })
+            if aweme_id not in seen_candidate_ids:
+                seen_candidate_ids.add(aweme_id)
+                all_accumulated_candidates.append({
+                    "score": virality_score,
+                    "likes": likes,
+                    "shares": shares,
+                    "comments": comments,
+                    "is_100k_plus": is_100k_plus,
+                    "is_50k_plus": is_50k_plus,
+                    "dur": dur,
+                    "id": aweme_id,
+                    "desc": desc,
+                    "url": play_urls[0]
+                })
 
-        # Strict Quality Gatekeeper: Prefer 100K+ Likes, Fallback to 50K+
-        tier1 = [c for c in candidates if c["is_100k_plus"]]
-        tier2 = [c for c in candidates if c["is_50k_plus"]]
+        # Strict Quality Gatekeeper: Evaluates cumulative pool from all rounds
+        tier1 = [c for c in all_accumulated_candidates if c["is_100k_plus"]]
+        tier2 = [c for c in all_accumulated_candidates if c["is_50k_plus"]]
 
         chosen_pool = None
         tier_badge = ""
 
         if tier1:
             chosen_pool = tier1
-            tier_badge = f"🔥 TIER-1 (100K+ MEGA-VIRAL: {len(tier1)} found)"
-        elif tier2:
+            tier_badge = f"🔥 TIER-1 (100K+ MEGA-VIRAL: {len(tier1)} candidates across {attempt+1} rounds)"
+        elif tier2 and (attempt >= 3 or len(tier2) >= 2):
             chosen_pool = tier2
-            tier_badge = f"⚡ TIER-2 (50K+ HIGH-VIRAL: {len(tier2)} found)"
-        elif attempt == 9 and candidates:
-            # Absolute last resort after 5 rounds
-            chosen_pool = candidates
-            tier_badge = "✨ TIER-3 (TOP ENGAGEMENT POOL)"
+            tier_badge = f"⚡ TIER-2 (50K+ HIGH-VIRAL: {len(tier2)} candidates across {attempt+1} rounds)"
+        elif attempt == 9 and all_accumulated_candidates:
+            # Absolute safety net: Pick highest scoring comedy/twist clip from all 10 rounds
+            chosen_pool = all_accumulated_candidates
+            tier_badge = f"✨ TIER-3 (TOP COMEDY ENGAGEMENT: {len(all_accumulated_candidates)} pool)"
 
         if chosen_pool:
             chosen_pool.sort(key=lambda x: x["score"], reverse=True)
