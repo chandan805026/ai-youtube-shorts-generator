@@ -543,6 +543,81 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             print(f"⚠️ Round {attempt+1}: No 50K+/100K+ clip in this pool. Swiping again for mega-viral clip...")
             time.sleep(1)
 
+    print("⚠️ Whitelist pool empty after 10 rounds. Running emergency wide comedy sweep...")
+    for emergency_ep in [
+        "https://aweme.snssdk.com/aweme/v1/feed/?count=50&pull_type=2",
+        "https://api.amemv.com/aweme/v1/feed/?count=50&type=0"
+    ]:
+        try:
+            r = requests.get(emergency_ep, headers=headers, timeout=10)
+            if r.status_code == 200:
+                for it in r.json().get("aweme_list", []):
+                    aid = str(it.get("aweme_id", "")).strip()
+                    if not aid or aid in used_ids or f"douyin_{aid}" in used_ids:
+                        continue
+                    dur = it.get("duration", 0) / 1000.0
+                    if not (10.0 <= dur <= 38.0):
+                        continue
+                    desc = it.get("desc", "")
+                    if any(w in desc for w in brand_exclusion_blacklist):
+                        continue
+                    purls = it.get("video", {}).get("play_addr", {}).get("url_list", [])
+                    if not purls:
+                        continue
+                    st = it.get("statistics", {})
+                    l = st.get("digg_count", 0)
+                    all_accumulated_candidates.append({
+                        "score": l + (st.get("share_count", 0) * 10),
+                        "likes": l,
+                        "shares": st.get("share_count", 0),
+                        "comments": st.get("comment_count", 0),
+                        "is_100k_plus": (l >= 100000),
+                        "is_50k_plus": (l >= 50000),
+                        "dur": dur,
+                        "id": aid,
+                        "desc": desc,
+                        "url": purls[0]
+                    })
+        except Exception:
+            pass
+        if all_accumulated_candidates:
+            break
+
+    if all_accumulated_candidates:
+        all_accumulated_candidates.sort(key=lambda x: x["score"], reverse=True)
+        top_pick = all_accumulated_candidates[0]
+        score = top_pick["score"]
+        dur = top_pick["dur"]
+        aweme_id = top_pick["id"]
+        desc = top_pick["desc"]
+        play_url = top_pick["url"]
+        likes = top_pick["likes"]
+        shares = top_pick["shares"]
+        comments = top_pick["comments"]
+        orig_web_url = f"https://www.douyin.com/video/{aweme_id}"
+        print(f"\n🏆 [EMERGENCY SWEEP] Selected Top Engaged Clip: {aweme_id} ({dur:.1f}s)")
+        print(f"⬇️ Downloading direct unwatermarked HD stream from ByteDance China CDN...")
+        dl_headers = {"User-Agent": "okhttp/3.10.0.1"}
+        with requests.get(play_url, headers=dl_headers, stream=True, timeout=30) as dl_resp:
+            dl_resp.raise_for_status()
+            with open(raw_video_path, "wb") as f:
+                for chunk in dl_resp.iter_content(chunk_size=1024*512):
+                    if chunk:
+                        f.write(chunk)
+        if os.path.exists(raw_video_path) and os.path.getsize(raw_video_path) > 50000:
+            meta = {
+                "id": f"douyin_{aweme_id}",
+                "aweme_id": aweme_id,
+                "douyin_url": orig_web_url,
+                "likes": likes,
+                "shares": shares,
+                "title": "Chinese TikTok Went Too Far 💀 #shorts",
+                "hook_banner": "WAIT TILL THE END 💀",
+                "description": desc,
+                "fallback_script": "Wait for it, because bro really thought he had the master plan! Look at that unmatched confidence right before disaster strikes. The way he froze the second everything went completely wrong is pure comedy gold! You can literally see his whole soul leaving his body in 4K! What would you even do if this happened to you? Tell me in the comments right now! 💀"
+            }
+            return raw_video_path, meta["title"], desc, "douyin_live_china", meta
+
     raise RuntimeError("Critical: Could not acquire a fresh video from Douyin China API. Retrying...")
 
 # ==========================================
