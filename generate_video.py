@@ -1036,7 +1036,7 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass, hoo
         
         # ⚡ PERSISTENT TOP HOOK BANNER: Displayed from 0.0s to stop the 2-second swipe-away!
         if hook_banner and hook_banner.strip():
-            clean_hook = hook_banner.strip().upper()
+            clean_hook = hook_banner.strip().replace("\r", "").replace("\n", " ").upper()
             total_end = seconds_to_ass_time(ass_cards[-1][1] if ass_cards else 30.0)
             f.write(f"Dialogue: 0,0:00:00.00,{total_end},TopHook,,0,0,0,,{clean_hook}\n")
         
