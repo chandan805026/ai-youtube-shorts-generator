@@ -63,7 +63,7 @@ def upload_video_to_youtube(video_path, thumb_path, meta_path, privacy_status="p
         title = raw_title
 
     description = metadata.get("description", "")
-    description += "\n\n🔥 Welcome to Viral Asian Meme & Comedy Shorts Studio!\nBringing you the funniest Asian slapstick clips, cute kid reactions, and hilarious meme commentary daily.\n\nSubscribe for daily laughs!\n#shorts #funny #comedy #viral #meme #asianmemes #trynottolaugh"
+    description += "\n\n🔥 Welcome to Crazy Vault!\nDaily mind-blowing comedy, unbelievable twists, and hilarious viral moments.\n\nSubscribe for your daily dose of laughs & twists!\n#shorts #funny #comedy #viral #meme #plottwist #crazyvault #trynottolaugh"
 
     meta_tags = metadata.get("tags", "")
     if isinstance(meta_tags, str):
@@ -73,7 +73,7 @@ def upload_video_to_youtube(video_path, thumb_path, meta_path, privacy_status="p
     else:
         tags = []
     
-    default_tags = ["shorts", "funny", "comedy", "meme", "viral", "asian memes", "try not to laugh", "humor", "douyin funny"]
+    default_tags = ["shorts", "funny", "comedy", "meme", "viral", "plot twist", "try not to laugh", "humor", "crazy vault", "insane twist", "comedy shorts", "hilarious"]
     for t in default_tags:
         if t not in tags:
             tags.append(t)
@@ -139,7 +139,7 @@ def upload_video_to_youtube(video_path, thumb_path, meta_path, privacy_status="p
     if summary_file:
         try:
             with open(summary_file, "a", encoding="utf-8") as f:
-                f.write(f"\n\n## 📺 Live on YouTube (Cosmic Vault)!\n")
+                f.write(f"\n\n## 📺 Live on YouTube (Crazy Vault)!\n")
                 f.write(f"- **Title:** {title}\n")
                 f.write(f"- **Privacy:** `{privacy_status}`\n")
                 f.write(f"- **Watch Live:** [Click to Open Shorts on YouTube]({shorts_url})\n")
