@@ -359,7 +359,15 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             if not play_urls:
                 continue
 
-            # 4. Extract Real Metrics (Likes, Shares, Comments)
+            # 4. STRICT COMEDY, SUSPENSE & PLOT TWIST GATEKEEPER
+            # Video MUST contain at least one approved genre keyword/tag
+            is_genre_match = any(vt in desc for vt in viral_tags)
+            if keywords:
+                is_genre_match = is_genre_match or any(kw in desc for kw in keywords)
+            if not is_genre_match:
+                continue
+
+            # 5. Extract Real Metrics (Likes, Shares, Comments)
             stats = item.get("statistics", {})
             likes = stats.get("digg_count", 0)
             shares = stats.get("share_count", 0)
@@ -664,7 +672,11 @@ CHRONOLOGICAL PSYCHOLOGICAL RETENTION DIRECTIVE:
    - Set zoom: true for the most intense climax moment.
 
 3. Provide JSON with:
-   - "title": High curiosity viral YouTube Shorts title under 60 characters with funny emojis and #shorts.
+   - "title": High-curiosity American/Western viral meme title under 60 characters with funny emojis (💀, 😂, 😭) and #shorts.
+     * STRICT TITLE VIRALITY LAWS:
+       - NEVER include country flags (NO 🇨🇳, 🇺🇸, 🇮🇳, etc.).
+       - NEVER use boring documentary/craft words (NO 'art', 'sculpture', 'reveal', 'china').
+       - Frame as high-tension suspense, comedy, or disbelief (e.g. 'Bro Really Thought He Was Safe 💀 #shorts', 'Wait Till You See What Happened 😂 #shorts', 'Nobody Expected This Ending 💀 #shorts', 'He Really Risked It All For This 💀 #shorts').
    - "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner matching the visual.
    - "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words.
      * Your words MUST cover the full {safe_audio_dur:.1f} seconds of speech.
@@ -674,7 +686,7 @@ CHRONOLOGICAL PSYCHOLOGICAL RETENTION DIRECTIVE:
        {{"time": 0.4, "sound": "whoosh", "zoom": false}},
        {{"time": {min(safe_audio_dur, 12.0):.1f}, "sound": "vine_boom", "zoom": true}}
      ],
-   - "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy #douyin.
+   - "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy #crazyvault #plottwist.
    - "tags": 8-10 comma-separated keywords.
 
 Output ONLY raw JSON. No markdown ticks, no backticks.
