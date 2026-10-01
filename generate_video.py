@@ -242,7 +242,16 @@ def audition_candidates_with_gemini(candidates, gemini_key):
                 clean_sc = parsed.get("cleanliness_score", "N/A")
                 west_sc = parsed.get("western_appeal_score", "N/A")
 
-                chosen = next((item for item in audition_data if item["index"] == w_idx), audition_data[0])
+                if w_idx == 0:
+                    print(f"🚫 [AI AUDITION PRODUCER] Entire audition batch DISQUALIFIED (winner_index: 0)!")
+                    print(f"   💡 Reason: {reason}")
+                    return None
+
+                chosen = next((item for item in audition_data if item["index"] == w_idx), None)
+                if not chosen:
+                    print(f"⚠️ [AI AUDITION PRODUCER] Winner index {w_idx} not found. Disqualifying batch.")
+                    return None
+
                 print(f"🏆 [AI AUDITION PRODUCER] Winner Selected: Candidate #{chosen['index']}!")
                 print(f"   🇬🇧/🇺🇸 Western Appeal: {west_sc}/10 | 🚫 Cleanliness: {clean_sc}/10")
                 print(f"   💡 Reason: {reason}")
@@ -252,9 +261,7 @@ def audition_candidates_with_gemini(candidates, gemini_key):
         except Exception as e:
             print(f"⚠️ Gemini audition {mod} notice: {e}")
 
-    # Fallback to first available candidate
-    audition_data[0]["candidate"]["pre_downloaded_path"] = audition_data[0]["video_path"]
-    return audition_data[0]["candidate"]
+    return None
 
 def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.json"):
     """
@@ -481,6 +488,10 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
                 winner = audition_candidates_with_gemini(audition_pool, gemini_key)
                 if winner:
                     top_pick = winner
+                elif attempt < 9:
+                    print("🚫 [AI AUDITION PRODUCER] All candidates rejected as non-comedy. Swiping fresh pool...")
+                    time.sleep(1)
+                    continue
 
             score = top_pick["score"]
             dur = top_pick["dur"]
