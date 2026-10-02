@@ -282,6 +282,26 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         if url.endswith(".mp4") or url.endswith(".webm"):
             if download_file_stream(url, raw_video_path):
                 return raw_video_path, "Viral Comedy Short #shorts", "Watch this hilarious moment unfold 💀", "custom_url", {"id": "custom_url"}
+        if "youtube.com" in url or "youtu.be" in url:
+            print(f"📥 Downloading YouTube Video via yt-dlp: {url}")
+            try:
+                import yt_dlp
+                ydl_opts = {
+                    'outtmpl': raw_video_path,
+                    'format': 'mp4/bestvideo+bestaudio/best',
+                    'overwrites': True,
+                    'quiet': True
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    yt_title = info.get('title', 'Viral Comedy Short #shorts')
+                    yt_desc = info.get('description', '')
+                if os.path.exists(raw_video_path) and os.path.getsize(raw_video_path) > 10000:
+                    print("✅ Successfully downloaded YouTube video!")
+                    return raw_video_path, yt_title, yt_desc, "youtube_custom", {"id": "youtube_custom"}
+            except Exception as e:
+                print(f"⚠️ YouTube download error: {e}")
+
         if "douyin.com" in url or "tiktok.com" in url:
             ok, det_title = try_tikwm_download(url, raw_video_path)
             if ok:
