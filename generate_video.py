@@ -1182,13 +1182,17 @@ def generate_multivoice_dialogue_and_ass(dialogue_list, output_audio, output_ass
     elif not isinstance(dialogue_list, list) or len(dialogue_list) == 0:
         dialogue_list = [{"speaker": "CHAD", "text": "Wait for it! This is crazy!"}]
 
+    # 🛑 ELEVENLABS PAUSED FOR FREE TESTING MODE (Preserves your ElevenLabs credits!)
+    # Set to True whenever you want to activate ElevenLabs studio voices again.
+    ENABLE_ELEVENLABS = os.environ.get("ENABLE_ELEVENLABS", "false").lower() in ["true", "1", "yes"]
+
     # Load ElevenLabs API keys (supports comma-separated rotation pool)
     raw_el_keys = os.environ.get("ELEVENLABS_API_KEY", "").strip()
     el_keys = [k.strip() for k in raw_el_keys.split(",") if k.strip()]
-    if el_keys:
+    if el_keys and ENABLE_ELEVENLABS:
         print(f"🎙️ ElevenLabs Engine Activated! ({len(el_keys)} API keys in rotation pool)")
     else:
-        print("🎙️ ElevenLabs API key not set, using Microsoft Edge-TTS Studio voices.")
+        print("🎙️ ElevenLabs is PAUSED for Testing Mode (Credits Saved!). Using 100% Free Edge-TTS Studio Voices.")
 
     # Create 0.18s silence WAV for natural conversational rhythm
     silence_wav = os.path.join(parts_dir, "pause_silence.wav")
@@ -1225,8 +1229,8 @@ def generate_multivoice_dialogue_and_ass(dialogue_list, output_audio, output_ass
         words_timing = []
         el_success = False
 
-        # 1. Try ElevenLabs Studio Voice
-        if el_keys:
+        # 1. Try ElevenLabs Studio Voice (Only if explicitly enabled)
+        if el_keys and ENABLE_ELEVENLABS:
             el_success, words_timing = try_elevenlabs_tts(clean_text, speaker, part_mp3, el_keys)
 
         # 2. Fallback to Edge-TTS if ElevenLabs not available or quota reached
