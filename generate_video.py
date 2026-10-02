@@ -767,22 +767,22 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
                 frame_images_b64 = extract_video_keyframes_base64(video_path)
 
         system_instruction = (
-            "You are a top-tier viral American YouTube Shorts comedy creator (think Kai Cenat, Daily Dose of Internet, and Penguinz0 reaction style) talking directly to a 🇺🇸 UNITED STATES audience (Gen-Z & Millennials).\n"
-            "USE AUTHENTIC AMERICAN MEME SLANG: 'Bro really thought...', 'Ain\'t no way...', 'Caught in 4K', 'My guy was fighting for his life 💀', 'Intrusive thoughts won', 'The level of disrespect is crazy'. Make every single line feel like a hilarious American friend reacting live to an unbelievable moment!\n"
-            "YOUR #1 GOAL: MAKE EVERY VIEWER WATCH UNTIL THE FINAL SECOND (100%+ RETENTION), EVEN IF THE FOOTAGE IS AVERAGE.\n"
-            "CRITICAL PSYCHOLOGICAL HOOK LAWS:\n"
-            "1. THE 3-SECOND CURIOSITY GAP: In the first 3 seconds, NEVER explain the ending or spoil what happens! Instead, set a high-stakes hook, tease a hidden detail, or pose a challenge (e.g. 'He thought he had this completely figured out...', 'Watch his face the exact moment he looks down...').\n"
-            "2. RISING MID-VIDEO TENSION: Between 4s and 12s, build fast-paced anticipation. Point out subtle details that make the viewer stare closely at the screen so their eyes never wander.\n"
-            "3. THE PAYOFF CLIMAX (Final 2-3s): Land a massive, satisfying laugh, savage roast, or shocking punchline right at the final visual moment!\n"
-            "4. THE 110%+ INFINITE LOOP SECRET (CRITICAL TO ESCAPE 1.5K VIEW CAP):\n"
-            "  * YouTube Shorts locks videos at 1.5K views if Average Percentage Viewed is below 85%.\n"
-            "  * To achieve 110%-120% retention, NEVER conclude or wrap up the video! NO 'look at that', NO 'subscribe', NO final sign-off.\n"
-            "  * The final sentence MUST cut off in a way that naturally flows straight into the opening sentence of the loop.\n"
-            "  * The viewer must not realize the video restarted until 2-3 seconds into the replay!\n"
-            "5. SOUNDBOARD AUDIO HOOKS:\n"
-            "  * 'whoosh': ALWAYS placed at 0.3s-0.5s to snap the viewer's ears into focus.\n"
-            "  * 'record_scratch' or 'pop' or 'buzzer': Middle moment for comedic doubt.\n"
-            "  * 'vine_boom' or 'bonk' with zoom: true: Placed at the exact punchline timestamp.\n"
+            "You are an elite viral American YouTube Shorts narrator and director (Daily Dose of Internet, Kai Cenat, and Penguinz0 style) directing for a 🇺🇸 US audience (Gen-Z & Millennials).\n"
+            "YOUR #1 RULE: ADAPT 100% TO THE ACTUAL VISUAL CONTENT - DO NOT FORCE A ROAST ON REAL TALENT, AND DO NOT MISS A ROAST ON A REAL FAIL!\n\n"
+            "MODE 1: GENUINE PHYSICAL FAIL / COMEDY / SLAPSTICK / PRANK / ANIMAL ACCIDENT\n"
+            "- If someone actually falls, trips, fails a stunt, gets startled, or an animal does something hilarious:\n"
+            "- Tone: High-energy American meme roast, sarcasm, and shock ('Bro really thought he was safe...', 'Ain\'t no way...', 'Intrusive thoughts won 💀', 'Bro needs a factory reset immediately').\n"
+            "- Audio: Fast, punchy, with sound effects ('vine_boom', 'bonk').\n\n"
+            "MODE 2: IMPRESSIVE TALENT / CRAZY DANCE / HARD WORK / INSANE SKILL / SHOCKING COORDINATION\n"
+            "- If people are dancing with incredible synchronization, performing insane acrobatics, or showing extreme dedication/talent:\n"
+            "- NEVER INVENT A FAKE FAIL OR FORCE A MOCKING ROAST! RECOGNIZE REAL SKILL!\n"
+            "- Tone: Massive hype, jaw-dropping praise, genuine awe ('Look at this insane synchronization! They literally put in hundreds of hours...', 'Hollywood choreographers wish they had this coordination 🔥', 'The level of dedication is completely unreal!').\n"
+            "- Gender & Subject Accuracy: Look closely at the people! If female dancers, say 'these girls' / 'she' / 'they'. If male, say 'bro' / 'he'. If animals, say 'this dog' / 'this cat'. NEVER call a group of female dancers 'bro / my guy'!\n\n"
+            "CRITICAL RETENTION LAWS:\n"
+            "1. 0s-3s HOOK: Instantly capture attention based on what's visually happening without spoiling the climax.\n"
+            "2. MID-VIDEO BUILDUP: Keep eyes glued with fast-paced, engaging commentary.\n"
+            "3. CLIMAX (Final 2-3s): Deliver the big punchline (if comedy) or the mind-blowing finale (if talent).\n"
+            "4. NO OUTROS: Never say 'subscribe' or 'see you next time' - loop cleanly into the start.\n"
             "Format your entire response as a single valid JSON object with keys: title, hook_banner, script, description, tags, sfx_timeline."
         )
 
@@ -791,10 +791,13 @@ WATCH AND ANALYZE THIS VIRAL VIDEO FOOTAGE CAREFULLY:
 - Total Video Duration: {target_duration:.1f} seconds
 - Channel Genre: High-Energy Viral Comedy & Physical Fails
 
-CRITICAL VISUAL REALITY INSTRUCTION (NO HALLUCINATIONS):
+CRITICAL VISUAL REALITY & DUAL-MODE DETECTION (NO HALLUCINATIONS):
 - Base your commentary 100% on what is ACTUALLY VISIBLE on screen!
-- Describe the exact characters (e.g. cat, dog, man, kid), actions, and fail/prank you see with your own eyes.
-- NEVER make up stories or talk about events, weddings, makeovers, or people that are not visibly in the footage!
+- First, classify what you see:
+  * If it is a real physical fail/trip/prank -> MODE 1 (Savage Meme Roast & Comedy).
+  * If it is impressive skill/dance/choreography/hard work -> MODE 2 (Insane Hype & Talent Respect, e.g. 'Hollywood could never match this synchronization').
+- ACCURATELY identify characters: If girls/women are dancing, call them 'these girls' / 'she' / 'they'. NEVER call female dancers 'bro / my guy'! If guys, call them 'he' / 'bro'.
+- NEVER invent a fake disaster or fail if people are simply dancing or showcasing talent!
 
 CHRONOLOGICAL PSYCHOLOGICAL RETENTION DIRECTIVE:
 1. HOW TO HOOK & HOLD THE VIEWER:
@@ -1136,7 +1139,8 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass, hoo
         
         # ⚡ PERSISTENT TOP HOOK BANNER: Displayed from 0.0s to stop the 2-second swipe-away!
         if hook_banner and hook_banner.strip():
-            clean_hook = hook_banner.strip().replace("\r", "").replace("\n", " ").upper()
+            # Strip emojis to prevent broken square box [▯] glyphs in ASS subtitle fonts
+            clean_hook = re.sub(r'[^\w\s\?!.,\x27-]', '', hook_banner).strip().replace("\r", "").replace("\n", " ").upper()
             total_end = seconds_to_ass_time(ass_cards[-1][1] if ass_cards else 30.0)
             f.write(f"Dialogue: 0,0:00:00.00,{total_end},TopHook,,0,0,0,,{clean_hook}\n")
         
@@ -1406,7 +1410,7 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
         print(f"   ▶ {c['time']:.2f}s: [{c['sound'].upper()}] {'(Camera Zoom 1.12x)' if c['zoom'] else ''}")
 
     # 3. Build FFmpeg Filtergraph
-    clean_hook = hook_banner.replace("'", "").replace(":", "").upper()
+    clean_hook = re.sub(r'[^\w\s\?!.,\x27-]', '', hook_banner).replace("'", "").replace(":", "").strip().upper()
     ass_escaped = ass_subtitles.replace("\\", "/").replace(":", "\\:")
 
     # Build dynamic FFmpeg audio inputs & filter
