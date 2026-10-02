@@ -352,12 +352,12 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
     ]
     # STRICT GENRE WHITELIST: Hardcore Comedy Fails, Slapstick, Pranks, Animal Chaos & Viral Humor
     viral_tags = [
-        # Explicit Physical Fails & Instant Karma (Action-Oriented)
-        "翻车", "翻车现场", "翻车瞬间", "滑倒", "摔倒", "打脸", "大冤种", "社死", "社死现场", "作死", "失误", "尴尬瞬间", "失误瞬间", "名场面", "反转", "神操作", "神走位",
-        # Pure Slapstick & Prank Chaos
-        "沙雕", "整蛊", "恶搞", "搞笑翻车", "纯搞笑", "逗比", "逆天操作", "作死日常", "当场抓获", "这波在大气层", "笑不活了", "蚌埠住了", "绷不住了",
-        # Pet & Animal Chaos (Universally Viral)
-        "修狗", "猫咪", "萌宠", "宠物搞笑", "修狗翻车", "猫咪翻车", "萌宠翻车", "动物搞笑", "拆家", "狗子搞笑", "猫咪沙雕", "动物迷惑行为", "二哈", "哈士奇"
+        # Explicit Physical Fails & Instant Karma
+        "翻车", "翻车现场", "打脸", "大冤种", "社死", "作死", "滑倒", "摔倒", "失误", "尴尬", "名场面", "反转", "神操作", "神走位",
+        # Pure Comedy, Humor & Meme
+        "搞笑", "幽默", "沙雕", "整蛊", "恶搞", "笑死", "逗比", "逆天操作", "哈哈", "爆笑", "纯搞笑", "笑抽", "兄弟",
+        # Pet & Animal Chaos
+        "修狗", "猫咪", "萌宠", "宠物搞笑", "动物搞笑", "拆家", "狗子", "喵星人", "动物", "小狗", "小猫"
     ]
 
     # CUMULATIVE MULTI-ROUND MEMORY POOL: Collects viral clips across all 10 rounds without losing any
@@ -475,7 +475,7 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         elif tier2 and (attempt >= 2 or len(tier2) >= 2):
             chosen_pool = tier2
             tier_badge = f"⚡ TIER-2 (50K+ HIGH-VIRAL: {len(tier2)} candidates across {attempt+1} rounds)"
-        elif attempt >= 4 and all_accumulated_candidates:
+        elif attempt >= 2 and all_accumulated_candidates:
             # Pick highest scoring comedy clip once we have accumulated multiple rounds
             chosen_pool = all_accumulated_candidates
             tier_badge = f"✨ TIER-3 (TOP COMEDY ENGAGEMENT: {len(all_accumulated_candidates)} pool across {attempt+1} rounds)"
