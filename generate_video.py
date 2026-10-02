@@ -167,10 +167,7 @@ def audition_candidates_with_gemini(candidates, gemini_key):
             print(f"⚠️ Audition candidate {idx+1} download notice: {e}")
 
     if not audition_data:
-        return candidates[0]
-    if len(audition_data) == 1:
-        audition_data[0]["candidate"]["pre_downloaded_path"] = audition_data[0]["video_path"]
-        return audition_data[0]["candidate"]
+        return None
 
     content_parts = [{
         "text": (
@@ -198,12 +195,16 @@ def audition_candidates_with_gemini(candidates, gemini_key):
             "\n=======================================================\n"
             "STRICT BRAND MANDATE (Crazy Vault Channel):\n"
             "We ONLY publish high-stakes PHYSICAL COMEDY, insane PRANKS, hilarious FAILS, or crazy ANIMAL CHAOS.\n"
-            "ABSOLUTE DISQUALIFICATION (Score = 0 - NEVER SELECT):\n"
-            "- ANY personal vlog, girl/guy talking to camera, selfie video, or daily lifestyle vlog.\n"
-            "- ANY wedding, bride, groom, bridesmaid, couple, romance, or relationship video.\n"
-            "- ANY makeup, beauty makeover, transformation, glowup, haircut, or outfit change.\n"
-            "- ANY art, crafts, drawing, cooking, food, or farming.\n"
-            "MUST SELECT ONLY: Candidates with CLEAR, OBVIOUS physical comedy action (someone falling, failing, getting startled, pets acting crazy, or instant karma fails)!\n\n"
+            "ABSOLUTE DISQUALIFICATION (winner_index: 0 - ZERO TOLERANCE):\n"
+            "- ANY video of people just sitting at a dinner table, eating food, drinking, or chatting.\n"
+            "- ANY talking head, dialogue drama, skit with speaking, interview, or personal vlog.\n"
+            "- ANY wedding, romance, couple drama, makeup, beauty, haircut, or crafts.\n"
+            "- ANY video where NO physical action, fall, prank, or funny pet moment occurs!\n"
+            "CRITICAL MANDATE: Crazy Vault is an ACTION & PHYSICAL COMEDY channel. We ONLY accept:\n"
+            "1. Real physical fails, slipping, falling, getting startled, instant karma, or gym fails.\n"
+            "2. Hilarious pet & animal chaos (cats, dogs, wildlife doing funny things).\n"
+            "3. Insane human acrobatics, reflexes, or crazy visual stunts.\n\n"
+            "If NO candidate meets this standard (e.g. if it's just people eating or chatting), YOU MUST RETURN winner_index: 0 so we swipe for better clips!\n\n"
             "PRIMARY TARGET AUDIENCE: 🇺🇸 UNITED STATES (USA - 50%+ Core Demographic)!\n"
             "SELECTION CRITERIA:\n"
             "1. 🇺🇸 USA VIRAL COMEDY & TWIST DNA (60%): Must have maximum appeal to American viewers (hilarious pet chaos, savage pranks, gym/sports fails, 'bro thought he was slick' fails, instant karma)!\n"
@@ -334,8 +335,11 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
         "画画", "沙画", "微缩", "雕刻", "非遗", "手艺", "手工制作", "书法", "手绘", "刺绣", "木工", "国风",
         # Agriculture, Farming, Harvest
         "庄稼", "玉米地", "丰收", "种地", "麦子", "田地", "农活",
-        # Food, Cooking, Mukbang, Recipes
-        "做饭", "美食制作", "烹饪", "吃播", "探店", "食谱", "教程", "厨房", "家常菜",
+        # Food, Cooking, Mukbang, Dinner Tables, Eating, Drinking, Banquets
+        "做饭", "美食制作", "烹饪", "吃播", "探店", "食谱", "教程", "厨房", "家常菜", 
+        "吃饭", "聚餐", "饭局", "酒局", "请客", "餐桌", "餐厅", "火锅", "烤肉", "喝茶", "吃席", "下馆子", "大排档", "吃顿好的",
+        # Dialogue Skits, Talking Heads, Interviews, Blind Dates, Daily Chat
+        "相亲", "聊天", "对话", "段子剧", "情景剧", "短剧", "访谈", "采访", "连麦", "唠嗑", "说书", "讲故事", "小品", "相声", "谈心",
         # Vlogs, Daily Life, Talking Heads, Selfies, Cringe Diaries (Zero Vlogs Allowed!)
         "vlog", "Vlog", "VLOG", "生活记录", "记录生活", "记录美好生活", "碎碎念", "沉浸式化妆", "开箱", "好物分享", 
         "测评", "种草", "打卡", "自媒体", "独居生活", "一个人生活", "治愈系", "慢生活", "生活碎片",
@@ -348,14 +352,12 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
     ]
     # STRICT GENRE WHITELIST: Hardcore Comedy Fails, Slapstick, Pranks, Animal Chaos & Viral Humor
     viral_tags = [
-        # Explicit Physical Fails & Instant Karma
-        "翻车", "翻车现场", "翻车瞬间", "打脸", "大冤种", "社死", "社死现场", "名场面",
-        # Pure Slapstick Comedy & Pranks
-        "搞笑", "沙雕", "整蛊", "恶搞", "搞笑翻车", "笑死我了", "笑死", "互怼", "纯搞笑", "逗比", "逗乐", "逆天操作", "反转", "幽默", "神操作", "笑抽", "哈哈",
-        # Pet & Animal Chaos
-        "修狗", "猫咪", "萌宠", "宠物搞笑", "修狗翻车", "猫咪翻车", "萌宠翻车", "动物搞笑",
-        # Viral expressions
-        "看了一百遍", "笑不活了", "蚌埠住了", "绷不住了", "破防了", "绝了"
+        # Explicit Physical Fails & Instant Karma (Action-Oriented)
+        "翻车", "翻车现场", "翻车瞬间", "滑倒", "摔倒", "打脸", "大冤种", "社死", "社死现场", "作死", "失误", "尴尬瞬间", "失误瞬间", "名场面", "反转", "神操作", "神走位",
+        # Pure Slapstick & Prank Chaos
+        "沙雕", "整蛊", "恶搞", "搞笑翻车", "纯搞笑", "逗比", "逆天操作", "作死日常", "当场抓获", "这波在大气层", "笑不活了", "蚌埠住了", "绷不住了",
+        # Pet & Animal Chaos (Universally Viral)
+        "修狗", "猫咪", "萌宠", "宠物搞笑", "修狗翻车", "猫咪翻车", "萌宠翻车", "动物搞笑", "拆家", "狗子搞笑", "猫咪沙雕", "动物迷惑行为", "二哈", "哈士奇"
     ]
 
     # CUMULATIVE MULTI-ROUND MEMORY POOL: Collects viral clips across all 10 rounds without losing any
@@ -483,14 +485,14 @@ def ingest_live_chinese_video(video_url="", topic="auto", history_file="history.
             gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
 
             top_pick = chosen_pool[0]
-            if len(chosen_pool) >= 2 and gemini_key:
+            if chosen_pool and gemini_key:
                 audition_pool = chosen_pool[:3]
-                print(f"\n🎬 [AI AUDITION PRODUCER] Auditioning Top {len(audition_pool)} Finalists for US/UK Appeal & Zero Chinese Text...")
+                print(f"\n🎬 [AI AUDITION PRODUCER] Auditioning Top {len(audition_pool)} Finalists for Visual Slapstick Action...")
                 winner = audition_candidates_with_gemini(audition_pool, gemini_key)
                 if winner:
                     top_pick = winner
                 elif attempt < 9:
-                    print("🚫 [AI AUDITION PRODUCER] All candidates rejected as non-comedy. Swiping fresh pool...")
+                    print("🚫 [AI AUDITION PRODUCER] Candidates rejected (no physical action / boring talking head). Swiping fresh pool...")
                     time.sleep(1)
                     continue
 
