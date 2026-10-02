@@ -869,36 +869,14 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
             print(f"👁️ Attaching {len(frame_images_b64)} visual frames to Gemini contents!")
         content_parts.append({"text": user_prompt})
 
-        # Stable Model Priority: Direct priority to gemini-2.5-flash and gemini-flash-latest
+        # Proven stable multimodal video models
         models_to_try = [
+            "gemini-2.5-flash",
             "gemini-2.0-flash",
             "gemini-1.5-flash",
-            "gemini-flash-latest",
-            "gemini-1.5-flash",
-            "gemini-1.5-pro",
-            "gemini-flash-lite-latest"
+            "gemini-flash-latest"
         ]
-        try:
-            m_resp = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}", timeout=10)
-            if m_resp.status_code == 200:
-                discovered = []
-                for m in m_resp.json().get("models", []):
-                    m_name = m.get("name", "").replace("models/", "")
-                    methods = m.get("supportedGenerationMethods", [])
-                    if "generateContent" in methods:
-                        discovered.append(m_name)
-                # Filter out broken preview/research models
-                valid_discovered = [
-                    m for m in discovered 
-                    if m.startswith("gemini-") 
-                    and not any(x in m for x in ["antigravity", "deep-research", "robotics", "lyria", "computer-use", "preview-0", "preview-1"])
-                ]
-                top_picks = [p for p in models_to_try if p in valid_discovered]
-                rest = [m for m in valid_discovered if m not in top_picks]
-                models_to_try = top_picks + rest
-        except Exception as e:
-            print(f"⚠️ Dynamic model discovery notice: {e}")
-        print(f"🎯 Target Gemini models to try: {models_to_try[:4]}")
+        print(f"🎯 Target Gemini models to try: {models_to_try}")
         for mod in models_to_try:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={gemini_key}"
@@ -942,10 +920,10 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
 
     # Fallback if Gemini key is missing or quota reached
     print("💡 Using Curated Village Whispora Dub Script from Vault...")
-    if fallback_meta:
+    if fallback_meta and isinstance(fallback_meta, dict) and "title" in fallback_meta:
         return {
             "title": fallback_meta["title"],
-            "hook_banner": fallback_meta["hook_banner"],
+            "hook_banner": fallback_meta.get("hook_banner", "CHAD'S BIGGEST REGRET 💀"),
             "characters_detected": ["CHAD", "CHLOE"],
             "dialogue": [
                 {"speaker": "CHAD", "text": "Chloe, feast your eyes on peak male performance! Watch this move!"},
