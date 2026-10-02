@@ -790,74 +790,71 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
                 frame_images_b64 = extract_video_keyframes_base64(video_path)
 
         system_instruction = (
-            "You are an elite viral American YouTube Shorts narrator and director (Daily Dose of Internet, Kai Cenat, and Penguinz0 style) directing for a 🇺🇸 US audience (Gen-Z & Millennials).\n"
-            "YOUR #1 RULE: ADAPT 100% TO THE ACTUAL VISUAL CONTENT - DO NOT FORCE A ROAST ON REAL TALENT, AND DO NOT MISS A ROAST ON A REAL FAIL!\n\n"
-            "MODE 1: GENUINE PHYSICAL FAIL / COMEDY / SLAPSTICK / PRANK / ANIMAL ACCIDENT\n"
-            "- If someone actually falls, trips, fails a stunt, gets startled, or an animal does something hilarious:\n"
-            "- Tone: High-energy American meme roast, sarcasm, and shock ('Bro really thought he was safe...', 'Ain\'t no way...', 'Intrusive thoughts won 💀', 'Bro needs a factory reset immediately').\n"
-            "- Audio: Fast, punchy, with sound effects ('vine_boom', 'bonk').\n\n"
-            "MODE 2: IMPRESSIVE TALENT / CRAZY DANCE / HARD WORK / INSANE SKILL / SHOCKING COORDINATION\n"
-            "- If people are dancing with incredible synchronization, performing insane acrobatics, or showing extreme dedication/talent:\n"
-            "- NEVER INVENT A FAKE FAIL OR FORCE A MOCKING ROAST! RECOGNIZE REAL SKILL!\n"
-            "- Tone: Massive hype, jaw-dropping praise, genuine awe ('Look at this insane synchronization! They literally put in hundreds of hours...', 'Hollywood choreographers wish they had this coordination 🔥', 'The level of dedication is completely unreal!').\n"
-            "- Gender & Subject Accuracy: Look closely at the people! If female dancers, say 'these girls' / 'she' / 'they'. If male, say 'bro' / 'he'. If animals, say 'this dog' / 'this cat'. NEVER call a group of female dancers 'bro / my guy'!\n\n"
-            "CRITICAL RETENTION LAWS:\n"
-            "1. 0s-3s HOOK: Instantly capture attention based on what's visually happening without spoiling the climax.\n"
-            "2. MID-VIDEO BUILDUP: Keep eyes glued with fast-paced, engaging commentary.\n"
-            "3. CLIMAX (Final 2-3s): Deliver the big punchline (if comedy) or the mind-blowing finale (if talent).\n"
-            "4. NO OUTROS: Never say 'subscribe' or 'see you next time' - loop cleanly into the start.\n"
-            "Format your entire response as a single valid JSON object with keys: title, hook_banner, script, description, tags, sfx_timeline."
+            "You are the Head Comedy Director of an explosive viral animation & skit dubbing channel (Village Whispora style, but in fluent English for US/UK/Global audience)!\n"
+            "CRITICAL FORMAT DIFFERENCE: Instead of an outside narrator talking about the video ('Bro really thought he was...'), THE CHARACTERS VISIBLE ON SCREEN TALK DIRECTLY TO EACH OTHER IN 1ST-PERSON LIVE COMEDY DIALOGUE!\n\n"
+            "OUR RECURRING VIRAL COMEDY CAST:\n"
+            "1. CHAD (Male Lead / Hero):\n"
+            "   - Personality: Overconfident show-off, acts like a Hollywood action star or irresistible Casanova. Brags loudly about his skills, machine, or rizz, but panics instantly when things go wrong.\n"
+            "   - Catchphrases: 'Watch this, baby!', 'Witness pure perfection!', 'Chloe, hop on!', 'Wait wait, NOT THE FACE!'\n"
+            "2. CHLOE (Female Lead):\n"
+            "   - Personality: Sassy, super smart, sarcastic girl who instantly calls out Chad's stupidity, roasts him, and laughs when he gets destroyed.\n"
+            "   - Catchphrases: 'Chad, stop embarrassing yourself!', 'You are literally an idiot!', 'I don't know this man!', 'Hahaha, karma is beautiful!'\n"
+            "3. KEVIN (Goofy Friend / Extra Guy):\n"
+            "   - Personality: The totally clueless buddy or panicked bystander. Always does the wrong thing at the wrong time.\n"
+            "   - Catchphrases: 'Wait, is that supposed to explode?!', 'Chad, did we break it?!', 'I didn't do it!'\n"
+            "4. BUSTER (Dog / Pet / Animal):\n"
+            "   - Personality: Savage, hungry, mischievous pet who treats humans like lunch or clowns them.\n"
+            "   - Catchphrases: 'Target acquired!', 'Did someone order free lunch?!', 'Nom nom nom!'\n\n"
+            "CASTING RULES FOR ON-SCREEN CHARACTERS:\n"
+            "- If a guy is showing off / trying to do a stunt / acting cool -> Name him CHAD.\n"
+            "- If a girl / woman is present -> Name her CHLOE.\n"
+            "- If a second guy / friend / bystander is present -> Name him KEVIN.\n"
+            "- If a dog / cat / pet / animal is interacting -> Name it BUSTER.\n\n"
+            "CRITICAL RETENTION & PACING LAWS:\n"
+            "1. 0s-3s HOOK: Chad or Chloe drops an immediate punchy line teasing the situation ('Chloe, feast your eyes on peak male performance!').\n"
+            "2. MID-VIDEO BANTER: Rapid-fire back-and-forth dialogue matching on-screen physical actions and facial expressions.\n"
+            "3. CLIMAX (Final 2-3s): The fail / twist lands! Chad screams or panics, Chloe roasts him or laughs!\n"
+            "4. NO BORING EXPLANATIONS: Do NOT describe what happened like a documentary. Speak as the characters in real-time!\n"
+            "5. WORD BUDGET: Total words across all dialogue lines combined MUST BE EXACTLY {word_min} to {word_max} words to fill {safe_audio_dur:.1f}s of video.\n"
+            "Format your response as a valid raw JSON object with keys: title, hook_banner, characters_detected, dialogue, sfx_timeline, description, tags."
         )
 
         user_prompt = f"""
-WATCH AND ANALYZE THIS VIRAL VIDEO FOOTAGE CAREFULLY:
+WATCH AND DIRECT THIS VIRAL VIDEO FOOTAGE AS A CHARACTER DUBBING SKIT (VILLAGE WHISPORA STYLE):
 - Total Video Duration: {target_duration:.1f} seconds
-- Channel Genre: High-Energy Viral Comedy & Physical Fails
+- Channel Genre: Viral Slapstick Comedy & Dubbed Character Skits
+- Recurring Cast: CHAD, CHLOE, KEVIN, BUSTER
 
-CRITICAL VISUAL REALITY & DUAL-MODE DETECTION (NO HALLUCINATIONS):
-- Base your commentary 100% on what is ACTUALLY VISIBLE on screen!
-- First, classify what you see:
-  * If it is a real physical fail/trip/prank -> MODE 1 (Savage Meme Roast & Comedy).
-  * If it is impressive skill/dance/choreography/hard work -> MODE 2 (Insane Hype & Talent Respect, e.g. 'Hollywood could never match this synchronization').
-- ACCURATELY identify characters: If girls/women are dancing, call them 'these girls' / 'she' / 'they'. NEVER call female dancers 'bro / my guy'! If guys, call them 'he' / 'bro'.
-- NEVER invent a fake disaster or fail if people are simply dancing or showcasing talent!
+DIRECTING RULES:
+1. Examine the actors and actions on screen closely:
+   - Who is acting cool or driving/running? Assign as CHAD.
+   - Who is watching, reacting, or getting annoyed? Assign as CHLOE.
+   - Any friend, assistant, or bystander? Assign as KEVIN.
+   - Any dog, puppy, or animal? Assign as BUSTER.
+2. Write rapid-fire comedic dialogue where the characters talk directly to each other!
+3. The lines must chronologically match what is happening on screen:
+   - Line 1 (0s-3s Hook): High-energy opener establishing Chad's boast or the conflict.
+   - Lines 2-4 (Buildup): Hilarious argument / banter as the stunt progresses.
+   - Final Lines (Climax): Disaster strikes! Chad panics, Chloe or Buster delivers the punchline!
+4. Target word count across all dialogue lines combined: {word_min} to {word_max} words.
 
-CHRONOLOGICAL PSYCHOLOGICAL RETENTION DIRECTIVE:
-1. HOW TO HOOK & HOLD THE VIEWER:
-   * 0s - 3s (The Information Gap Hook): Hook the viewer immediately based on the visible action! Do NOT spoil the fail/punchline. Tease the exact situation on screen so the viewer CANNOT scroll away.
-   * Middle Seconds (Rising Tension): Describe the visible action with high-speed American meme sarcasm, building excitement toward the climax.
-   * Final 2-3s (The Punchline / Climax): Deliver the explosive funny punchline or roast matching the exact visual fail before the cut!
-   * Seamless Infinite Loop: End with a punchy closer that loops smoothly.
-
-2. TOP HOOK BANNER RULES:
-   - Must be 3-5 words in ALL CAPS with an expressive emoji matching the exact scene.
-   - Examples of irresistible stop-scroll banners:
-     "DON'T BLINK AT THE END 💀", "HE DID NOT SEE THIS COMING 😂", "WAIT FOR HIS REACTION 💀", "INSTANT REGRET CAUGHT IN 4K 😭", "NO WAY THIS JUST HAPPENED 😳"
-
-2. SOUNDBOARD SELECTION (As Audio Director):
-   - Choose 1 to 3 sound effects from: 'whoosh', 'bonk', 'vine_boom', 'record_scratch', 'buzzer', 'pop', 'ding'.
-   - Match the exact timestamp of visual impacts/twists.
-   - Set zoom: true for the most intense climax moment.
-
-3. Provide JSON with:
-   - "title": High-curiosity American/Western viral meme title under 60 characters with funny emojis (💀, 😂, 😭) and #shorts.
-     * STRICT TITLE VIRALITY LAWS:
-       - The title MUST match the actual physical subject of the video (if animal, mention animal; if sports/gym, mention that).
-       - NEVER use a mismatched or unrelated title.
-       - NEVER include country flags (NO 🇨🇳, 🇺🇸, 🇮🇳, etc.).
-       - Frame as high-tension suspense, comedy, or disbelief.
-   - "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner matching the visual.
-   - "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words describing what is visually happening.
-     * CRITICAL RETENTION RULE: Speak continuously across the ENTIRE {safe_audio_dur:.1f} seconds!
-     * NEVER stop speaking early or leave silent dead air at the end.
-     * Keep the energy high all the way until the very last second so punchline lands right before the cut!
-     * Align your description to the on-screen events so the viewer hears exactly what they see!
-   - "sfx_timeline": [
-       {{"time": 0.4, "sound": "whoosh", "zoom": false}},
-       {{"time": {min(safe_audio_dur, 12.0):.1f}, "sound": "vine_boom", "zoom": true}}
-     ],
-   - "description": 2-line YouTube description with viral hashtags #shorts #funny #viral #comedy #crazyvault #plottwist.
-   - "tags": 8-10 comma-separated keywords.
+Provide JSON with:
+- "title": High-curiosity American/Western viral meme title under 60 characters with funny emojis (💀, 😂, 😭) and #shorts featuring Chad, Chloe or the scene (e.g. "Chad Tried To Impress Chloe 💀 #shorts").
+- "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner matching the visual (e.g. "CHAD'S BIGGEST REGRET 💀").
+- "characters_detected": ["CHAD", "CHLOE", "BUSTER"],
+- "dialogue": [
+    {{"speaker": "CHAD", "text": "Chloe, feast your eyes on peak male fitness! Hop on!"}},
+    {{"speaker": "CHLOE", "text": "Chad, stop! You don't even have a driver's license!"}},
+    {{"speaker": "BUSTER", "text": "Target locked! Time to chomp!"}},
+    {{"speaker": "CHAD", "text": "Wait nice puppy, good puppy! AAAAAH CHLOE HELP!"}},
+    {{"speaker": "CHLOE", "text": "Haha! Good boy Buster, bite him again!"}}
+  ],
+- "sfx_timeline": [
+    {{"time": 0.4, "sound": "whoosh", "zoom": false}},
+    {{"time": {min(safe_audio_dur, 12.0):.1f}, "sound": "vine_boom", "zoom": true}}
+  ],
+- "description": "Hilarious Chad and Chloe comedy dub! #shorts #viral #funny #comedy #crazyvault #plottwist",
+- "tags": "shorts, funny, comedy, viral, meme, chad, chloe, kevin, hilarious"
 
 Output ONLY raw JSON. No markdown ticks, no backticks.
 """
@@ -920,8 +917,10 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                     if json_match:
                         cleaned = json_match.group(0)
                     parsed = json.loads(cleaned)
-                    if "script" in parsed and "title" in parsed:
-                        print(f"🎉 Gemini Baba Multimodal Director Success! Title: {parsed['title']}")
+                    if ("dialogue" in parsed or "script" in parsed) and "title" in parsed:
+                        if "dialogue" in parsed and isinstance(parsed["dialogue"], list) and "script" not in parsed:
+                            parsed["script"] = " ".join(f"[{d.get('speaker','CHAD')}]: {d.get('text','')}" for d in parsed["dialogue"] if isinstance(d, dict))
+                        print(f"🎉 Gemini Baba Village Whispora Director Success! Title: {parsed['title']}")
                         # Clean up uploaded file from Gemini
                         if file_name:
                             try:
@@ -942,22 +941,36 @@ Output ONLY raw JSON. No markdown ticks, no backticks.
                 pass
 
     # Fallback if Gemini key is missing or quota reached
-    print("💡 Using Curated Comedy Script from Vault...")
+    print("💡 Using Curated Village Whispora Dub Script from Vault...")
     if fallback_meta:
         return {
             "title": fallback_meta["title"],
             "hook_banner": fallback_meta["hook_banner"],
-            "script": fallback_meta["fallback_script"],
-            "description": f"Hilarious viral moment! {fallback_meta['title']} #shorts #funny #viral #comedy",
-            "tags": "shorts, funny, comedy, viral, meme, cute, hilarious"
+            "characters_detected": ["CHAD", "CHLOE"],
+            "dialogue": [
+                {"speaker": "CHAD", "text": "Chloe, feast your eyes on peak male performance! Watch this move!"},
+                {"speaker": "CHLOE", "text": "Chad, please stop before you embarrass both of us!"},
+                {"speaker": "CHAD", "text": "Impossible! Nothing can stop the champion—WHOAAAA!"},
+                {"speaker": "CHLOE", "text": "Hahaha! And down goes the champion in 4K!"}
+            ],
+            "script": fallback_meta.get("fallback_script", "Chad tried to show off and failed!"),
+            "description": f"Hilarious Chad & Chloe dub! {fallback_meta['title']} #shorts #funny #viral #comedy",
+            "tags": "shorts, funny, comedy, viral, meme, chad, chloe, kevin, hilarious"
         }
 
     return {
-        "title": "Bro Really Thought He Got Away With It 💀 #shorts",
-        "hook_banner": "HE WAS CAUGHT IN 4K 😂",
-        "script": "Bro really thought he was slick! Look at that confidence right before disaster strikes. The way he froze the second he got caught is pure comedy gold! You can see his whole soul leaving his body in 4K! You can't even make this stuff up! 😂",
-        "description": "Hilarious viral comedy moment! #shorts #viral #funny #comedy",
-        "tags": "shorts, funny, comedy, viral, meme, hilarious"
+        "title": "Chad Tried To Impress Chloe 💀 #shorts",
+        "hook_banner": "CHAD'S BIGGEST REGRET 💀",
+        "characters_detected": ["CHAD", "CHLOE"],
+        "dialogue": [
+            {"speaker": "CHAD", "text": "Chloe, feast your eyes on peak male performance! Watch this move!"},
+            {"speaker": "CHLOE", "text": "Chad, please stop before you embarrass both of us!"},
+            {"speaker": "CHAD", "text": "Impossible! Nothing can stop the champion—WHOAAAA!"},
+            {"speaker": "CHLOE", "text": "Hahaha! And down goes the champion in 4K!"}
+        ],
+        "script": "[CHAD]: Chloe, feast your eyes on peak male performance! Watch this move! [CHLOE]: Chad, please stop before you embarrass both of us! [CHAD]: Impossible! Nothing can stop the champion! [CHLOE]: Hahaha! And down goes the champion in 4K!",
+        "description": "Hilarious Chad and Chloe comedy dub! #shorts #viral #funny #comedy #crazyvault",
+        "tags": "shorts, funny, comedy, viral, meme, chad, chloe, kevin, hilarious"
     }
 
 # ==========================================
@@ -1054,96 +1067,189 @@ async def generate_edge_tts_with_word_boundaries_async(text, voice, output_audio
                     words_timing.append((start_sec, end_sec, word))
     return words_timing
 
-def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass, hook_banner=""): 
+CHARACTER_CAST = {
+    "CHAD": {
+        "voice": "en-US-GuyNeural",
+        "rate": "+15%",
+        "label_color": "&H0000FFFF&",       # Bold Yellow in ASS BGR (&H00BBGGRR&)
+        "word_active_color": "&H0000FFFF&",
+        "text_color": "&H00FFFFFF&"
+    },
+    "CHLOE": {
+        "voice": "en-US-JennyNeural",
+        "rate": "+13%",
+        "label_color": "&H00FF55FF&",       # Bold Pink/Magenta
+        "word_active_color": "&H00FF55FF&",
+        "text_color": "&H00FFFFFF&"
+    },
+    "KEVIN": {
+        "voice": "en-US-ChristopherNeural",
+        "rate": "+14%",
+        "label_color": "&H0000FF00&",       # Bright Lime Green
+        "word_active_color": "&H0000FF00&",
+        "text_color": "&H00FFFFFF&"
+    },
+    "BUSTER": {
+        "voice": "en-US-EricNeural",
+        "rate": "+15%",
+        "label_color": "&H0000A5FF&",       # Comic Orange
+        "word_active_color": "&H0000A5FF&",
+        "text_color": "&H00FFFFFF&"
+    }
+}
+
+def resolve_character_speaker(raw_spk):
+    spk = str(raw_spk or "").strip().upper()
+    if spk in CHARACTER_CAST:
+        return spk
+    if any(k in spk for k in ["DOG", "PUPPY", "PET", "CAT", "ANIMAL", "BUSTER"]):
+        return "BUSTER"
+    if any(k in spk for k in ["CHLOE", "GIRL", "WOMAN", "LADY", "FEMALE", "SISTER", "MOM"]):
+        return "CHLOE"
+    if any(k in spk for k in ["KEVIN", "FRIEND", "BRO", "BOY2", "EXTRA", "BYSTANDER"]):
+        return "KEVIN"
+    return "CHAD"
+
+def generate_multivoice_dialogue_and_ass(dialogue_list, output_audio, output_ass, hook_banner=""):
     """
-    Generates Microsoft Edge TTS speech with real-time WordBoundary 1:1 millisecond lock,
-    and builds an animated yellow/white Hormozi ASS subtitle file.
+    Village Whispora Multi-Character Dubbing Engine:
+    - Generates distinct Edge-TTS AI voices for CHAD, CHLOE, KEVIN, and BUSTER.
+    - Captures word boundaries for 1:1 millisecond lock.
+    - Formats character-tagged Hormozi ASS subtitles with distinct color badges.
+    - Seamlessly joins dialogue audio clips into a unified master audio track.
     """
     os.makedirs(os.path.dirname(output_audio) or ".", exist_ok=True)
-    srt_file = output_audio.replace(".mp3", ".srt")
-    
-    clean_spoken_text = strip_emojis(script_text)
-    print(f"🎙️ Cleaned TTS Voiceover Text (no emojis spoken):\n   {clean_spoken_text}")
-    print(f"🎙️ Generating voiceover with voice: {voice} at +16% high-energy speed...")
+    parts_dir = "temp/dialogue_parts"
+    os.makedirs(parts_dir, exist_ok=True)
 
-    words_timing = []
-    # 1. Try Direct Python WordBoundary Async Hook (Millisecond Precision)
-    try:
-        words_timing = asyncio.run(
-            generate_edge_tts_with_word_boundaries_async(clean_spoken_text, voice, output_audio, rate="+16%")
-        )
-        if words_timing and os.path.exists(output_audio) and os.path.getsize(output_audio) > 1000:
-            print(f"⚡ [WORD-LOCK SYNC] Successfully captured {len(words_timing)} word timestamps directly from Edge TTS engine!")
-    except Exception as e:
-        print(f"⚠️ Direct async TTS notice: {e}, attempting CLI fallback...")
+    if isinstance(dialogue_list, str):
+        dialogue_list = [{"speaker": "CHAD", "text": dialogue_list}]
+    elif not isinstance(dialogue_list, list) or len(dialogue_list) == 0:
+        dialogue_list = [{"speaker": "CHAD", "text": "Wait for it! This is crazy!"}]
 
-    # 2. Fallback to CLI if async didn't produce valid audio
-    if not words_timing or not os.path.exists(output_audio) or os.path.getsize(output_audio) < 1000:
-        cmd = [
-            sys.executable, "-m", "edge_tts",
-            "--voice", voice,
-            "--rate", "+5%",
-            "--text", clean_spoken_text,
-            "--write-media", output_audio,
-            "--write-subtitles", srt_file
-        ]
-        tts_success = False
-        for tts_attempt in range(3):
-            try:
-                subprocess.run(cmd, check=True)
-                if os.path.exists(output_audio) and os.path.getsize(output_audio) > 1000:
-                    tts_success = True
-                    break
-            except Exception as e:
-                print(f"⚠️ Edge TTS attempt {tts_attempt+1} notice: {e}")
-                time.sleep(2)
-        if not tts_success:
-            print("🔄 Edge TTS fallback: attempting with en-US-ChristopherNeural...")
-            fallback_cmd = [
-                sys.executable, "-m", "edge_tts",
-                "--voice", "en-US-ChristopherNeural",
-                "--rate", "+5%",
-                "--text", clean_spoken_text,
-                "--write-media", output_audio,
-                "--write-subtitles", srt_file
-            ]
-            subprocess.run(fallback_cmd, check=True)
+    # Create 0.18s silence WAV for natural conversational rhythm
+    silence_wav = os.path.join(parts_dir, "pause_silence.wav")
+    sample_rate = 44100
+    n_pause_samples = int(0.18 * sample_rate)
+    with wave.open(silence_wav, "wb") as wf:
+        wf.setnchannels(2)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(b'\x00\x00\x00\x00' * n_pause_samples)
 
-    # 3. Parse cues if words_timing not available
-    cues = []
-    if not words_timing and os.path.exists(srt_file):
-        cues = parse_vtt_timestamps(srt_file)
-        print(f"📝 Parsed {len(cues)} subtitle cues from SRT fallback.")
-
-    # 4. Group into punchy 2-3 word cards for high retention
+    wav_parts = []
     ass_cards = []
-    chunk_size = 3
-    if words_timing:
-        for i in range(0, len(words_timing), chunk_size):
-            chunk = words_timing[i:i + chunk_size]
-            start_sec = chunk[0][0]
-            end_sec = max(chunk[-1][1], start_sec + 0.3)
-            card_words = [w[2] for w in chunk]
-            ass_cards.append((start_sec, end_sec, card_words))
-    elif cues:
-        for i in range(0, len(cues), chunk_size):
-            chunk = cues[i:i + chunk_size]
-            start_sec = chunk[0][0]
-            end_sec = chunk[-1][1]
-            card_words = [w[2] for w in chunk]
-            ass_cards.append((start_sec, end_sec, card_words))
-    else:
-        # Dynamic probe fallback: probe ACTUAL audio duration, NEVER fixed 20s!
-        actual_dur = get_media_duration(output_audio)
-        words = clean_spoken_text.split()
-        w_dur = actual_dur / max(len(words), 1)
-        for i in range(0, len(words), chunk_size):
-            chunk = words[i:i + chunk_size]
-            s = i * w_dur
-            e = min(actual_dur, (i + len(chunk)) * w_dur)
-            ass_cards.append((s, e, chunk))
+    current_time_sec = 0.0
 
-    # 5. Write ASS File with Hormozi Yellow/White typography in Golden Eye-Level Zone
+    print(f"🎙️ Generating Multi-Character Skit Dubbing ({len(dialogue_list)} dialogue lines)...")
+
+    for idx, d in enumerate(dialogue_list):
+        if not isinstance(d, dict):
+            continue
+        speaker = resolve_character_speaker(d.get("speaker", "CHAD"))
+        char_info = CHARACTER_CAST[speaker]
+        raw_text = d.get("text", "")
+        clean_text = strip_emojis(raw_text).strip()
+        if not clean_text:
+            continue
+
+        print(f"   ▶ Line {idx+1} [{speaker}] ({char_info['voice']}): \"{clean_text}\"")
+
+        part_mp3 = os.path.join(parts_dir, f"part_{idx}.mp3")
+        part_wav = os.path.join(parts_dir, f"part_{idx}.wav")
+        part_srt = os.path.join(parts_dir, f"part_{idx}.srt")
+
+        words_timing = []
+        try:
+            words_timing = asyncio.run(
+                generate_edge_tts_with_word_boundaries_async(
+                    clean_text, char_info["voice"], part_mp3, rate=char_info["rate"]
+                )
+            )
+        except Exception as e:
+            print(f"   ⚠️ Async Edge TTS notice for line {idx+1}: {e}")
+
+        if not words_timing or not os.path.exists(part_mp3) or os.path.getsize(part_mp3) < 500:
+            cmd = [
+                sys.executable, "-m", "edge_tts",
+                "--voice", char_info["voice"],
+                "--rate", char_info["rate"],
+                "--text", clean_text,
+                "--write-media", part_mp3,
+                "--write-subtitles", part_srt
+            ]
+            try:
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception as e:
+                print(f"   ⚠️ Edge TTS CLI fallback error: {e}")
+
+        # Convert line MP3 to standard 44.1kHz stereo 16-bit WAV
+        cmd_wav = [
+            "ffmpeg", "-y", "-i", part_mp3,
+            "-ar", "44100", "-ac", "2", "-c:a", "pcm_s16le",
+            part_wav
+        ]
+        subprocess.run(cmd_wav, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        if not os.path.exists(part_wav) or os.path.getsize(part_wav) < 500:
+            continue
+
+        line_dur = get_media_duration(part_wav)
+
+        # Parse timing for subtitle cards (2-3 words per card)
+        chunk_size = 3
+        if words_timing:
+            for i in range(0, len(words_timing), chunk_size):
+                chunk = words_timing[i:i + chunk_size]
+                s_rel = chunk[0][0]
+                e_rel = max(chunk[-1][1], s_rel + 0.25)
+                c_words = [w[2] for w in chunk]
+                start_s = current_time_sec + s_rel
+                end_s = current_time_sec + e_rel
+                ass_cards.append((speaker, start_s, end_s, c_words))
+        else:
+            # Fallback uniform timing if word boundaries missing
+            words = clean_text.split()
+            w_dur = line_dur / max(len(words), 1)
+            for i in range(0, len(words), chunk_size):
+                chunk = words[i:i + chunk_size]
+                s_rel = i * w_dur
+                e_rel = min(line_dur, (i + len(chunk)) * w_dur)
+                start_s = current_time_sec + s_rel
+                end_s = current_time_sec + e_rel
+                ass_cards.append((speaker, start_s, end_s, chunk))
+
+        wav_parts.append(part_wav)
+        # Add pause after line unless it is the very last line
+        if idx < len(dialogue_list) - 1:
+            wav_parts.append(silence_wav)
+            current_time_sec += line_dur + 0.18
+        else:
+            current_time_sec += line_dur
+
+    if not wav_parts:
+        raise RuntimeError("No dialogue audio clips could be generated!")
+
+    # Concatenate all WAV parts into master WAV
+    master_wav = "temp/dialogue_master.wav"
+    with wave.open(master_wav, "wb") as outfile:
+        for p_idx, f_wav in enumerate(wav_parts):
+            with wave.open(f_wav, "rb") as infile:
+                if p_idx == 0:
+                    outfile.setparams(infile.getparams())
+                outfile.writeframes(infile.readframes(infile.getnframes()))
+
+    # Encode master WAV to output_audio (e.g. MP3)
+    cmd_enc = [
+        "ffmpeg", "-y", "-i", master_wav,
+        "-c:a", "libmp3lame", "-b:a", "192k",
+        output_audio
+    ]
+    subprocess.run(cmd_enc, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    total_audio_dur = get_media_duration(output_audio)
+    print(f"✅ Master Multi-Voice Dialogue Audio Assembled: {output_audio} ({total_audio_dur:.2f}s)")
+
+    # Write ASS File with character-colored badges & Hormozi typography
     with open(output_ass, "w", encoding="utf-8") as f:
         f.write("[Script Info]\n")
         f.write("ScriptType: v4.00+\n")
@@ -1154,37 +1260,44 @@ def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass, hoo
         f.write("[V4+ Styles]\n")
         f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
         # Premium Hormozi Floating Subtitles: Bold yellow & white, thick black outline (5px) + 3D drop shadow (3px), Golden Center / Eye-Level Zone (MarginV 680)
-        f.write("Style: Hormozi,DejaVu Sans,60,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,5,3,2,50,50,680,1\n")
+        f.write("Style: Hormozi,DejaVu Sans,58,&H0000FFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,5,3,2,50,50,680,1\n")
         # Top Hook Banner: High-contrast yellow & white text on dark pill box, eye-level top safe zone (MarginV 200, Alignment 8)
         f.write("Style: TopHook,DejaVu Sans,50,&H0000FFFF,&H00FFFFFF,&H00000000,&HA0000000,-1,0,0,0,100,100,2,0,3,10,0,8,40,40,200,1\n\n")
         
         f.write("[Events]\n")
         f.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
         
-        # ⚡ PERSISTENT TOP HOOK BANNER: Displayed from 0.0s to stop the 2-second swipe-away!
         if hook_banner and hook_banner.strip():
-            # Strip emojis to prevent broken square box [▯] glyphs in ASS subtitle fonts
             clean_hook = re.sub(r'[^\w\s\?!.,\x27-]', '', hook_banner).strip().replace("\r", "").replace("\n", " ").upper()
-            total_end = seconds_to_ass_time(ass_cards[-1][1] if ass_cards else 30.0)
+            total_end = seconds_to_ass_time(ass_cards[-1][2] if ass_cards else total_audio_dur)
             f.write(f"Dialogue: 0,0:00:00.00,{total_end},TopHook,,0,0,0,,{clean_hook}\n")
-        
-        for start_s, end_s, words in ass_cards:
+
+        for speaker, start_s, end_s, words in ass_cards:
             start_ts = seconds_to_ass_time(start_s)
             end_ts = seconds_to_ass_time(end_s)
+            char_cfg = CHARACTER_CAST.get(speaker, CHARACTER_CAST["CHAD"])
+            badge_color = char_cfg["label_color"]
+            word_color = char_cfg["word_active_color"]
             
-            # Format: First word yellow, remaining white, all uppercase
+            badge = f"{{\\c{badge_color}&}}[{speaker}]"
             if len(words) == 1:
-                styled_text = f"{{\\c&H0000FFFF&}}{words[0].upper()}"
+                content = f"{{\\c{word_color}&}}{words[0].upper()}"
             elif len(words) >= 2:
-                w1 = f"{{\\c&H0000FFFF&}}{words[0].upper()}"
+                w1 = f"{{\\c{word_color}&}}{words[0].upper()}"
                 w_rest = f"{{\\c&H00FFFFFF&}}{' '.join(words[1:]).upper()}"
-                styled_text = f"{w1} {w_rest}"
+                content = f"{w1} {w_rest}"
             else:
-                styled_text = ""
-                
+                content = ""
+            styled_text = f"{badge} {content}"
             f.write(f"Dialogue: 0,{start_ts},{end_ts},Hormozi,,0,0,0,,{styled_text}\n")
-            
-    print(f"✅ Generated {len(ass_cards)} Hormozi ASS Subtitle Cards (1:1 Word Sync): {output_ass}")
+
+    print(f"✅ Generated {len(ass_cards)} Multi-Character ASS Subtitle Cards (1:1 Word Sync): {output_ass}")
+    return total_audio_dur
+
+def generate_voiceover_and_ass(script_text, voice, output_audio, output_ass, hook_banner=""):
+    """Backward compatibility wrapper."""
+    dialogue_list = [{"speaker": "CHAD", "text": script_text}]
+    return generate_multivoice_dialogue_and_ass(dialogue_list, output_audio, output_ass, hook_banner=hook_banner)
 
 # ==========================================
 # 5. AUDIO SYNTHESIS (COMEDY BGM & SFX)
@@ -1615,19 +1728,27 @@ def main():
         target_duration=src_dur
     )
     
-    print("\n🎭 --- DIRECTED SHORT DETAILS ---")
+    dialogue_list = director_output.get("dialogue")
+    if not dialogue_list:
+        raw_s = director_output.get("script", "")
+        dialogue_list = [{"speaker": "CHAD", "text": raw_s}]
+
+    print("\n🎭 --- DIRECTED MULTI-CHARACTER SKIT DETAILS ---")
     print(f"📌 Title: {director_output.get('title')}")
     print(f"🏷️ Top Hook: {director_output.get('hook_banner')}")
-    print(f"🗣️ Voiceover Script:\n{director_output.get('script')}")
-    print("---------------------------------\n")
+    print(f"👥 Characters: {director_output.get('characters_detected', ['CHAD', 'CHLOE'])}")
+    print("🗣️ Village Whispora Skit Dialogue:")
+    for d in dialogue_list:
+        if isinstance(d, dict):
+            print(f"   [{d.get('speaker', 'CHAD')}]: \"{d.get('text', '')}\"")
+    print("------------------------------------------------\n")
 
-    # 3. Microsoft Edge TTS & Hormozi Subtitles
+    # 3. Microsoft Edge TTS Multi-Voice Synthesis & Character Subtitles
     os.makedirs("temp", exist_ok=True)
     audio_path = "temp/narration.mp3"
     ass_path = "temp/subtitles.ass"
-    generate_voiceover_and_ass(
-        script_text=director_output.get("script", ""),
-        voice=args.voice,
+    generate_multivoice_dialogue_and_ass(
+        dialogue_list=dialogue_list,
         output_audio=audio_path,
         output_ass=ass_path,
         hook_banner=director_output.get("hook_banner", "WAIT FOR IT 😂")
@@ -1652,6 +1773,8 @@ def main():
         "description": director_output.get("description", "Hilarious viral comedy short! #shorts #viral #funny"),
         "tags": director_output.get("tags", "shorts, funny, comedy, viral, meme"),
         "hook_banner": director_output.get("hook_banner", "WAIT FOR IT 😂"),
+        "dialogue": dialogue_list,
+        "characters": director_output.get("characters_detected", ["CHAD", "CHLOE"]),
         "route_used": route_used,
         "clip_id": vault_meta["id"] if vault_meta else "custom_url",
         "created_at": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
