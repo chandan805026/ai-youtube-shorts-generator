@@ -746,13 +746,14 @@ def direct_comedy_with_gemini(video_path=None, clip_description="", topic="", cu
             "tags": "shorts, funny, comedy, viral, meme, hilarious"
         }
 
-    # STRICT 15s - 28.5s TIMING & WORD LIMIT CALIBRATION (Never exceed 28.5s, Never under 15.0s)
-    clamped_target = min(28.0, max(15.0, target_duration))
-    safe_audio_dur = max(13.5, min(26.0, clamped_target - 1.2))
-    word_target = int(safe_audio_dur * 3.1)
-    word_min = max(38, word_target - 4)
-    word_max = min(72, word_target + 4)
-    print(f"🎯 Calibrated Commentary Target: {safe_audio_dur:.1f}s speech ({word_min}-{word_max} words) for full {target_duration:.1f}s video")
+    # DYNAMIC TIMING & WORD LIMIT CALIBRATION (Tight speech-to-video lock)
+    target_audio_dur = max(8.0, min(27.0, target_duration - 0.6))
+    # Edge TTS GuyNeural at +16% speed delivers ~3.3 - 3.4 words per second
+    word_target = int(target_audio_dur * 3.3)
+    word_min = max(24, word_target - 3)
+    word_max = min(92, word_target + 3)
+    safe_audio_dur = target_audio_dur
+    print(f"🎯 Calibrated Commentary Target: {target_audio_dur:.1f}s speech ({word_min}-{word_max} words) for {target_duration:.1f}s video")
 
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if gemini_key:
@@ -827,8 +828,9 @@ CHRONOLOGICAL PSYCHOLOGICAL RETENTION DIRECTIVE:
        - Frame as high-tension suspense, comedy, or disbelief.
    - "hook_banner": 3-5 words ALL CAPS punchy suspense hook banner matching the visual.
    - "script": Fast, hilarious English voiceover commentary of EXACTLY {word_min} to {word_max} words describing what is visually happening.
-     * Your words MUST cover the full {safe_audio_dur:.1f} seconds of speech.
-     * Do NOT stop speaking early!
+     * CRITICAL RETENTION RULE: Speak continuously across the ENTIRE {safe_audio_dur:.1f} seconds!
+     * NEVER stop speaking early or leave silent dead air at the end.
+     * Keep the energy high all the way until the very last second so punchline lands right before the cut!
      * Align your description to the on-screen events so the viewer hears exactly what they see!
    - "sfx_timeline": [
        {{"time": 0.4, "sound": "whoosh", "zoom": false}},
@@ -1348,10 +1350,11 @@ def render_transformative_short(input_video, narration_audio, ass_subtitles, hoo
 
     src_dur = get_media_duration(input_video)
     narration_dur = get_media_duration(narration_audio)
-    # 1:1 Video-Audio Perfect Sync: Video ends exactly when narration completes (+ 0.6s punchline ring)
-    target_dur = narration_dur + 0.6
-    # STRICT HARD CLAMP: Final short is strictly between 15.0s and 28.5s (<30.0s)
-    target_dur = min(28.5, max(15.0, target_dur))
+    # 1:1 Video-Audio Perfect Sync: Video cuts precisely when narration completes (+ 0.35s punchline breath)
+    # Zero dead air: never keep playing after the narration stops!
+    target_dur = narration_dur + 0.35
+    # Keep final short within optimal bounds (never exceed 28.5s, minimum 8.0s)
+    target_dur = min(28.5, max(8.0, target_dur))
     v_w, v_h = get_video_dimensions(input_video)
     is_landscape = (v_w > v_h) or (v_w / max(v_h, 1) >= 0.85)
 
