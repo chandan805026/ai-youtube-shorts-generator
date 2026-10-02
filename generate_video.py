@@ -1076,6 +1076,81 @@ CHARACTER_CAST = {
     }
 }
 
+# 🎙️ ElevenLabs Studio Voice Mapping (Hyper-Realistic Character Acting)
+ELEVENLABS_VOICE_MAP = {
+    "CHAD": "pNInz6obpgDQGcFmaJgB",   # Adam (Dominant, firm hero voice)
+    "CHLOE": "cgSgspJ2msm6clMCkdW9",  # Jessica (Playful, bright, warm sassy girl)
+    "KEVIN": "TX3LPaxmHKxFdv7VOQHJ",  # Liam (Energetic social creator / goofy friend)
+    "BUSTER": "N2lVS1w4EtoT3dr4eOWO"  # Callum (Husky trickster / hilarious dog voice)
+}
+
+def alignment_to_word_timings(alignment):
+    chars = alignment.get("characters", [])
+    starts = alignment.get("character_start_times_seconds", [])
+    ends = alignment.get("character_end_times_seconds", [])
+    words_timing = []
+    current_word = []
+    w_start = None
+    w_end = None
+    for i, c in enumerate(chars):
+        if c.isspace():
+            if current_word:
+                words_timing.append((w_start, w_end, "".join(current_word)))
+                current_word = []
+                w_start = None
+                w_end = None
+        else:
+            if w_start is None:
+                w_start = starts[i]
+            w_end = ends[i]
+            current_word.append(c)
+    if current_word:
+        words_timing.append((w_start, w_end, "".join(current_word)))
+    return words_timing
+
+def try_elevenlabs_tts(text, speaker, output_mp3, api_keys_list):
+    """
+    Attempts to generate high-emotion character audio via ElevenLabs API with Word-Lock timestamps.
+    Automatically rotates keys on quota exhaustion (401/429/credit limit).
+    """
+    if not api_keys_list:
+        return False, []
+    
+    voice_id = ELEVENLABS_VOICE_MAP.get(speaker, ELEVENLABS_VOICE_MAP["CHAD"])
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/with-timestamps"
+    payload = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.45,
+            "similarity_boost": 0.85
+        }
+    }
+    
+    for k_idx, key in enumerate(api_keys_list):
+        headers = {
+            "xi-api-key": key.strip(),
+            "Content-Type": "application/json"
+        }
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=25)
+            if r.status_code == 200:
+                res = r.json()
+                audio_b64 = res.get("audio_base64", "")
+                if audio_b64:
+                    with open(output_mp3, "wb") as f:
+                        f.write(base64.b64decode(audio_b64))
+                    alignment = res.get("alignment", {})
+                    words_timing = alignment_to_word_timings(alignment)
+                    print(f"   ⚡ [ELEVENLABS SUCCESS] Line [{speaker}] voiced by ElevenLabs (Voice ID: {voice_id})!")
+                    return True, words_timing
+            else:
+                print(f"   ⚠️ ElevenLabs key #{k_idx+1} notice (HTTP {r.status_code}): {r.text[:120]}")
+        except Exception as e:
+            print(f"   ⚠️ ElevenLabs API request notice: {e}")
+            
+    return False, []
+
 def resolve_character_speaker(raw_spk):
     spk = str(raw_spk or "").strip().upper()
     if spk in CHARACTER_CAST:
@@ -1091,7 +1166,9 @@ def resolve_character_speaker(raw_spk):
 def generate_multivoice_dialogue_and_ass(dialogue_list, output_audio, output_ass, hook_banner=""):
     """
     Village Whispora Multi-Character Dubbing Engine:
-    - Generates distinct Edge-TTS AI voices for CHAD, CHLOE, KEVIN, and BUSTER.
+    - Prioritizes ElevenLabs Hyper-Realistic Studio Voices (Adam, Jessica, Liam, Callum).
+    - Auto-rotates multiple ElevenLabs API keys on quota exhaustion.
+    - Seamlessly falls back to Microsoft Edge-TTS if ElevenLabs quota is exhausted.
     - Captures word boundaries for 1:1 millisecond lock.
     - Formats character-tagged Hormozi ASS subtitles with distinct color badges.
     - Seamlessly joins dialogue audio clips into a unified master audio track.
@@ -1104,6 +1181,14 @@ def generate_multivoice_dialogue_and_ass(dialogue_list, output_audio, output_ass
         dialogue_list = [{"speaker": "CHAD", "text": dialogue_list}]
     elif not isinstance(dialogue_list, list) or len(dialogue_list) == 0:
         dialogue_list = [{"speaker": "CHAD", "text": "Wait for it! This is crazy!"}]
+
+    # Load ElevenLabs API keys (supports comma-separated rotation pool)
+    raw_el_keys = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+    el_keys = [k.strip() for k in raw_el_keys.split(",") if k.strip()]
+    if el_keys:
+        print(f"🎙️ ElevenLabs Engine Activated! ({len(el_keys)} API keys in rotation pool)")
+    else:
+        print("🎙️ ElevenLabs API key not set, using Microsoft Edge-TTS Studio voices.")
 
     # Create 0.18s silence WAV for natural conversational rhythm
     silence_wav = os.path.join(parts_dir, "pause_silence.wav")
@@ -1131,35 +1216,44 @@ def generate_multivoice_dialogue_and_ass(dialogue_list, output_audio, output_ass
         if not clean_text:
             continue
 
-        print(f"   ▶ Line {idx+1} [{speaker}] ({char_info['voice']}): \"{clean_text}\"")
+        print(f"   ▶ Line {idx+1} [{speaker}]: \"{clean_text}\"")
 
         part_mp3 = os.path.join(parts_dir, f"part_{idx}.mp3")
         part_wav = os.path.join(parts_dir, f"part_{idx}.wav")
         part_srt = os.path.join(parts_dir, f"part_{idx}.srt")
 
         words_timing = []
-        try:
-            words_timing = asyncio.run(
-                generate_edge_tts_with_word_boundaries_async(
-                    clean_text, char_info["voice"], part_mp3, rate=char_info["rate"]
-                )
-            )
-        except Exception as e:
-            print(f"   ⚠️ Async Edge TTS notice for line {idx+1}: {e}")
+        el_success = False
 
-        if not words_timing or not os.path.exists(part_mp3) or os.path.getsize(part_mp3) < 500:
-            cmd = [
-                sys.executable, "-m", "edge_tts",
-                "--voice", char_info["voice"],
-                "--rate", char_info["rate"],
-                "--text", clean_text,
-                "--write-media", part_mp3,
-                "--write-subtitles", part_srt
-            ]
+        # 1. Try ElevenLabs Studio Voice
+        if el_keys:
+            el_success, words_timing = try_elevenlabs_tts(clean_text, speaker, part_mp3, el_keys)
+
+        # 2. Fallback to Edge-TTS if ElevenLabs not available or quota reached
+        if not el_success:
+            print(f"   🔄 Voicing [{speaker}] via Edge-TTS ({char_info['voice']})...")
             try:
-                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                words_timing = asyncio.run(
+                    generate_edge_tts_with_word_boundaries_async(
+                        clean_text, char_info["voice"], part_mp3, rate=char_info["rate"]
+                    )
+                )
             except Exception as e:
-                print(f"   ⚠️ Edge TTS CLI fallback error: {e}")
+                print(f"   ⚠️ Async Edge TTS notice for line {idx+1}: {e}")
+
+            if not words_timing or not os.path.exists(part_mp3) or os.path.getsize(part_mp3) < 500:
+                cmd = [
+                    sys.executable, "-m", "edge_tts",
+                    "--voice", char_info["voice"],
+                    "--rate", char_info["rate"],
+                    "--text", clean_text,
+                    "--write-media", part_mp3,
+                    "--write-subtitles", part_srt
+                ]
+                try:
+                    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception as e:
+                    print(f"   ⚠️ Edge TTS CLI fallback error: {e}")
 
         # Convert line MP3 to standard 44.1kHz stereo 16-bit WAV
         cmd_wav = [
