@@ -111,6 +111,16 @@ def upload_video_to_youtube(video_path, thumb_path, meta_path, privacy_status="p
                 wait_time = retry_count * 2
                 print(f"   ⚠️ Temporary server error ({ex.resp.status}). Retrying in {wait_time}s...")
                 time.sleep(wait_time)
+            elif ex.resp.status == 409:
+                print(f"   ⚠️ Resumable upload 409 conflict: {ex}. Retrying via single direct upload...")
+                try:
+                    direct_media = MediaFileUpload(video_path, mimetype="video/mp4", resumable=False)
+                    direct_request = youtube.videos().insert(part="snippet,status", body=body, media_body=direct_media)
+                    response = direct_request.execute()
+                    break
+                except Exception as direct_ex:
+                    print(f"❌ Direct upload attempt also failed: {direct_ex}")
+                    raise direct_ex
             else:
                 print(f"❌ YouTube API Error: {ex}")
                 raise ex
