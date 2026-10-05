@@ -1,51 +1,81 @@
-# 🚀 AI YouTube Shorts Generator (100% Free & Cloud-Powered)
+# 🎬 AI Autonomous Viral Shorts Generator (Chinese Comedy -> UK Meme Edition)
 
-यह टूल पूरी तरह **मुफ्त (Free)** है और आपके लैपटॉप पर **0% लोड** डालता है। सारा वीडियो जनरेशन और रेंडरिंग **GitHub Actions (Cloud)** के सुपरकंप्यूटर पर होता है।
-
----
-
-## 🎯 मुख्य फीचर्स (Key Features):
-- **100% Free Cloud Compute:** आपके लैपटॉप की बैटरी या रैम का इस्तेमाल नहीं होता।
-- **Native American English Voiceover:** Microsoft Neural TTS (`en-US-ChristopherNeural`, `en-US-GuyNeural`) से बिल्कुल असली अमेरिकी एंकर जैसी आवाज़।
-- **Hindi Voiceover Option:** भारतीय दर्शकों के लिए `Madhur` और `Swara` आवाज़ें भी उपलब्ध हैं।
-- **Automatic Word-by-Word Subtitles:** Alex Hormozi / MrBeast स्टाइल के आकर्षक, बड़े और बोल्ड कैप्शन्स (Yellow/White with thick outline)।
-- **High-Definition Backgrounds (1080x1920):** 9:16 Vertical Shorts फॉर्मेट में बिना वॉटरमार्क वाले HD क्लिप्स।
-- **1-Click Download:** वीडियो बनने के बाद सीधे ब्राउज़र से `.mp4` फाइल डाउनलोड करें।
+An autonomous content engineering pipeline that takes viral Chinese comedy skits/gadget videos (e.g. from creators like `川哥哥` / `cczz666888`), automatically extracts the comedic climax, generates an ultra-viral UK/Western sarcastic meme roast commentary, adds punchy meme sound effects, burns Hormozi-style vertical subtitles, and renders ready-to-publish 9:16 Shorts.
 
 ---
 
-## 📖 वीडियो कैसे बनाएं? (Step-by-Step Guide):
+## 🚀 Key Features
 
-### 1. Actions टैब में जाएं
-* अपनी इस GitHub रिपॉजिटरी में ऊपर **Actions** टैब पर क्लिक करें।
+1. **Bypasses Chinese Anti-Crawl Firewalls**:
+   - Queries Kuaishou's mobile SSR endpoints (`c.kuaishou.com/fw/photo/<id>`) using mobile emulation headers.
+   - Extracts 100% unwatermarked, high-bitrate direct CDN MP4 streams (`v1.kwaicdn.com`) without captchas.
 
-### 2. Workflow चुनें
-* बाईं तरफ **"Generate YouTube Short (Cloud Video Maker)"** पर क्लिक करें।
+2. **HEVC to H.264 Universal Transcoder**:
+   - Automatically converts raw HEVC streams to standard H.264 to eliminate Windows Media Player codec errors and enable precise, frame-accurate cutting.
 
-### 3. Run Workflow पर क्लिक करें
-* दाईं तरफ नीले बटन **"Run workflow"** पर क्लिक करें।
+3. **10-Key Auto-Rotating ElevenLabs Voice Engine**:
+   - Built-in multi-key rotating pool supporting 10 active accounts (100,000 free credits/month = ~220 viral Shorts/month).
+   - Seamlessly fails over from Key 1 through Key 10 on quota exhaustion.
+   - Intelligent fallback to `Edge-TTS` (`en-GB-RyanNeural`) if all keys are exhausted.
 
-### 4. अपनी स्क्रिप्ट और सेटिंग्स भरें:
-* **Script:** अपनी लिखी हुई स्क्रिप्ट पेस्ट करें (या `sample_scripts.md` से कोई भी कॉपी करें)।
-* **Voice:** अपनी पसंद की आवाज़ चुनें (US ऑडियंस के लिए `en-US-ChristopherNeural` सबसे बेस्ट है)।
-* **Topic:** वीडियो का विषय चुनें (जैसे: `space`, `galaxy`, `dark mystery`, `technology`, `future city`)।
-* **Color:** सबटाइटल का रंग चुनें (`Yellow`, `White`, `Cyan`, आदि)।
-* **Run workflow** बटन दबा दें!
+4. **Procedural Comedy Meme SFX & BGM**:
+   - Procedurally synthesizes high-impact meme sound effects (Vine Boom, Iron Clangs, Horns, Cork Pop, Wheeze Laugh) timed down to the millisecond.
+   - Layers an energetic 128 BPM comedy groove ducked under speech dialogue.
 
----
+5. **Hormozi-Style Vertical Subtitles**:
+   - Compiles `.ass` subtitle events with bold fonts, bright yellow/white styling, thick black outlines, drop shadows, and high-engagement emojis.
 
-## 📥 वीडियो डाउनलोड कैसे करें?
-
-1. रन शुरू होते ही आपको एक प्रोसेस चलती दिखेगी (1-2 मिनट में हरी टिक ✅ हो जाएगी)।
-2. उस रन पर क्लिक करें।
-3. पेज के सबसे नीचे स्क्रॉल करें, वहाँ **Artifacts** सेक्शन में **`final_youtube_short`** दिखेगा।
-4. उसपर क्लिक करें—आपकी **`final_video.mp4`** आपके कंप्यूटर/फोन में डाउनलोड हो जाएगी!
+6. **Safety First**:
+   - Automated YouTube uploads are **strictly disabled by default**. All renders are saved locally or as downloadable GitHub Actions artifacts for manual preview.
 
 ---
 
-## 🇺🇸 अमेरिका (USA) में वायरल करने के लिए जरूरी टिप्स:
+## 🛠️ Architecture & Modules
 
-1. **अपलोड करने का समय:** भारतीय समय अनुसार **शाम 7:00 PM से रात 10:30 PM** के बीच अपलोड करें (इस समय अमेरिका में सुबह होती है)।
-2. **टाइटल और टैग्स:** 100% अंग्रेज़ी में रखें और US डॉलर सिंबल (`$`) या अमेरिकी संदर्भ का इस्तेमाल करें।
-3. **शुरुआती 3 सेकंड (Hook):** पहले 3 सेकंड में सस्पेंस या सवाल होना चाहिए ताकि लोग स्वाइप न करें।
-4. **लिंक शेयर न करें:** अपने भारतीय दोस्तों को लिंक न भेजें, YouTube के एल्गोरिदम को खुद अमेरिकी दर्शकों को खोजने दें।
+```
+ai-youtube-shorts-generator/
+│
+├── pipeline.py                 # Master orchestrator
+├── kuaishou_downloader.py      # Mobile CDN extractor & H.264 transcoder
+├── tts_rotator.py              # 10-key ElevenLabs pool rotator & fallback
+├── comedy_engine.py            # AI roast scriptwriter & climax detector
+├── audio_sfx_mixer.py          # Meme SFX synthesizer & master audio mixer
+├── subtitle_engine.py          # Hormozi-style ASS subtitle generator
+├── video_composer.py           # FFmpeg slicer, concatenator & MP4 renderer
+│
+├── requirements.txt            # Python dependencies
+└── .github/
+    └── workflows/
+        └── generate_shorts.yml # Cloud runner with artifact preview
+```
+
+---
+
+## 🔑 Multi-Key ElevenLabs Pool Management
+
+Keys are encrypted and stored in GitHub Secrets under `ELEVENLABS_KEYS_POOL`. The vault structure:
+
+```json
+{
+  "keys": [
+    { "id": 1, "key": "sk_...", "status": "active", "limit": 10000, "remaining": 10000 },
+    { "id": 2, "key": "sk_...", "status": "active", "limit": 10000, "remaining": 10000 },
+    ...
+    { "id": 10, "key": "sk_...", "status": "active", "limit": 10000, "remaining": 10000 }
+  ]
+}
+```
+
+---
+
+## 💻 Local Usage
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Run pipeline on any Kuaishou URL or Photo ID
+python pipeline.py --url "https://www.kuaishou.com/short-video/3xnhw787utiscgu"
+```
+
+Rendered vertical shorts are saved to disk with burned subtitles and studio audio mix.
