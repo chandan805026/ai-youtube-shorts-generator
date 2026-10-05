@@ -2,7 +2,9 @@ import os
 import subprocess
 
 FFMPEG_BIN = r"C:\Users\ladu\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
-SCRATCH_DIR = r"C:\Users\ladu\.gemini\antigravity\scratch"
+if not os.path.exists(FFMPEG_BIN):
+    FFMPEG_BIN = "ffmpeg"
+SCRATCH_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def slice_and_concat(source_video: str, cut_ranges: list, out_video: str):
