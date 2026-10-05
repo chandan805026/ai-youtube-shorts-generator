@@ -4,18 +4,49 @@ import numpy as np
 from scipy.io import wavfile
 
 FFMPEG_BIN = r"C:\Users\ladu\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
+SCRATCH_DIR = r"C:\Users\ladu\.gemini\antigravity\scratch"
+VAULT_DIR = os.path.join(SCRATCH_DIR, "meme_sound_vault")
 SAMPLE_RATE = 44100
 
 
+def load_vault_audio(filename: str, sr=SAMPLE_RATE) -> np.ndarray:
+    """Loads an MP3/WAV from meme_sound_vault converted to float32 mono."""
+    path = os.path.join(VAULT_DIR, filename)
+    if not os.path.exists(path):
+        # Try without extension
+        if os.path.exists(path + ".mp3"):
+            path = path + ".mp3"
+        elif os.path.exists(path + ".wav"):
+            path = path + ".wav"
+        else:
+            return None
+
+    temp_wav = os.path.join(SCRATCH_DIR, f"temp_{os.path.basename(path)}.wav")
+    try:
+        subprocess.run(
+            [FFMPEG_BIN, "-y", "-i", path, "-ar", str(sr), "-ac", "1", temp_wav],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
+        )
+        _, data = wavfile.read(temp_wav)
+        if os.path.exists(temp_wav):
+            os.remove(temp_wav)
+        return data.astype(np.float32) / 32768.0
+    except Exception as e:
+        print(f"[Mixer] Error loading vault sound {filename}: {e}")
+        if os.path.exists(temp_wav):
+            os.remove(temp_wav)
+        return None
+
+
 def create_sfx_library(sr=SAMPLE_RATE):
-    """Procedurally synthesizes standard meme SFX with high punch."""
+    """Procedurally synthesizes standard meme SFX with high punch as fallbacks."""
     sfx = {}
     
     # 1. Vine Boom (Sub-bass drop + distortion punch)
     t_vb = np.linspace(0, 0.85, int(sr * 0.85), endpoint=False)
     freq_sweep = 68 * np.exp(-4.2 * t_vb)
     vb = (np.sin(2 * np.pi * freq_sweep * t_vb) * 0.85 + np.sin(2 * np.pi * 34 * t_vb) * 0.5) * np.exp(-3.2 * t_vb)
-    sfx["vine_boom"] = vb * 0.95
+    sfx["vine_boom_synth"] = vb * 0.95
 
     # 2. Metal Clang / Padlock (Iron snap + bell harmonic)
     t_c = np.linspace(0, 0.45, int(sr * 0.45), endpoint=False)
@@ -70,19 +101,19 @@ def build_bgm_track(total_len_sec: float, sr=SAMPLE_RATE) -> np.ndarray:
         t_p = np.linspace(0, 0.22, dur, endpoint=False)
         
         freq = 98.0 if (b % 4 < 2) else 130.81
-        bass = (np.sin(2 * np.pi * freq * t_p) + np.sin(4 * np.pi * freq * t_p) * 0.4) * np.exp(-14 * t_p) * 0.22
-        snap = np.random.uniform(-1, 1, dur) * np.exp(-35 * t_p) * 0.05
+        bass = (np.sin(2 * np.pi * freq * t_p) + np.sin(4 * np.pi * freq * t_p) * 0.4) * np.exp(-14 * t_p) * 0.20
+        snap = np.random.uniform(-1, 1, dur) * np.exp(-35 * t_p) * 0.04
         
         if idx + dur < total_samples:
             bgm[idx:idx+dur] += bass + snap
             
-    return bgm * 0.38
+    return bgm * 0.35
 
 
 def mix_master_audio(speech_clips: list, sfx_events: list, total_len_sec: float, out_wav_path: str):
     """
     speech_clips: list of dicts [{'path': '...mp3', 'start': float}]
-    sfx_events: list of tuples [('vine_boom', 4.0), ('metal_clang', 2.5)]
+    sfx_events: list of tuples [('vine_boom.mp3', 4.0), ('bruh.mp3', 6.5), ...]
     """
     sr = SAMPLE_RATE
     total_samples = int(total_len_sec * sr)
@@ -107,21 +138,35 @@ def mix_master_audio(speech_clips: list, sfx_events: list, total_len_sec: float,
     if os.path.exists(temp_wav):
         os.remove(temp_wav)
 
-    # 2. Overlay SFX
-    sfx_lib = create_sfx_library(sr)
-    for sfx_name, t_sec in sfx_events:
-        if sfx_name in sfx_lib:
-            wave = sfx_lib[sfx_name]
+    # 2. Overlay SFX from meme vault or synth library
+    synth_lib = create_sfx_library(sr)
+    for sfx_item in sfx_events:
+        # Format can be (name, time) or (name, time, gain)
+        if len(sfx_item) == 2:
+            sfx_name, t_sec = sfx_item
+            gain = 1.0
+        else:
+            sfx_name, t_sec, gain = sfx_item
+
+        wave = None
+        # Check vault first
+        wave = load_vault_audio(sfx_name, sr)
+        if wave is None and sfx_name in synth_lib:
+            wave = synth_lib[sfx_name]
+
+        if wave is not None:
+            wave = wave * gain
             idx = int(t_sec * sr)
             end_idx = min(idx + len(wave), total_samples)
             sfx_layer[idx:end_idx] += wave[:end_idx - idx]
+            print(f"[Mixer] Mixed meme SFX '{sfx_name}' at {t_sec:.2f}s (gain={gain})")
 
     # 3. Add BGM groove
     bgm = build_bgm_track(total_len_sec, sr)
 
     # 4. Master Gain & Limiter
-    dialogue = dialogue * 1.35
-    sfx_layer = sfx_layer * 0.95
+    dialogue = dialogue * 1.40
+    sfx_layer = sfx_layer * 0.90
     master = dialogue + sfx_layer + bgm
     
     peak = np.max(np.abs(master))
