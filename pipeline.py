@@ -32,39 +32,40 @@ VIRAL_PRESETS = {
             (60.5, 67.0)   # Act 5: Back at the pub with the boys
         ],
         "speech": [
-            ("01", 0.2, "Bro's missus literally locked him in a dog cage for going to the pub!"),
-            ("02", 4.3, "Maximum security lockdown!"),
-            ("03", 6.6, "So he deployed an origami mechanical butterfly to summon the boys..."),
-            ("04", 10.6, "Code Red. The homie is in distress!"),
-            ("05", 13.6, "The boys assembled! One pulled up in a full James Bond suit in the cabbage patch!"),
-            ("06", 18.5, "Their master plan? A fake mop wig over the wall to pretend it was a ghost!"),
-            ("07", 22.6, "Bro tunneled under the cage like it was The Shawshank Redemption!"),
-            ("08", 26.5, "Pull him out lads! We are breaking him out!"),
-            ("09", 29.6, "And now he is back at the local for another pint with the lads."),
-            ("10", 33.2, "Bros before rules. Massive W boys!")
+            ("01", 0.2, "When your wife catches you going out with the boys and literally builds Alcatraz in the living room..."),
+            ("02", 4.3, "Maximum security lockdown! Bro is in the dog house."),
+            ("03", 6.6, "So he deploys an origami mechanical butterfly to summon the boys..."),
+            ("04", 10.6, "Code Red! The distress signal has been received."),
+            ("05", 13.6, "The squad mobilized in ten seconds! One pulled up in a three-piece suit in the cabbage patch."),
+            ("06", 18.5, "Their master plan? A mop with a wig to convince her the house is haunted!"),
+            ("07", 22.6, "Bro literally tunneled under the cage like The Shawshank Redemption!"),
+            ("08", 26.5, "Pull him out lads! Mission accomplished!"),
+            ("09", 29.6, "Ten minutes later, back at the local pub for another cold round."),
+            ("10", 33.2, "Bros before rules. Absolute legends. Massive W!")
         ],
         "sfx": [
-            ("metal_clang", 2.5),
-            ("vine_boom", 4.0),
-            ("flutter", 8.5),
-            ("horn", 13.5),
-            ("ghost", 19.0),
-            ("pop", 23.5),
-            ("pop", 28.0),
-            ("cheers", 31.5),
-            ("win_fanfare", 33.5)
+            ("metal_clang", 2.2),
+            ("vine_boom.mp3", 4.1),
+            ("bruh.mp3", 6.2, 0.85),
+            ("ding_idea.mp3", 8.8, 0.8),
+            ("fbi_open_up.mp3", 13.5, 0.85),
+            ("wait_a_minute.mp3", 18.2, 0.9),
+            ("oh_no_wheeze_laugh.mp3", 20.8, 0.95),
+            ("Metal Boom.mp3", 26.2, 0.9),
+            ("WOW.mp3", 32.5, 0.85),
+            ("cheers", 33.0)
         ],
         "subtitles": [
-            {"start": 0.2, "end": 4.1, "style": "Hook", "text": "Bro's missus literally locked him in a dog cage\\Nfor going to the pub 🔒💀"},
-            {"start": 4.3, "end": 6.4, "style": "Punch", "text": "Maximum security lockdown! ⛓️"},
-            {"start": 6.6, "end": 10.3, "style": "Hook", "text": "So he deployed an origami mechanical butterfly\\Nto summon the boys 🦋"},
-            {"start": 10.6, "end": 13.3, "style": "Punch", "text": "CODE RED!\\NThe homie is in distress! 🚨"},
-            {"start": 13.6, "end": 18.2, "style": "Hook", "text": "One pulled up in a full James Bond suit\\Nin the cabbage patch! 🕶️"},
-            {"start": 18.5, "end": 22.3, "style": "Punch", "text": "Their master plan?\\NA mop wig over the wall to pretend it was a ghost 👻😭"},
-            {"start": 22.6, "end": 26.2, "style": "Punch", "text": "Bro tunneled under the cage\\nlike The Shawshank Redemption! ⛏️"},
-            {"start": 26.5, "end": 29.3, "style": "Punch", "text": "Pull him out lads!\\nWe're breaking him out! 💥"},
-            {"start": 29.6, "end": 32.9, "style": "Hook", "text": "Back at the local pub\\nfor another round of pints! 🍺"},
-            {"start": 33.2, "end": 35.8, "style": "Punch", "text": "Bros before rules.\\nMassive W boys! 👑"}
+            {"start": 0.2, "end": 4.1, "style": "CenterHook", "text": "Wife caught him going to the pub...\\Nand built ALCATRAZ in the house! 🔒💀"},
+            {"start": 4.3, "end": 6.4, "style": "CenterPunch", "text": "MAXIMUM SECURITY LOCKDOWN! ⛓️"},
+            {"start": 6.6, "end": 10.3, "style": "CenterHook", "text": "So he deployed a mechanical butterfly\\Nto summon the boys! 🦋"},
+            {"start": 10.6, "end": 13.3, "style": "CenterPunch", "text": "CODE RED! DISTRESS SIGNAL! 🚨"},
+            {"start": 13.6, "end": 18.2, "style": "CenterHook", "text": "The squad mobilized!\\nThree-piece suit in the cabbage patch! 🕶️"},
+            {"start": 18.5, "end": 22.3, "style": "CenterPunch", "text": "Master weapon?\\nA mop wig ghost prank! 👻😭"},
+            {"start": 22.6, "end": 26.2, "style": "CenterPunch", "text": "Bro tunneled under the cage\\nlike SHAWSHANK REDEMPTION! ⛏️"},
+            {"start": 26.5, "end": 29.3, "style": "CenterPunch", "text": "PULL HIM OUT LADS!\\nMISSION ACCOMPLISHED! 💥"},
+            {"start": 29.6, "end": 32.9, "style": "CenterHook", "text": "10 minutes later...\\nBack at the pub with the boys! 🍺"},
+            {"start": 33.2, "end": 35.8, "style": "CenterPunch", "text": "BROS BEFORE RULES.\\nABSOLUTE LEGENDS! 👑"}
         ]
     }
 }
