@@ -7,8 +7,8 @@ import edge_tts
 
 SCRATCH_DIR = r"C:\Users\ladu\.gemini\antigravity\scratch"
 LOCAL_VAULT_PATH = os.path.join(SCRATCH_DIR, "eleven_keys_vault.json")
-ELEVEN_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"  # George - British Warm Storyteller
-EDGE_FALLBACK_VOICE = "en-GB-RyanNeural"   # Sarcastic British Male
+ELEVEN_VOICE_ID = "pNInz6obpgDQGcFmaJgB"  # Adam - The #1 Viral YouTuber / TikTok Meme Voice
+EDGE_FALLBACK_VOICE = "en-US-ChristopherNeural"   # Expressive American Male Fallback
 
 
 def load_vault():
