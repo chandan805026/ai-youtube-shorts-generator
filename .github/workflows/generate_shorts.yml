@@ -1,0 +1,49 @@
+name: Generate Viral Comedy Short
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: 'Kuaishou Video URL or Photo ID'
+        required: true
+        default: 'https://www.kuaishou.com/short-video/3xnhw787utiscgu'
+      creator_name:
+        description: 'Creator Name / Tag'
+        required: false
+        default: '川哥哥 (cczz666888)'
+
+jobs:
+  build-short:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Viral Shorts Pipeline
+        env:
+          ELEVENLABS_KEYS_POOL: ${{ secrets.ELEVENLABS_KEYS_POOL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python pipeline.py --url "${{ github.event.inputs.video_url }}"
+
+      - name: Upload Generated Short as Preview Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: viral-short-preview
+          path: viral_short_*.mp4
+          retention-days: 7
