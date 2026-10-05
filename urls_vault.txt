@@ -1,0 +1,7 @@
+# --- CHINA GADGETS VAULT QUEUE ---
+# Add Douyin / Kuaishou URLs here. 2 videos are picked daily on GitHub Actions.
+https://www.douyin.com/video/7431832422867537189
+https://www.douyin.com/video/7431564239401241894
+https://www.douyin.com/video/7154360226202914062
+https://www.douyin.com/video/7094563210774252840
+https://www.douyin.com/video/7462609658872630579
