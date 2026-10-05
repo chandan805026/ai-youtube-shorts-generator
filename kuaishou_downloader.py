@@ -13,7 +13,9 @@ if sys.stdout:
         pass
 
 FFMPEG_BIN = r"C:\Users\ladu\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
-SCRATCH_DIR = r"C:\Users\ladu\.gemini\antigravity\scratch"
+if not os.path.exists(FFMPEG_BIN):
+    FFMPEG_BIN = "ffmpeg"
+SCRATCH_DIR = os.path.dirname(os.path.abspath(__file__))
 IPHONE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1"
 
 
