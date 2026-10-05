@@ -1,8 +1,8 @@
 import os
 import sys
 import argparse
+import subprocess
 import json
-import time
 
 if sys.stdout:
     try:
@@ -10,158 +10,138 @@ if sys.stdout:
     except Exception:
         pass
 
-SCRATCH_DIR = r"C:\Users\ladu\.gemini\antigravity\scratch"
-ARTIFACT_DIR = r"C:\Users\ladu\.gemini\antigravity\brain\41f96fdc-72e5-43ae-af5c-4c00a193a2d1"
+# Determine base directory (works both locally and in GitHub Actions)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRATCH_DIR = BASE_DIR
+VAULT_DIR = os.path.join(BASE_DIR, "meme_sound_vault")
 
 from kuaishou_downloader import fetch_kuaishou_video_info, download_and_transcode
 from tts_rotator import synthesize_speech
 from audio_sfx_mixer import mix_master_audio
 from subtitle_engine import build_ass_subtitles
-from video_composer import slice_and_concat, render_final_short
+from video_composer import render_final_short
+from ai_script_generator import generate_comedy_script_with_gemini
+import build_meme_vault
 
 
-VIRAL_PRESETS = {
-    "3xnhw787utiscgu": {
-        "title": "Dog Cage Prison Break (川哥哥)",
-        "duration": 36.0,
-        "cuts": [
-            (0.0, 6.5),    # Act 1: Locked in dog cage
-            (9.0, 16.0),   # Act 2: Origami butterfly SOS
-            (21.0, 30.0),  # Act 3: James Bond in cabbage + mop ghost prank
-            (45.0, 52.0),  # Act 4: Shawshank tunnel escape
-            (60.5, 67.0)   # Act 5: Back at the pub with the boys
-        ],
-        "speech": [
-            ("01", 0.2, "When your wife catches you going out with the boys and literally builds Alcatraz in the living room..."),
-            ("02", 4.3, "Maximum security lockdown! Bro is in the dog house."),
-            ("03", 6.6, "So he deploys an origami mechanical butterfly to summon the boys..."),
-            ("04", 10.6, "Code Red! The distress signal has been received."),
-            ("05", 13.6, "The squad mobilized in ten seconds! One pulled up in a three-piece suit in the cabbage patch."),
-            ("06", 18.5, "Their master plan? A mop with a wig to convince her the house is haunted!"),
-            ("07", 22.6, "Bro literally tunneled under the cage like The Shawshank Redemption!"),
-            ("08", 26.5, "Pull him out lads! Mission accomplished!"),
-            ("09", 29.6, "Ten minutes later, back at the local pub for another cold round."),
-            ("10", 33.2, "Bros before rules. Absolute legends. Massive W!")
-        ],
-        "sfx": [
-            ("metal_clang", 2.2),
-            ("vine_boom.mp3", 4.1),
-            ("bruh.mp3", 6.2, 0.85),
-            ("ding_idea.mp3", 8.8, 0.8),
-            ("fbi_open_up.mp3", 13.5, 0.85),
-            ("wait_a_minute.mp3", 18.2, 0.9),
-            ("oh_no_wheeze_laugh.mp3", 20.8, 0.95),
-            ("Metal Boom.mp3", 26.2, 0.9),
-            ("WOW.mp3", 32.5, 0.85),
-            ("cheers", 33.0)
-        ],
-        "subtitles": [
-            {"start": 0.2, "end": 4.1, "style": "CenterHook", "text": "Wife caught him going to the pub...\\Nand built ALCATRAZ in the house! 🔒💀"},
-            {"start": 4.3, "end": 6.4, "style": "CenterPunch", "text": "MAXIMUM SECURITY LOCKDOWN! ⛓️"},
-            {"start": 6.6, "end": 10.3, "style": "CenterHook", "text": "So he deployed a mechanical butterfly\\Nto summon the boys! 🦋"},
-            {"start": 10.6, "end": 13.3, "style": "CenterPunch", "text": "CODE RED! DISTRESS SIGNAL! 🚨"},
-            {"start": 13.6, "end": 18.2, "style": "CenterHook", "text": "The squad mobilized!\\nThree-piece suit in the cabbage patch! 🕶️"},
-            {"start": 18.5, "end": 22.3, "style": "CenterPunch", "text": "Master weapon?\\nA mop wig ghost prank! 👻😭"},
-            {"start": 22.6, "end": 26.2, "style": "CenterPunch", "text": "Bro tunneled under the cage\\nlike SHAWSHANK REDEMPTION! ⛏️"},
-            {"start": 26.5, "end": 29.3, "style": "CenterPunch", "text": "PULL HIM OUT LADS!\\nMISSION ACCOMPLISHED! 💥"},
-            {"start": 29.6, "end": 32.9, "style": "CenterHook", "text": "10 minutes later...\\nBack at the pub with the boys! 🍺"},
-            {"start": 33.2, "end": 35.8, "style": "CenterPunch", "text": "BROS BEFORE RULES.\\nABSOLUTE LEGENDS! 👑"}
-        ]
-    }
-}
+FFMPEG_BIN = r"C:\Users\ladu\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
+if not os.path.exists(FFMPEG_BIN):
+    FFMPEG_BIN = "ffmpeg"  # Linux / GitHub Actions runner path
+
+
+def get_video_duration(video_path: str) -> float:
+    """Uses ffprobe / ffmpeg to get video duration in seconds."""
+    cmd = [
+        FFMPEG_BIN, "-i", video_path
+    ]
+    res = subprocess.run(cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, errors="ignore")
+    import re
+    m = re.search(r"Duration:\s*(\d+):(\d+):(\d+\.\d+)", res.stderr)
+    if m:
+        h, mn, s = float(m.group(1)), float(m.group(2)), float(m.group(3))
+        return h * 3600 + mn * 60 + s
+    return 40.0
+
+
+def extract_continuous_segment(src_video: str, start_sec: float, dur_sec: float, out_video: str):
+    """
+    Cuts ONE clean, continuous segment without choppy stitching.
+    Preserves natural flow, comedic timing, and visual continuity.
+    """
+    cmd = [
+        FFMPEG_BIN, "-y",
+        "-ss", f"{start_sec:.2f}",
+        "-i", src_video,
+        "-t", f"{dur_sec:.2f}",
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-r", "60",
+        "-an",
+        out_video
+    ]
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    print(f"[Composer] Extracted continuous {dur_sec:.1f}s scene: {out_video}")
 
 
 def run_pipeline(url_or_id: str, upload: bool = False):
     print("=" * 60)
-    print("⚡ VIRAL SHORTS AUTOMATION PIPELINE (CHINESE COMEDY -> UK MEME) ⚡")
+    print("⚡ AUTONOMOUS VIRAL SHORTS ENGINE (CLOUD & LOCAL READY) ⚡")
     print("=" * 60)
 
-    # 1. Fetch info and download
-    print("\n[Step 1/6] Extracting unwatermarked video from Kuaishou CDN...")
+    # 1. Ensure Meme Sound Vault is ready
+    if not os.path.exists(VAULT_DIR) or len(os.listdir(VAULT_DIR)) < 10:
+        print("[Meme Vault] Initializing iconic meme sound library...")
+        build_meme_vault.download_all()
+
+    # 2. Extract unwatermarked video
+    print("\n[Step 1/5] Extracting video from Kuaishou CDN...")
     info = fetch_kuaishou_video_info(url_or_id)
     photo_id = info["photo_id"]
     print(f"-> Creator: {info['author']}")
-    print(f"-> Title: {info['caption'][:50]}...")
+    print(f"-> Caption: {info['caption'][:60]}...")
+
+    playable_video = download_and_transcode(info, BASE_DIR)
+    total_duration = get_video_duration(playable_video)
+    print(f"-> Source Video Duration: {total_duration:.1f} seconds")
+
+    # 3. AI Scene Selection & Scriptwriting
+    print("\n[Step 2/5] AI analyzing scenes & generating viral comedy script...")
+    if total_duration > 90:
+        print(f"⚠️ Long-form compilation detected ({total_duration:.1f}s). AI selecting the single funniest story...")
+
+    script = generate_comedy_script_with_gemini(info["caption"], info["author"], total_duration)
+
+    cut_st = script.get("cut_start", 0.0)
+    cut_dur = script.get("duration", 38.0)
     
-    playable_video = download_and_transcode(info, SCRATCH_DIR)
+    # 4. Extract continuous clean scene (No choppy cuts!)
+    print("\n[Step 3/5] Extracting continuous high-retention scene...")
+    sliced_video = os.path.join(BASE_DIR, f"clean_scene_{photo_id}.mp4")
+    extract_continuous_segment(playable_video, cut_st, cut_dur, sliced_video)
 
-    # 2. Climax & Script Selection
-    print("\n[Step 2/6] Loading viral comedy script & climax cuts...")
-    preset = VIRAL_PRESETS.get(photo_id)
-    if not preset:
-        # Default fallback structure
-        print("-> Using dynamic viral template...")
-        preset = {
-            "duration": 35.0,
-            "cuts": [(0.0, 7.0), (12.0, 19.0), (25.0, 32.0), (45.0, 52.0), (60.0, 67.0)],
-            "speech": [
-                ("01", 0.2, "Bro genuinely thought he had this completely under control..."),
-                ("02", 7.2, "Look at that confidence before disaster strikes!"),
-                ("03", 14.5, "Wait for it... absolutely zero survival instinct!"),
-                ("04", 22.0, "He sent himself straight to the shadow realm!"),
-                ("05", 29.5, "Certified clown moment. Massive L bro!")
-            ],
-            "sfx": [("vine_boom", 3.0), ("horn", 14.0), ("pop", 22.0), ("win_fanfare", 30.0)],
-            "subtitles": [
-                {"start": 0.2, "end": 6.8, "style": "Hook", "text": "Bro genuinely thought he had this\\ncompletely under control 💀"},
-                {"start": 7.2, "end": 14.0, "style": "Punch", "text": "Confidence before disaster! 😂"},
-                {"start": 14.5, "end": 21.5, "style": "Hook", "text": "Zero survival instinct! 🚨"},
-                {"start": 22.0, "end": 29.0, "style": "Punch", "text": "Sent to the shadow realm! 😭"},
-                {"start": 29.5, "end": 34.5, "style": "Punch", "text": "Certified clown moment.\\nMassive L bro! 👑"}
-            ]
-        }
-
-    # 3. Slicing video into tight 35-40s climax
-    print("\n[Step 3/6] Slicing source footage into high-retention comedy cuts...")
-    sliced_video = os.path.join(SCRATCH_DIR, f"sliced_{photo_id}.mp4")
-    slice_and_concat(playable_video, preset["cuts"], sliced_video)
-
-    # 4. Multi-Key Rotating TTS Voiceover
-    print("\n[Step 4/6] Generating voice lines with 10-Key ElevenLabs pool...")
+    # 5. Multi-Key Voice Generation (Adam - ElevenLabs)
+    print("\n[Step 4/5] Synthesizing voiceover with ElevenLabs Adam...")
     speech_clips = []
-    for code, start_t, line_text in preset["speech"]:
-        clip_path = os.path.join(SCRATCH_DIR, f"tts_{photo_id}_{code}.mp3")
+    for code, start_t, line_text in script.get("speech", []):
+        clip_path = os.path.join(BASE_DIR, f"tts_{photo_id}_{code}.mp3")
         if not os.path.exists(clip_path) or os.path.getsize(clip_path) < 100:
             engine = synthesize_speech(line_text, clip_path)
-            print(f"-> [{code}] ({engine}): {line_text[:35]}...")
+            print(f"-> [{code}] ({engine}): {line_text[:40]}...")
         speech_clips.append({"path": clip_path, "start": start_t})
 
-    # 5. Audio Mixing & SFX Synthesis
-    print("\n[Step 5/6] Mixing comedy meme SFX & 128 BPM groove...")
-    master_audio = os.path.join(SCRATCH_DIR, f"master_audio_{photo_id}.wav")
-    mix_master_audio(speech_clips, preset["sfx"], preset["duration"], master_audio)
+    # 6. Audio Mixing (Meme SFX with Silence Pockets)
+    print("\n[Step 5/5] Mixing meme SFX & BGM groove (Zero sound clashing)...")
+    master_audio = os.path.join(BASE_DIR, f"master_audio_{photo_id}.wav")
+    mix_master_audio(speech_clips, script.get("sfx", []), cut_dur, master_audio)
 
-    # 6. ASS Subtitles & Video Rendering
-    print("\n[Step 6/6] Generating Hormozi subtitles & rendering final vertical Short...")
-    ass_file = os.path.join(SCRATCH_DIR, f"subtitles_{photo_id}.ass")
-    build_ass_subtitles(preset["subtitles"], ass_file)
+    # 7. Subtitles & Final Render
+    ass_file = os.path.join(BASE_DIR, f"subtitles_{photo_id}.ass")
+    build_ass_subtitles(script.get("subtitles", []), ass_file)
 
-    final_short = os.path.join(SCRATCH_DIR, f"viral_short_{photo_id}.mp4")
+    final_short = os.path.join(BASE_DIR, f"viral_short_{photo_id}.mp4")
     render_final_short(sliced_video, master_audio, ass_file, final_short)
 
-    # Copy to artifact folder for user preview
-    if os.path.exists(ARTIFACT_DIR):
-        import shutil
-        artifact_path = os.path.join(ARTIFACT_DIR, f"viral_short_{photo_id}.mp4")
-        shutil.copy2(final_short, artifact_path)
-        print(f"\n✅ Preview ready in Artifacts: {artifact_path}")
+    # Also save a canonical 'viral_short.mp4' for GitHub Actions artifact collection
+    canonical_output = os.path.join(BASE_DIR, "viral_short.mp4")
+    import shutil
+    shutil.copy2(final_short, canonical_output)
 
     print("\n" + "=" * 60)
     print(f"🎉 SHORT GENERATION 100% COMPLETE: {final_short}")
+    print(f"📊 Final File Size: {os.path.getsize(final_short) / (1024*1024):.2f} MB")
     print("=" * 60)
 
     if upload:
         print("[YouTube Uploader] Upload requested - checking authentication...")
-        # Uploading is explicitly gated
     else:
         print("\n🔒 [SAFETY LOCK]: YouTube auto-upload is DISABLED by default.")
-        print("Footage is saved locally for your review and preview before publishing.")
+        print("Ready for manual review and download.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Autonomous Comedy Short Generator")
-    parser.add_argument("--url", type=str, default="https://www.kuaishou.com/short-video/3xnhw787utiscgu", help="Kuaishou Video URL or Photo ID")
-    parser.add_argument("--upload", action="store_true", help="Explicitly enable YouTube upload (disabled by default)")
+    parser = argparse.ArgumentParser(description="Autonomous Viral Short Generator")
+    parser.add_argument("--url", type=str, required=True, help="Kuaishou Video URL or Photo ID")
+    parser.add_argument("--upload", action="store_true", help="Explicitly enable YouTube upload")
     args = parser.parse_args()
 
     run_pipeline(args.url, upload=args.upload)
