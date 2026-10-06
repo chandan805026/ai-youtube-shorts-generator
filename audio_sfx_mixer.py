@@ -166,14 +166,16 @@ def mix_master_audio(speech_clips: list, sfx_events: list, total_len_sec: float,
     # 3. Add BGM groove
     bgm = build_bgm_track(total_len_sec, sr)
 
-    # 4. Master Gain & Limiter
-    dialogue = dialogue * 1.40
-    sfx_layer = sfx_layer * 0.90
-    master = dialogue + sfx_layer + bgm
+    # 4. Master Gain & Normalization (Loud YouTube Shorts Standard)
+    dialogue = dialogue * 1.50
+    sfx_layer = sfx_layer * 1.00
+    master = dialogue + sfx_layer + (bgm * 0.70)
     
     peak = np.max(np.abs(master))
-    if peak > 0.98:
-        master = master / peak * 0.96
+    if peak > 0.01:
+        master = (master / peak) * 0.92
+    else:
+        print("[Mixer] Warning: Audio peak is extremely low, checking tracks.")
 
     wavfile.write(out_wav_path, sr, (master * 32767).astype(np.int16))
     print(f"[Mixer] Master audio rendered: {out_wav_path} ({os.path.getsize(out_wav_path) / (1024*1024):.2f} MB)")
