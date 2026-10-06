@@ -4,14 +4,22 @@ import json
 import urllib.request
 import urllib.error
 import re
+import time
 
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+
+# Prioritized list of high-quota (500 RPD) models to prevent suspension
+GEMINI_MODELS = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-lite-latest"
+]
 
 
-def generate_comedy_script_with_ai(title: str, author: str, duration: float) -> dict:
+def generate_comedy_script_with_gemini(title: str, author: str, duration: float) -> dict:
     """
-    Calls OpenRouter (or Gemini fallback) to generate:
+    Calls Google Gemini (primary: gemini-3.5-flash-lite with 500 RPD safe quota) to generate:
     1. Continuous natural scene cut matching video duration
     2. Adam voiceover lines with SILENCE POCKETS for meme sounds
     3. Meme sound effect cue points (vine_boom, bruh, wheeze laugh, etc.)
@@ -50,7 +58,6 @@ Return ONLY valid JSON with this exact schema:
 }}
 """
     else:
-        target_dur = min(duration, 40.0)
         prompt = f"""You are a master viral YouTube Shorts / TikTok meme creator and comedy writer.
 A Chinese slapstick comedy creator named "{author}" published a video with title/caption: "{title}".
 Video duration: {duration:.1f} seconds.
@@ -91,67 +98,75 @@ Return ONLY valid JSON with this exact structure:
 }}
 """
 
-    # 1. Try OpenRouter First (Free Tier)
-    if OPENROUTER_API_KEY:
-        for model in ["openrouter/free", "google/gemma-4-31b-it:free"]:
-            try:
-                print(f"[AI Script] Trying OpenRouter model '{model}'...")
-                req = urllib.request.Request(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    data=json.dumps({
-                        "model": model,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": 0.7
-                    }).encode("utf-8"),
-                    headers={
-                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": "https://github.com/chandan805026/ai-youtube-shorts-generator",
-                        "X-Title": "Shorts Generator"
-                    }
-                )
-                with urllib.request.urlopen(req, timeout=30) as resp:
-                    res = json.loads(resp.read().decode("utf-8"))
-                    raw = res["choices"][0]["message"]["content"]
-                    m = re.search(r'\{.*\}', raw, re.DOTALL)
-                    if m:
-                        script_data = json.loads(m.group(0))
-                        print(f"[AI Script] OpenRouter ({model}) generated custom viral script ({len(script_data.get('speech', []))} lines)!")
-                        return script_data
-            except Exception as e:
-                print(f"[AI Script] OpenRouter model '{model}' failed: {e}")
-
-    # 2. Try Gemini if configured
+    # 1. PRIMARY: Official Google Gemini with high-quota Flash Lite models
     if GEMINI_API_KEY:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+        for model_name in GEMINI_MODELS:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"response_mime_type": "application/json", "temperature": 0.7}
+                "generationConfig": {
+                    "response_mime_type": "application/json",
+                    "temperature": 0.7
+                }
             }
+            try:
+                print(f"[AI Script] Calling Google Gemini model '{model_name}' (Safe 500 RPD Tier)...")
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    m = re.search(r'\{.*\}', text, re.DOTALL)
+                    if m:
+                        script_data = json.loads(m.group(0))
+                        print(f"[AI Script] Google Gemini ({model_name}) generated custom viral script ({len(script_data.get('speech', []))} lines)!")
+                        return script_data
+            except urllib.error.HTTPError as e:
+                print(f"[AI Script] Google Gemini '{model_name}' HTTP {e.code}: {e.reason}")
+                if e.code == 429:
+                    print("[AI Script] Rate limit hit. Backing off 5s before fallback model...")
+                    time.sleep(5)
+            except Exception as e:
+                print(f"[AI Script] Google Gemini error: {e}")
+
+    # 2. SECONDARY: OpenRouter Fallback (if Gemini is unavailable)
+    if OPENROUTER_API_KEY:
+        try:
+            print("[AI Script] Attempting OpenRouter backup...")
             req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"}
+                "https://openrouter.ai/api/v1/chat/completions",
+                data=json.dumps({
+                    "model": "openrouter/free",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7
+                }).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://github.com/chandan805026/ai-youtube-shorts-generator",
+                    "X-Title": "Shorts Generator"
+                }
             )
             with urllib.request.urlopen(req, timeout=30) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                text = data["candidates"][0]["content"]["parts"][0]["text"]
-                m = re.search(r'\{.*\}', text, re.DOTALL)
+                res = json.loads(resp.read().decode("utf-8"))
+                raw = res["choices"][0]["message"]["content"]
+                m = re.search(r'\{.*\}', raw, re.DOTALL)
                 if m:
                     script_data = json.loads(m.group(0))
-                    print(f"[AI Script] Gemini generated custom viral script ({len(script_data.get('speech', []))} lines)!")
+                    print(f"[AI Script] Backup OpenRouter generated script ({len(script_data.get('speech', []))} lines)!")
                     return script_data
         except Exception as e:
-            print(f"[AI Script] Gemini API error: {e}")
+            print(f"[AI Script] Backup OpenRouter error: {e}")
 
     print("[AI Script] Using high-retention default comedy template.")
     return get_fallback_template(duration)
 
 
-# Alias for backwards compatibility with existing pipeline
-def generate_comedy_script_with_gemini(title: str, author: str, duration: float) -> dict:
-    return generate_comedy_script_with_ai(title, author, duration)
+def generate_comedy_script_with_ai(title: str, author: str, duration: float) -> dict:
+    return generate_comedy_script_with_gemini(title, author, duration)
 
 
 def get_fallback_template(duration: float) -> dict:
