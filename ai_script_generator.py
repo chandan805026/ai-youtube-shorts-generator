@@ -65,7 +65,7 @@ Video duration: {duration:.1f} seconds.
 Your task is to turn this into a viral 30-40 second Western meme Short with Adam voiceover.
 
 CRITICAL RULES:
-1. CONTINUOUS STORY FLOW: If duration > 50s, select ONE continuous 30-40 second segment where the main comedy action happens. DO NOT do choppy micro-cuts. If duration <= 40s, use cut_start: 0, cut_end: {duration:.1f}.
+1. CONTINUOUS STORY FLOW & TIMESTAMPS: If duration > 50s, select ONE continuous 30-40 second segment where the main comedy action happens. All timestamps in speech, sfx, and subtitles MUST start at 0.0 (relative to the cut, e.g. 0.5, 4.0, 12.0) and must NEVER exceed duration!
 2. VOCAL PAUSES / MEME POCKETS: Leave 1.0 to 1.5 seconds of silence between spoken lines whenever a meme sound effect plays, so the voiceover and meme sound NEVER overlap!
 3. VOICE TONE: Deadpan, sarcastic, Gen-Z / British & American meme reaction style ("Bro really thought...", "Absolute legend", "When you realize...", "Wait for it 💀").
 4. MEME SFX: Choose from available vault sounds:
@@ -92,7 +92,7 @@ Return ONLY valid JSON with this exact structure:
     ["bruh.mp3", start_sec, gain_float]
   ],
   "subtitles": [
-    {{"start": start_sec, "end": end_sec, "style": "CenterHook", "text": "Hook text\\NSecond line 💀"}},
+    {{"start": start_sec, "end": end_sec, "style": "CenterHook", "text": "Hook text 💀"}},
     {{"start": start_sec, "end": end_sec, "style": "CenterPunch", "text": "PUNCHLINE! 🚨"}}
   ]
 }}
@@ -119,6 +119,9 @@ Return ONLY valid JSON with this exact structure:
                 with urllib.request.urlopen(req, timeout=30) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    # Sanitize any invalid escape sequences before json.loads
+                    text = re.sub(r'\\N', ' ', text)
+                    text = re.sub(r'\\(?![/"\\bfnrtu])', r'\\\\', text)
                     m = re.search(r'\{.*\}', text, re.DOTALL)
                     if m:
                         script_data = json.loads(m.group(0))
