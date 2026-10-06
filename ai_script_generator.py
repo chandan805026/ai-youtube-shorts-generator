@@ -3,32 +3,64 @@ import sys
 import json
 import urllib.request
 import urllib.error
+import re
 
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 
-def generate_comedy_script_with_gemini(title: str, author: str, duration: float) -> dict:
+def generate_comedy_script_with_ai(title: str, author: str, duration: float) -> dict:
     """
-    Calls Gemini API to generate:
-    1. Continuous natural scene cut (35 to 45 seconds, no choppy jumps)
+    Calls OpenRouter (or Gemini fallback) to generate:
+    1. Continuous natural scene cut matching video duration
     2. Adam voiceover lines with SILENCE POCKETS for meme sounds
-    3. Meme sound effect cue points (Vine boom, Bruh, Inception, Wheeze laugh, etc.)
+    3. Meme sound effect cue points (vine_boom, bruh, wheeze laugh, etc.)
     4. Center-Screen Eye-Level Safe Zone Subtitles (MarginV: 420)
     """
-    if not GEMINI_API_KEY:
-        print("[AI Script] No GEMINI_API_KEY found, using high-retention default comedy template.")
-        return get_fallback_template(duration)
+    is_short = duration <= 16.0
 
-    prompt = f"""You are a master viral YouTube Shorts / TikTok meme creator and comedy writer.
+    if is_short:
+        prompt = f"""You are a master viral YouTube Shorts comedy writer.
+A Chinese comedy video by '{author}' is titled: '{title}'.
+Video duration: {duration:.1f} seconds.
+
+CRITICAL INSTRUCTIONS FOR SHORT VIDEO:
+Since the video is only {duration:.1f} seconds long:
+1. cut_start must be 0.0 and cut_end must be {duration:.1f}. duration must be {duration:.1f}.
+2. Provide 1 to 2 very short, punchy, hilarious meme roast voiceover lines that fit completely before {max(1.0, duration - 1.0):.1f} seconds.
+3. Add 1 or 2 meme sound effects (e.g., 'vine_boom.mp3', 'bruh.mp3', 'oh_no_wheeze_laugh.mp3') timed with the action.
+4. Add safe zone center subtitles.
+
+Return ONLY valid JSON with this exact schema:
+{{
+  "cut_start": 0.0,
+  "cut_end": {duration:.1f},
+  "duration": {duration:.1f},
+  "speech": [
+    ["01", 0.5, "Short hook line..."],
+    ["02", 3.5, "Punchline reaction..."]
+  ],
+  "sfx": [
+    ["vine_boom.mp3", 3.0, 0.9]
+  ],
+  "subtitles": [
+    {{"start": 0.5, "end": 3.0, "style": "CenterHook", "text": "HOOK TEXT 💀"}},
+    {{"start": 3.5, "end": {duration:.1f}, "style": "CenterPunch", "text": "PUNCHLINE! 😭"}}
+  ]
+}}
+"""
+    else:
+        target_dur = min(duration, 40.0)
+        prompt = f"""You are a master viral YouTube Shorts / TikTok meme creator and comedy writer.
 A Chinese slapstick comedy creator named "{author}" published a video with title/caption: "{title}".
 Video duration: {duration:.1f} seconds.
 
-Your task is to turn this into a viral 35-42 second Western meme Short with Adam voiceover.
+Your task is to turn this into a viral 30-40 second Western meme Short with Adam voiceover.
 
 CRITICAL RULES:
-1. CONTINUOUS STORY FLOW: If duration > 60s, select ONE continuous 35-42 second segment where the main comedy action happens (e.g. from 0 to 40, or from 45 to 85). DO NOT do choppy micro-cuts.
-2. VOCAL PAUSES / MEME POCKETS: Leave 1.0 to 1.5 seconds of silence between spoken lines whenever a meme sound effect plays, so the voiceover and meme sound NEVER overlap or clash!
-3. VOICE TONE: Deadpan, sarcastic, Gen-Z / YouTuber reaction style ("When your wife...", "Bro really thought...", "Absolute legend", "Massive W").
+1. CONTINUOUS STORY FLOW: If duration > 50s, select ONE continuous 30-40 second segment where the main comedy action happens. DO NOT do choppy micro-cuts. If duration <= 40s, use cut_start: 0, cut_end: {duration:.1f}.
+2. VOCAL PAUSES / MEME POCKETS: Leave 1.0 to 1.5 seconds of silence between spoken lines whenever a meme sound effect plays, so the voiceover and meme sound NEVER overlap!
+3. VOICE TONE: Deadpan, sarcastic, Gen-Z / British & American meme reaction style ("Bro really thought...", "Absolute legend", "When you realize...", "Wait for it 💀").
 4. MEME SFX: Choose from available vault sounds:
    - 'vine_boom.mp3' (shock / impact)
    - 'bruh.mp3' (disbelief / freeze)
@@ -59,34 +91,90 @@ Return ONLY valid JSON with this exact structure:
 }}
 """
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "response_mime_type": "application/json",
-            "temperature": 0.7
-        }
-    }
+    # 1. Try OpenRouter First (Free Tier)
+    if OPENROUTER_API_KEY:
+        for model in ["openrouter/free", "google/gemma-4-31b-it:free"]:
+            try:
+                print(f"[AI Script] Trying OpenRouter model '{model}'...")
+                req = urllib.request.Request(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    data=json.dumps({
+                        "model": model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.7
+                    }).encode("utf-8"),
+                    headers={
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://github.com/chandan805026/ai-youtube-shorts-generator",
+                        "X-Title": "Shorts Generator"
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    res = json.loads(resp.read().decode("utf-8"))
+                    raw = res["choices"][0]["message"]["content"]
+                    m = re.search(r'\{.*\}', raw, re.DOTALL)
+                    if m:
+                        script_data = json.loads(m.group(0))
+                        print(f"[AI Script] OpenRouter ({model}) generated custom viral script ({len(script_data.get('speech', []))} lines)!")
+                        return script_data
+            except Exception as e:
+                print(f"[AI Script] OpenRouter model '{model}' failed: {e}")
 
-    try:
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            text = data["candidates"][0]["content"]["parts"][0]["text"]
-            script_data = json.loads(text)
-            print(f"[AI Script] Gemini generated custom viral script ({len(script_data.get('speech', []))} lines)!")
-            return script_data
-    except Exception as e:
-        print(f"[AI Script] Gemini API error: {e}. Using fallback template.")
-        return get_fallback_template(duration)
+    # 2. Try Gemini if configured
+    if GEMINI_API_KEY:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"response_mime_type": "application/json", "temperature": 0.7}
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text = data["candidates"][0]["content"]["parts"][0]["text"]
+                m = re.search(r'\{.*\}', text, re.DOTALL)
+                if m:
+                    script_data = json.loads(m.group(0))
+                    print(f"[AI Script] Gemini generated custom viral script ({len(script_data.get('speech', []))} lines)!")
+                    return script_data
+        except Exception as e:
+            print(f"[AI Script] Gemini API error: {e}")
+
+    print("[AI Script] Using high-retention default comedy template.")
+    return get_fallback_template(duration)
+
+
+# Alias for backwards compatibility with existing pipeline
+def generate_comedy_script_with_gemini(title: str, author: str, duration: float) -> dict:
+    return generate_comedy_script_with_ai(title, author, duration)
 
 
 def get_fallback_template(duration: float) -> dict:
-    """High-retention template with continuous scene cut and zero audio clashing."""
+    """High-retention template adapted to duration with zero audio clashing."""
+    if duration <= 16.0:
+        return {
+            "cut_start": 0.0,
+            "cut_end": duration,
+            "duration": duration,
+            "speech": [
+                ("01", 0.5, "Wait for it... Bro really thought nobody was watching."),
+                ("02", max(2.5, duration - 4.0), "Absolute chaos! You cannot make this up.")
+            ],
+            "sfx": [
+                ("vine_boom.mp3", max(2.0, duration - 4.5), 0.95),
+                ("oh_no_wheeze_laugh.mp3", max(4.0, duration - 2.5), 1.0)
+            ],
+            "subtitles": [
+                {"start": 0.5, "end": max(2.5, duration - 4.0), "style": "CenterHook", "text": "WAIT FOR IT... 💀"},
+                {"start": max(2.5, duration - 4.0), "end": duration, "style": "CenterPunch", "text": "ABSOLUTE CHAOS! 😭🚨"}
+            ]
+        }
+
     cut_len = min(duration, 38.0)
     return {
         "cut_start": 0.0,
