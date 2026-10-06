@@ -107,16 +107,46 @@ def run_pipeline(url_or_id: str, upload: bool = False):
         if not os.path.exists(clip_path) or os.path.getsize(clip_path) < 100:
             engine = synthesize_speech(line_text, clip_path)
             print(f"-> [{code}] ({engine}): {line_text[:40]}...")
-        speech_clips.append({"path": clip_path, "start": start_t})
+        # Normalize timestamp to be relative to the cut (0 to cut_dur)
+        rel_st = float(start_t)
+        if cut_st > 0 and rel_st >= cut_st:
+            rel_st = rel_st - cut_st
+        rel_st = max(0.0, min(rel_st, max(0.0, cut_dur - 1.5)))
+        speech_clips.append({"path": clip_path, "start": rel_st})
 
     # 6. Audio Mixing (Meme SFX with Silence Pockets)
     print("\n[Step 5/5] Mixing meme SFX & BGM groove (Zero sound clashing)...")
     master_audio = os.path.join(BASE_DIR, f"master_audio_{photo_id}.wav")
-    mix_master_audio(speech_clips, script.get("sfx", []), cut_dur, master_audio)
+    norm_sfx = []
+    for sf in script.get("sfx", []):
+        if len(sf) >= 2:
+            s_name = sf[0]
+            s_t = float(sf[1])
+            s_gain = float(sf[2]) if len(sf) >= 3 else 1.0
+            if cut_st > 0 and s_t >= cut_st:
+                s_t = s_t - cut_st
+            s_t = max(0.0, min(s_t, cut_dur))
+            norm_sfx.append((s_name, s_t, s_gain))
+    mix_master_audio(speech_clips, norm_sfx, cut_dur, master_audio)
 
     # 7. Subtitles & Final Render
+    norm_subs = []
+    for sub in script.get("subtitles", []):
+        st = float(sub.get("start", 0.0))
+        et = float(sub.get("end", 0.0))
+        if cut_st > 0 and st >= cut_st:
+            st = st - cut_st
+            et = et - cut_st
+        st = max(0.0, min(st, cut_dur))
+        et = max(st + 0.5, min(et, cut_dur))
+        norm_subs.append({
+            "start": st,
+            "end": et,
+            "style": sub.get("style", "CenterPunch"),
+            "text": sub.get("text", "")
+        })
     ass_file = os.path.join(BASE_DIR, f"subtitles_{photo_id}.ass")
-    build_ass_subtitles(script.get("subtitles", []), ass_file)
+    build_ass_subtitles(norm_subs, ass_file)
 
     final_short = os.path.join(BASE_DIR, f"viral_short_{photo_id}.mp4")
     render_final_short(sliced_video, master_audio, ass_file, final_short)
