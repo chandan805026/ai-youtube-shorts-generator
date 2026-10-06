@@ -38,6 +38,7 @@ jobs:
         env:
           ELEVENLABS_KEYS_POOL: ${{ secrets.ELEVENLABS_KEYS_POOL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           python pipeline.py --url "${{ github.event.inputs.video_url }}"
 
