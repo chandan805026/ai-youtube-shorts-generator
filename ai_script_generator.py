@@ -56,44 +56,39 @@ def generate_comedy_script_with_gemini(video_path: str, caption: str, author: st
 
             print(f"[AI Script] Video active on Gemini cloud ({vf.name}). Prompting Gemini 3.5 Flash Lite...")
 
-            target_scene_len = min(total_duration, 38.0)
-            vision_prompt = f"""You are a master viral YouTube Shorts comedy writer and British deadpan narrator (BBC Wildlife Documentary meets sarcastic UK comedian like Adam/David Attenborough).
-You just watched the provided video footage.
+            target_scene_len = min(total_duration, 35.0)
+            vision_prompt = f"""You are a master viral YouTube Shorts comedy writer and British deadpan narrator (BBC Wildlife Documentary meets sarcastic UK comedian like Adam / David Attenborough).
 
-Write an authentic, hilarious English voiceover roast script that narrates the EXACT STORY happening on screen.
+You have full multimodal vision and audio capabilities.
+CRITICAL MISSION: Listen to the spoken Chinese dialogue in this video AND watch the video action carefully. Your goal is to explain and roast this situation for UK and Western audiences who don't speak Chinese!
 
-CRITICAL STORYTELLING RULES:
-1. FACTUAL STORY NARRATION:
-   - Identify the exact visual sequence:
-     - Who is doing what at the start?
-     - Who spots them / snitches on them?
-     - Who is being informed (e.g. eating from a bowl, sitting at home)?
-     - What is the panic, what clever or ridiculous disguise or trick is pulled (e.g. twisting clothes into a top, putting on a wig, hiding in plain sight)?
-     - What happens when the confrontational person arrives (e.g. walking right past them, complete confusion, survival)?
-   - Reference their EXACT clothing, items, expressions, and funny physical actions.
-2. CHARACTERS & TONE:
-   - Give them witty British nicknames (e.g., Darren, Brenda, Gary, Arthur, Susan).
-   - Tone: Deadpan British documentary sarcasm, witty observation of disastrous life choices and genius survivals.
-   - STRICTLY FORBIDDEN: NEVER use cheap generic AI filler phrases like 'Bro thought', 'Wait for it', 'Absolute cinema', 'Heist', 'Legendary difficulty', 'Bro really thought'.
-3. SCENE SELECTION & TIMESTAMPS:
-   - If the video is longer than 45 seconds, identify the single funniest continuous scene (cut_start and cut_end, lasting 30 to 40 seconds).
-   - If video is <= 45 seconds, set cut_start: 0.0, cut_end: {total_duration:.1f}, duration: {total_duration:.1f}.
-   - CRITICAL: All timestamps in 'speech', 'sfx', and 'subtitles' MUST be strictly 0-indexed relative to the start of the scene (from 0.0 to duration).
-   - Space speech lines with 1.0 - 1.5 seconds gap so meme sound effects have dedicated silence pockets.
-   - Each spoken line should be 1-2 punchy sentences.
-4. MEME SFX & SILENCE POCKETS:
-   - Choose 3-5 SFX from:
-     'vine_boom.mp3', 'bruh.mp3', 'ding_idea.mp3', 'fbi_open_up.mp3', 'wait_a_minute.mp3', 'oh_no_wheeze_laugh.mp3', 'Metal Boom.mp3', 'WOW.mp3'.
-   - Place SFX precisely at comedic beats (spotting, alarm, disguise reveal, near miss).
-5. CENTER-SAFE SUBTITLES:
-   - Create synchronized subtitle segments matching the spoken dialogue with emojis.
+STEP 1: MULTIMODAL AUDIO & DIALOGUE COMPREHENSION
+- Listen to what the characters are saying/shouting in Chinese:
+  - Who spots the secret game and what do they shout?
+  - What does the snitch report to the wife (e.g. eating her meal)?
+  - What warning is shouted when the wife approaches?
+  - What panic ensues, what disguise is constructed (twisting clothes, slapping on a wig)?
+  - What do the approaching people say when they arrive and look around confused?
+- Match the spoken Chinese words with their exact physical slapstick actions.
 
-Return ONLY valid JSON matching this exact schema:
+STEP 2: UK / WESTERN ROAST ADAPTATION (FOR ELEVENLABS ADAM)
+- Explain the hilarious situation to Western viewers who don't speak Chinese with BBC documentary mock seriousness and dry British wit.
+- Give characters witty British names (e.g. Darren, Brenda, Susan).
+- Highlight the contrast between what was said, the snitch's drama, and the absurd disguise (e.g. turning a string vest into an evening halterneck top and slapping on a wig found in a hedge).
+- STRICTLY FORBIDDEN: NEVER use cheap generic AI clichés ('Bro thought', 'Wait for it', 'Absolute cinema', 'Heist', 'Legendary difficulty').
+
+STEP 3: SCENE CUTTING & SYNCHRONIZATION (~30-35s)
+- If total duration is long compilation (>45s), select the single funniest continuous scene (cut_start to cut_end, duration 30 to 36 seconds). If <= 45s, cut_start=0.0, cut_end={total_duration:.1f}, duration={min(total_duration, 35.0):.1f}.
+- Write 4 to 5 punchy voiceover lines for Adam, spaced with 1.0 - 1.5s silence pockets for meme sound effects.
+- Include 3-4 meme SFX from ('vine_boom.mp3', 'bruh.mp3', 'ding_idea.mp3', 'oh_no_wheeze_laugh.mp3') timed right after key revelations.
+- Add center eye-level safe zone subtitles with emojis.
+
+Return ONLY valid JSON with this exact schema:
 {{
   "cut_start": float,
   "cut_end": float,
   "duration": float,
-  "title": "Short catchy title",
+  "title": "Short punchy title",
   "speech": [
     ["01", 0.5, "Line 1..."],
     ["02", 7.0, "Line 2..."],
@@ -110,8 +105,8 @@ Return ONLY valid JSON matching this exact schema:
   "subtitles": [
     {{"start": 0.5, "end": 6.5, "style": "CenterHook", "text": "SUBTITLE LINE 💀"}},
     {{"start": 7.0, "end": 14.0, "style": "CenterPunch", "text": "SUBTITLE LINE 🚨"}},
-    {{"start": 14.5, "end": 21.5, "style": "CenterPunch", "text": "SUBTITLE LINE 💇"}},
-    {{"start": 22.0, "end": 28.5, "style": "CenterPunch", "text": "SUBTITLE LINE 🤫"}},
+    {{"start": 14.5, "end": 21.5, "style": "CenterPunch", "text": "SUBTITLE LINE 🍚"}},
+    {{"start": 22.0, "end": 28.5, "style": "CenterPunch", "text": "SUBTITLE LINE 💇"}},
     {{"start": 29.5, "end": 34.5, "style": "CenterPunch", "text": "SUBTITLE LINE 👑"}}
   ]
 }}
