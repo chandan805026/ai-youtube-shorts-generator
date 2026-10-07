@@ -1,0 +1,75 @@
+name: Scheduled Viral Shorts Publisher (Two-Engine System)
+
+on:
+  schedule:
+    # Runs twice a day: 12:00 PM IST (06:30 UTC) and 06:00 PM IST (12:30 UTC)
+    - cron: '30 6,12 * * *'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'publish_next'
+        type: choice
+        options:
+          - publish_next
+          - harvest_only
+      upload_youtube:
+        description: 'Upload directly to YouTube'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  publish-short:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Execute Engine Publisher
+        env:
+          ELEVENLABS_KEYS_POOL: ${{ secrets.ELEVENLABS_KEYS_POOL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          if [ "${{ github.event.inputs.action }}" = "harvest_only" ]; then
+            python engine_harvester.py
+          else
+            python engine_publisher.py
+          fi
+
+      - name: Upload Generated Short Preview Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scheduled-viral-short
+          path: viral_short.mp4
+          retention-days: 7
+
+      - name: Commit & Sync Queue State to Repository
+        run: |
+          git config --global user.name "Shorts Automation Engine"
+          git config --global user.email "shorts-bot@automation.local"
+          git add links.txt queue_state.json raw_scenes/ || true
+          git diff-index --quiet HEAD || git commit -m "Auto-Queue: Processed scene, synced state & links [skip ci]"
+          git push || echo "No changes to sync"
