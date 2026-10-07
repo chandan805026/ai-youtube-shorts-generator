@@ -116,12 +116,6 @@ def download_and_transcode(video_info: dict, output_dir: str = SCRATCH_DIR) -> s
     photo_id = video_info["photo_id"]
     playable_path = os.path.join(output_dir, f"playable_{photo_id}.mp4")
 
-    # Check if previously generated file exists
-    known_cache = os.path.join(output_dir, "kuaishou_chuan_gege_playable.mp4")
-    if photo_id == "3xnhw787utiscgu" and os.path.exists(known_cache) and os.path.getsize(known_cache) > 1000:
-        print(f"[Downloader] Using existing cached playable video: {known_cache}")
-        return known_cache
-
     if os.path.exists(playable_path) and os.path.getsize(playable_path) > 1000:
         print(f"[Downloader] Found cached playable H.264 video: {playable_path}")
         return playable_path
