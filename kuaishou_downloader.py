@@ -27,6 +27,10 @@ def extract_photo_id(url: str) -> str:
     if m:
         return m.group(1)
     
+    m_pid = re.search(r'photoId=([a-zA-Z0-9_\-]+)', url)
+    if m_pid:
+        return m_pid.group(1)
+
     m2 = re.search(r'fid=([a-zA-Z0-9_\-]+)', url)
     if m2:
         return m2.group(1)
@@ -35,12 +39,20 @@ def extract_photo_id(url: str) -> str:
 
 
 def resolve_short_link_if_needed(raw_url: str) -> str:
-    """Only resolve if it is a short link like v.kuaishou.com."""
+    """Only resolve if it is a short link like v.kuaishou.com by inspecting 302 Location."""
     if "v.kuaishou.com" in raw_url:
-        req = urllib.request.Request(raw_url, headers={"User-Agent": IPHONE_UA})
         try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                return resp.geturl()
+            r = requests.head(raw_url, headers={"User-Agent": IPHONE_UA}, allow_redirects=False, timeout=8)
+            loc = r.headers.get("Location")
+            if loc:
+                return loc
+        except Exception:
+            pass
+        try:
+            r = requests.get(raw_url, headers={"User-Agent": IPHONE_UA}, allow_redirects=False, timeout=8)
+            loc = r.headers.get("Location")
+            if loc:
+                return loc
         except Exception:
             pass
     return raw_url

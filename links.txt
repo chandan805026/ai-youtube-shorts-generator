@@ -2,4 +2,4 @@
 # Har line par ek Kuaishou / Douyin URL daliye.
 # Engine 1 yahan se ek-ek video uthayega, scenes kaat kar banayega, aur pura hone par URL delete karega.
 
-https://c.kuaishou.com/fw/photo/3xxm7rvjqv37keu
+https://c.kuaishou.com/fw/photo/3xn3pp4gghm5pa4
