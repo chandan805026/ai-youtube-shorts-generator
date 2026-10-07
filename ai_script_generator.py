@@ -23,6 +23,32 @@ GEMINI_MODELS = [
 ]
 
 
+def normalize_script_data(data: dict, total_duration: float) -> dict:
+    """
+    Ensures edit_segments is a clean list of (start, end) tuples and
+    calculates the exact resulting edited duration.
+    """
+    raw_segs = data.get("edit_segments") or data.get("segments")
+    norm_segs = []
+    if raw_segs and isinstance(raw_segs, list):
+        for item in raw_segs:
+            if isinstance(item, (list, tuple)) and len(item) >= 2:
+                norm_segs.append((max(0.0, float(item[0])), min(total_duration, float(item[1]))))
+            elif isinstance(item, dict) and "start" in item and "end" in item:
+                norm_segs.append((max(0.0, float(item["start"])), min(total_duration, float(item["end"]))))
+
+    if not norm_segs:
+        if total_duration > 65.0:
+            norm_segs = [(0.0, min(total_duration, 60.0))]
+        else:
+            norm_segs = [(0.0, total_duration)]
+
+    edited_duration = sum([max(0.0, et - st) for st, et in norm_segs])
+    data["edit_segments"] = norm_segs
+    data["edited_duration"] = edited_duration
+    return data
+
+
 def generate_comedy_script_with_gemini(video_path: str, caption: str, author: str, total_duration: float) -> dict:
     """
     Analyzes the actual video with Gemini 3.5 Flash Lite Vision to produce:
@@ -56,8 +82,37 @@ def generate_comedy_script_with_gemini(video_path: str, caption: str, author: st
 
             print(f"[AI Script] Video active on Gemini cloud ({vf.name}). Prompting Gemini 3.5 Flash Lite...")
 
-            target_scene_len = min(total_duration, 35.0)
-            vision_prompt = f"""You are a master viral YouTube Shorts comedy writer and British deadpan narrator (BBC Wildlife Documentary meets sarcastic UK comedian like Adam / David Attenborough).
+            is_long = (total_duration > 65.0)
+            if is_long:
+                editing_instructions = f"""STEP 3: SMART 1-MINUTE EDITING & TIMELINE COMPRESSION
+This raw comedy skit is {total_duration:.1f} seconds long. For viral YouTube Shorts retention, edit this skit down to around 1 minute (Target: 50 to 65 seconds total; slight overage like 60-68s is completely fine).
+
+SMART EDITING RULES:
+1. REMOVE BORING DEAD AREAS:
+   - Identify and cut out long awkward silences, slow walking, slow setups, repetitive filler reactions, or dead transition time.
+2. PRESERVE CRITICAL CONTEXT (SETUP):
+   - Do NOT cut out the essential story setup! Viewers must clearly understand what the secret game/prank is, who is snitching, and why everyone is panicking.
+3. PRESERVE COMEDIC CLIMAX & PUNCHLINES:
+   - Keep the hilarious disguise moment (twisting clothes, slapping on a wig), the approaching danger, and the climax reactions.
+4. SPECIFY EDIT SEGMENTS:
+   - Provide "edit_segments": [[start1, end1], [start2, end2], ...]
+   - The total sum of segment durations must be approximately 50 to 65 seconds (if 1 continuous segment captures the full comedy, you can provide [[start, end]]).
+5. TIMELINE SYNCHRONIZATION:
+   - Liam's speech lines ("speech"), meme sounds ("sfx"), and subtitles MUST be timed relative to the RESULTING STITCHED VIDEO TIMELINE (starting at 0.0 up to total edited duration)!
+   - Provide 5 to 7 punchy voiceover lines for Liam, spaced with 1.0 - 1.5s silence pockets for meme sound effects.
+   - Include 4-5 meme SFX from ('vine_boom.mp3', 'bruh.mp3', 'ding_idea.mp3', 'oh_no_wheeze_laugh.mp3') timed right after key revelations.
+   - Add center eye-level safe zone subtitles with emojis.
+"""
+            else:
+                editing_instructions = f"""STEP 3: COMEDY SCRIPT SYNCHRONIZATION (~{total_duration:.1f}s)
+This video is already within the ideal short duration ({total_duration:.1f}s).
+Keep the whole clip: "edit_segments": [[0.0, {total_duration:.1f}]]
+Write 4 to 6 punchy voiceover lines for Liam, spaced with 1.0 - 1.5s silence pockets for meme sound effects.
+Include 3-4 meme SFX from ('vine_boom.mp3', 'bruh.mp3', 'ding_idea.mp3', 'oh_no_wheeze_laugh.mp3') timed right after key revelations.
+Add center eye-level safe zone subtitles with emojis.
+"""
+
+            vision_prompt = f"""You are a master viral YouTube Shorts comedy writer and British deadpan narrator (BBC Wildlife Documentary meets sarcastic UK comedian like Adam / Liam).
 
 You have full multimodal vision and audio capabilities.
 CRITICAL MISSION: Listen to the spoken Chinese dialogue in this video AND watch the video action carefully. Your goal is to explain and roast this situation for UK and Western audiences who don't speak Chinese!
@@ -77,37 +132,37 @@ STEP 2: UK / WESTERN ROAST ADAPTATION (FOR ELEVENLABS LIAM - VIRAL COMEDY CREATO
 - Highlight the contrast between what was said, the snitch's drama, and the absurd disguise (e.g. turning a string vest into an evening halterneck top and slapping on a wig found in a hedge).
 - STRICTLY FORBIDDEN: NEVER use cheap generic AI clichés ('Bro thought', 'Wait for it', 'Absolute cinema', 'Heist', 'Legendary difficulty').
 
-STEP 3: SCENE CUTTING & SYNCHRONIZATION (~30-35s)
-- If total duration is long compilation (>45s), select the single funniest continuous scene (cut_start to cut_end, duration 30 to 36 seconds). If <= 45s, cut_start=0.0, cut_end={total_duration:.1f}, duration={min(total_duration, 35.0):.1f}.
-- Write 4 to 5 punchy voiceover lines for Liam, spaced with 1.0 - 1.5s silence pockets for meme sound effects.
-- Include 3-4 meme SFX from ('vine_boom.mp3', 'bruh.mp3', 'ding_idea.mp3', 'oh_no_wheeze_laugh.mp3') timed right after key revelations.
-- Add center eye-level safe zone subtitles with emojis.
+{editing_instructions}
 
 Return ONLY valid JSON with this exact schema:
 {{
-  "cut_start": float,
-  "cut_end": float,
-  "duration": float,
+  "edit_segments": [
+    [0.0, 22.0],
+    [45.0, 85.0]
+  ],
+  "edited_duration": 62.0,
   "title": "Short punchy title",
   "speech": [
     ["01", 0.5, "Line 1..."],
-    ["02", 7.0, "Line 2..."],
-    ["03", 14.5, "Line 3..."],
-    ["04", 22.0, "Line 4..."],
-    ["05", 29.5, "Line 5..."]
+    ["02", 9.0, "Line 2..."],
+    ["03", 18.5, "Line 3..."],
+    ["04", 28.0, "Line 4..."],
+    ["05", 38.0, "Line 5..."],
+    ["06", 48.0, "Line 6..."]
   ],
   "sfx": [
-    ["vine_boom.mp3", 6.5, 0.9],
-    ["ding_idea.mp3", 14.0, 0.85],
-    ["bruh.mp3", 21.5, 0.9],
-    ["oh_no_wheeze_laugh.mp3", 29.0, 0.95]
+    ["vine_boom.mp3", 8.0, 0.9],
+    ["ding_idea.mp3", 17.5, 0.85],
+    ["bruh.mp3", 27.0, 0.9],
+    ["oh_no_wheeze_laugh.mp3", 37.0, 0.95]
   ],
   "subtitles": [
-    {{"start": 0.5, "end": 6.5, "style": "CenterHook", "text": "SUBTITLE LINE 💀"}},
-    {{"start": 7.0, "end": 14.0, "style": "CenterPunch", "text": "SUBTITLE LINE 🚨"}},
-    {{"start": 14.5, "end": 21.5, "style": "CenterPunch", "text": "SUBTITLE LINE 🍚"}},
-    {{"start": 22.0, "end": 28.5, "style": "CenterPunch", "text": "SUBTITLE LINE 💇"}},
-    {{"start": 29.5, "end": 34.5, "style": "CenterPunch", "text": "SUBTITLE LINE 👑"}}
+    {{"start": 0.5, "end": 8.0, "style": "CenterHook", "text": "SUBTITLE LINE 💀"}},
+    {{"start": 9.0, "end": 17.5, "style": "CenterPunch", "text": "SUBTITLE LINE 🚨"}},
+    {{"start": 18.5, "end": 27.0, "style": "CenterPunch", "text": "SUBTITLE LINE 🍚"}},
+    {{"start": 28.0, "end": 37.0, "style": "CenterPunch", "text": "SUBTITLE LINE 💇"}},
+    {{"start": 38.0, "end": 47.0, "style": "CenterPunch", "text": "SUBTITLE LINE 👗"}},
+    {{"start": 48.0, "end": 56.0, "style": "CenterPunch", "text": "SUBTITLE LINE 👑"}}
   ]
 }}
 """
@@ -135,7 +190,8 @@ Return ONLY valid JSON with this exact schema:
             m = re.search(r'\{.*\}', raw_json, re.DOTALL)
             if m:
                 script_data = json.loads(m.group(0))
-                print(f"[AI Script] Gemini Vision successfully crafted script ({len(script_data.get('speech', []))} lines) based on REAL video events!")
+                script_data = normalize_script_data(script_data, total_duration)
+                print(f"[AI Script] Gemini Vision successfully crafted script ({len(script_data.get('speech', []))} lines, {len(script_data.get('edit_segments', []))} edit segments, {script_data.get('edited_duration', 0):.1f}s) based on REAL video events!")
                 return script_data
 
         except Exception as e:
@@ -227,6 +283,8 @@ def get_fallback_template(duration: float) -> dict:
     """High-retention template adapted to duration with zero audio clashing."""
     cut_len = min(duration, 35.0)
     return {
+        "edit_segments": [(0.0, cut_len)],
+        "edited_duration": cut_len,
         "cut_start": 0.0,
         "cut_end": cut_len,
         "duration": cut_len,

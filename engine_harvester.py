@@ -75,13 +75,14 @@ def remove_current_link(target_url: str):
 
 def detect_top_scenes_with_gemini(video_path: str, total_duration: float, client) -> list:
     """
-    Uses Gemini 3.5 Flash Lite Vision to find 1 to 3 best standalone comedy scenes.
+    Uses Gemini 3.5 Flash Lite Vision to identify complete standalone comedy skits.
+    Does NOT enforce artificial short time-limits at harvest stage; preserves full narrative.
     """
-    if total_duration <= 45.0:
-        print(f"[Harvester] Short video ({total_duration:.1f}s) -> 1 complete scene.")
+    if total_duration <= 65.0:
+        print(f"[Harvester] Short video ({total_duration:.1f}s) -> 1 complete skit.")
         return [{"start": 0.0, "end": total_duration, "title": "Full Skit"}]
 
-    print(f"[Harvester] Long compilation ({total_duration:.1f}s) -> Uploading to Gemini to extract Top 2-3 funniest skits...")
+    print(f"[Harvester] Video ({total_duration:.1f}s) -> Uploading to Gemini to detect complete comedy skits...")
     vf = client.files.upload(file=video_path)
     retries = 0
     while vf.state.name == "PROCESSING" and retries < 30:
@@ -89,22 +90,21 @@ def detect_top_scenes_with_gemini(video_path: str, total_duration: float, client
         vf = client.files.get(name=vf.name)
         retries += 1
 
-    prompt = f"""You are an expert viral video editor and comedy scout.
-You just watched this entire comedy compilation video (Total duration: {total_duration:.1f} seconds).
+    prompt = f"""You are an expert comedy analyst and viral video scout.
+You just watched this comedy video (Total duration: {total_duration:.1f} seconds).
 
-Your task is to identify the Top 1 to 3 BEST, funniest, and most viral standalone comedy skits in this video.
+Your task is to identify the distinct, complete comedy skits or storylines in this video.
 
 CRITICAL RULES:
-1. Each scene must be a complete self-contained story or prank from start to punchline.
-2. Duration of each scene must be between 28 and 38 seconds (never exceed 40 seconds).
-3. Do NOT overlap scenes. Leave boundaries clean.
-4. Rank the funniest scenes first. Max 3 scenes.
+1. NO ARTIFICIAL TIME LIMIT: Do NOT forcefully cap or truncate the scene to 35 seconds. Capture the FULL natural narrative from setup to punchline.
+2. If this entire video is ONE single continuous comedy skit (e.g. 1m 20s, 2m 10s, 2m 35s), return it as 1 single complete scene covering the whole skit!
+3. If this video is a compilation of multiple distinct independent jokes/skits (e.g. separate pranks), identify each distinct skit with its natural start and end (max 3 skits, ranked funniest first).
+4. Do NOT leave out essential setup or punchline boundaries.
 
 Return ONLY valid JSON with this exact structure:
 {{
   "scenes": [
-    {{"start": 12.0, "end": 46.5, "title": "Wig Disguise Skit"}},
-    {{"start": 95.0, "end": 130.0, "title": "Food Stall Prank"}}
+    {{"start": 0.0, "end": {total_duration:.1f}, "title": "Complete Skit"}}
   ]
 }}
 """
@@ -127,13 +127,13 @@ Return ONLY valid JSON with this exact structure:
             data = json.loads(m.group(0))
             scenes = data.get("scenes", [])
             if scenes:
-                print(f"[Harvester] Gemini successfully identified {len(scenes)} top comedy scenes!")
+                print(f"[Harvester] Gemini successfully identified {len(scenes)} complete comedy skit(s)!")
                 return scenes[:3]
     except Exception as e:
         print(f"[Harvester] Error parsing Gemini scene detection: {e}")
 
-    # Fallback if parsing failed: pick first 35 seconds
-    return [{"start": 0.0, "end": min(total_duration, 35.0), "title": "Scene 1"}]
+    # Fallback: store full video as 1 complete skit
+    return [{"start": 0.0, "end": total_duration, "title": "Full Skit"}]
 
 
 def harvest_next() -> bool:
@@ -178,8 +178,8 @@ def harvest_next() -> bool:
     stocked_scenes = []
     for idx, sc in enumerate(detected_scenes):
         st = max(0.0, float(sc.get("start", 0.0)))
-        et = min(total_duration, float(sc.get("end", st + 35.0)))
-        dur = max(10.0, min(et - st, 38.0))
+        et = min(total_duration, float(sc.get("end", total_duration)))
+        dur = max(5.0, et - st)
 
         scene_filename = f"clip_{photo_id}_part{idx+1}.mp4"
         scene_filepath = os.path.join(SCENES_DIR, scene_filename)

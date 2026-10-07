@@ -61,6 +61,25 @@ def slice_and_concat(source_video: str, cut_ranges: list, out_video: str):
     print(f"[Composer] Sliced & stitched {len(cut_ranges)} clips into: {out_video}")
 
 
+def extract_continuous_segment(source_video: str, start_sec: float, dur_sec: float, out_video: str):
+    """
+    Extracts a single continuous clip without re-encoding glitches.
+    """
+    cmd = [
+        FFMPEG_BIN, "-y",
+        "-ss", f"{start_sec:.2f}",
+        "-i", source_video,
+        "-t", f"{dur_sec:.2f}",
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-r", "60",
+        "-an",
+        out_video
+    ]
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    print(f"[Composer] Extracted continuous {dur_sec:.1f}s scene: {out_video}")
+
+
 def render_final_short(video_path: str, audio_path: str, ass_path: str, final_output: str):
     """
     Burns subtitles, maps master audio, and encodes high-quality vertical Short.

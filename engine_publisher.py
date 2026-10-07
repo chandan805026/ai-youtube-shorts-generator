@@ -21,7 +21,7 @@ from ai_script_generator import generate_comedy_script_with_gemini
 from tts_rotator import synthesize_speech
 from audio_sfx_mixer import mix_master_audio
 from subtitle_engine import build_ass_subtitles
-from video_composer import render_final_short
+from video_composer import render_final_short, slice_and_concat, extract_continuous_segment
 import build_meme_vault
 
 
@@ -58,14 +58,41 @@ def publish_one_short(upload: bool = False):
     state = load_state()
     current_link = state.get("current_link", "Unknown Link")
 
-    # 4. Gemini Audio-Visual Scriptwriting (Liam high-energy roast)
-    print("\n[Step 2/5] Gemini listening to Chinese audio & crafting Liam comedy roast...")
+    # 4. Gemini Audio-Visual Scriptwriting + Smart 1-Minute Compression
+    print("\n[Step 2/5] Gemini analyzing video, cutting dead space to ~1 min, and crafting Liam roast...")
     script = generate_comedy_script_with_gemini(
         video_path=target_clip_path,
         caption="Slapstick Comedy Skit",
         author="Kuaishou Creator",
         total_duration=clip_dur
     )
+
+    edit_segments = script.get("edit_segments", [(0.0, clip_dur)])
+    edited_dur = float(script.get("edited_duration", clip_dur))
+
+    # Smart 1-Minute Sultawo Video Preparation
+    prepared_video_path = os.path.join(BASE_DIR, f"prepared_{target_clip_name}")
+    is_trimmed = False
+
+    if len(edit_segments) > 1:
+        print(f"\n[Step 2.5/5] Multi-segment smart trim: stitching {len(edit_segments)} funny scenes into ~{edited_dur:.1f}s Short...")
+        slice_and_concat(target_clip_path, edit_segments, prepared_video_path)
+        is_trimmed = True
+        active_video_path = prepared_video_path
+    elif len(edit_segments) == 1:
+        st, et = edit_segments[0]
+        if (et - st) < (clip_dur - 2.0):
+            print(f"\n[Step 2.5/5] Single-segment smart trim: extracting {st:.1f}s to {et:.1f}s ({et-st:.1f}s)...")
+            extract_continuous_segment(target_clip_path, st, et - st, prepared_video_path)
+            is_trimmed = True
+            active_video_path = prepared_video_path
+        else:
+            active_video_path = target_clip_path
+    else:
+        active_video_path = target_clip_path
+
+    active_clip_dur = get_video_duration(active_video_path)
+    print(f"-> Active Short Video Duration: {active_clip_dur:.1f}s")
 
     # 5. ElevenLabs Liam Voiceover Generation
     print("\n[Step 3/5] Synthesizing voiceover with ElevenLabs Liam...")
@@ -80,7 +107,7 @@ def publish_one_short(upload: bool = False):
             engine = synthesize_speech(line_text, clip_tts_path)
             print(f"-> [{code}] ({engine}): {line_text[:45]}...")
 
-        rel_st = max(0.0, min(float(start_t), max(0.0, clip_dur - 1.5)))
+        rel_st = max(0.0, min(float(start_t), max(0.0, active_clip_dur - 1.5)))
         speech_clips.append({"path": clip_tts_path, "start": rel_st})
 
     # 6. Audio Mixing (Meme SFX with Silence Pockets)
@@ -90,16 +117,16 @@ def publish_one_short(upload: bool = False):
     for sf in script.get("sfx", []):
         if len(sf) >= 2:
             s_name = sf[0]
-            s_t = max(0.0, min(float(sf[1]), max(0.0, clip_dur - 0.5)))
+            s_t = max(0.0, min(float(sf[1]), max(0.0, active_clip_dur - 0.5)))
             s_gain = float(sf[2]) if len(sf) >= 3 else 1.0
             norm_sfx.append((s_name, s_t, s_gain))
-    mix_master_audio(speech_clips, norm_sfx, clip_dur, master_audio)
+    mix_master_audio(speech_clips, norm_sfx, active_clip_dur, master_audio)
 
     # 7. Subtitles & Final Render
     norm_subs = []
     for sub in script.get("subtitles", []):
-        st = max(0.0, min(float(sub.get("start", 0.0)), clip_dur))
-        et = max(st + 0.5, min(float(sub.get("end", st + 2.0)), clip_dur))
+        st = max(0.0, min(float(sub.get("start", 0.0)), active_clip_dur))
+        et = max(st + 0.5, min(float(sub.get("end", st + 2.0)), active_clip_dur))
         norm_subs.append({
             "start": st,
             "end": et,
@@ -110,7 +137,7 @@ def publish_one_short(upload: bool = False):
     build_ass_subtitles(norm_subs, ass_file)
 
     final_short = os.path.join(BASE_DIR, "viral_short.mp4")
-    render_final_short(target_clip_path, master_audio, ass_file, final_short)
+    render_final_short(active_video_path, master_audio, ass_file, final_short)
 
     print("\n" + "=" * 60)
     print(f"🎉 SHORT RENDER 100% COMPLETE: {final_short}")
@@ -124,7 +151,14 @@ def publish_one_short(upload: bool = False):
         os.remove(target_clip_path)
         print(f"🗑️ Deleted processed scene from queue: {target_clip_name}")
 
-    # Delete temp audio files
+    # Delete temporary prepared video if created
+    if is_trimmed and os.path.exists(prepared_video_path):
+        try:
+            os.remove(prepared_video_path)
+            print(f"🗑️ Cleaned up temporary trimmed video.")
+        except Exception:
+            pass
+
     for tf in temp_tts_files + [master_audio, ass_file]:
         if os.path.exists(tf):
             try:
