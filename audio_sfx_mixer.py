@@ -23,6 +23,9 @@ def load_vault_audio(filename: str, sr=SAMPLE_RATE) -> np.ndarray:
         else:
             return None
 
+    if os.path.getsize(path) < 1000:
+        return None
+
     temp_wav = os.path.join(SCRATCH_DIR, f"temp_{os.path.basename(path)}.wav")
     try:
         subprocess.run(
@@ -153,8 +156,12 @@ def mix_master_audio(speech_clips: list, sfx_events: list, total_len_sec: float,
         wave = None
         # Check vault first
         wave = load_vault_audio(sfx_name, sr)
-        if wave is None and sfx_name in synth_lib:
-            wave = synth_lib[sfx_name]
+        if wave is None:
+            base_k = sfx_name.replace(".mp3", "").replace(".wav", "")
+            if base_k in synth_lib:
+                wave = synth_lib[base_k]
+            elif "vine_boom" in sfx_name:
+                wave = synth_lib.get("vine_boom_synth")
 
         if wave is not None:
             wave = wave * gain
