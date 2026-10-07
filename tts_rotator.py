@@ -7,7 +7,7 @@ import edge_tts
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOCAL_VAULT_PATH = os.path.join(BASE_DIR, "eleven_keys_vault.json")
-ELEVEN_VOICE_ID = "pNInz6obpgDQGcFmaJgB"  # Adam - The #1 Viral YouTuber / TikTok Meme Voice
+ELEVEN_VOICE_ID = "TX3LPaxmHKxFdv7VOQHJ"  # Liam - #1 Viral High-Energy Comedy & Meme Creator Voice
 EDGE_FALLBACK_VOICE = "en-US-ChristopherNeural"   # Expressive American Male Fallback
 
 
@@ -58,9 +58,9 @@ def generate_with_elevenlabs(text: str, api_key: str, out_path: str, voice_id: s
         "text": text,
         "model_id": "eleven_multilingual_v2",
         "voice_settings": {
-            "stability": 0.38,
+            "stability": 0.32,
             "similarity_boost": 0.82,
-            "style": 0.55,
+            "style": 0.65,
             "use_speaker_boost": True
         }
     }
