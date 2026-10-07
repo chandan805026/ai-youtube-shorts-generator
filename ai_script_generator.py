@@ -71,15 +71,15 @@ STEP 1: MULTIMODAL AUDIO & DIALOGUE COMPREHENSION
   - What do the approaching people say when they arrive and look around confused?
 - Match the spoken Chinese words with their exact physical slapstick actions.
 
-STEP 2: UK / WESTERN ROAST ADAPTATION (FOR ELEVENLABS ADAM)
-- Explain the hilarious situation to Western viewers who don't speak Chinese with BBC documentary mock seriousness and dry British wit.
+STEP 2: UK / WESTERN ROAST ADAPTATION (FOR ELEVENLABS LIAM - VIRAL COMEDY CREATOR)
+- Explain the hilarious situation to Western viewers who don't speak Chinese with vibrant comic energy, BBC documentary mock seriousness, and sharp wit.
 - Give characters witty British names (e.g. Darren, Brenda, Susan).
 - Highlight the contrast between what was said, the snitch's drama, and the absurd disguise (e.g. turning a string vest into an evening halterneck top and slapping on a wig found in a hedge).
 - STRICTLY FORBIDDEN: NEVER use cheap generic AI clichés ('Bro thought', 'Wait for it', 'Absolute cinema', 'Heist', 'Legendary difficulty').
 
 STEP 3: SCENE CUTTING & SYNCHRONIZATION (~30-35s)
 - If total duration is long compilation (>45s), select the single funniest continuous scene (cut_start to cut_end, duration 30 to 36 seconds). If <= 45s, cut_start=0.0, cut_end={total_duration:.1f}, duration={min(total_duration, 35.0):.1f}.
-- Write 4 to 5 punchy voiceover lines for Adam, spaced with 1.0 - 1.5s silence pockets for meme sound effects.
+- Write 4 to 5 punchy voiceover lines for Liam, spaced with 1.0 - 1.5s silence pockets for meme sound effects.
 - Include 3-4 meme SFX from ('vine_boom.mp3', 'bruh.mp3', 'ding_idea.mp3', 'oh_no_wheeze_laugh.mp3') timed right after key revelations.
 - Add center eye-level safe zone subtitles with emojis.
 
