@@ -89,27 +89,32 @@ def run_pipeline(url_or_id: str, upload: bool = False):
     if total_duration > 90:
         print(f"⚠️ Long-form compilation detected ({total_duration:.1f}s). AI selecting the single funniest story...")
 
-    script = generate_comedy_script_with_gemini(info["caption"], info["author"], total_duration)
+    script = generate_comedy_script_with_gemini(playable_video, info["caption"], info["author"], total_duration)
 
-    cut_st = script.get("cut_start", 0.0)
-    cut_dur = script.get("duration", 38.0)
+    cut_st = float(script.get("cut_start", 0.0))
+    cut_dur = float(script.get("duration", min(total_duration, 38.0)))
     
     # 4. Extract continuous clean scene (No choppy cuts!)
-    print("\n[Step 3/5] Extracting continuous high-retention scene...")
+    print(f"\n[Step 3/5] Extracting continuous high-retention scene ({cut_st:.1f}s to {cut_st + cut_dur:.1f}s)...")
     sliced_video = os.path.join(BASE_DIR, f"clean_scene_{photo_id}.mp4")
     extract_continuous_segment(playable_video, cut_st, cut_dur, sliced_video)
+
+    # Check if speech timestamps are absolute or relative
+    speech_raw = script.get("speech", [])
+    max_speech_t = max([float(x[1]) for x in speech_raw] or [0.0])
+    is_absolute = (cut_st > 0 and max_speech_t > cut_dur)
 
     # 5. Multi-Key Voice Generation (Adam - ElevenLabs)
     print("\n[Step 4/5] Synthesizing voiceover with ElevenLabs Adam...")
     speech_clips = []
-    for code, start_t, line_text in script.get("speech", []):
+    for code, start_t, line_text in speech_raw:
         clip_path = os.path.join(BASE_DIR, f"tts_{photo_id}_{code}.mp3")
         if not os.path.exists(clip_path) or os.path.getsize(clip_path) < 100:
             engine = synthesize_speech(line_text, clip_path)
             print(f"-> [{code}] ({engine}): {line_text[:40]}...")
         # Normalize timestamp to be relative to the cut (0 to cut_dur)
         rel_st = float(start_t)
-        if cut_st > 0 and rel_st >= cut_st:
+        if is_absolute and rel_st >= cut_st:
             rel_st = rel_st - cut_st
         rel_st = max(0.0, min(rel_st, max(0.0, cut_dur - 1.5)))
         speech_clips.append({"path": clip_path, "start": rel_st})
@@ -123,9 +128,9 @@ def run_pipeline(url_or_id: str, upload: bool = False):
             s_name = sf[0]
             s_t = float(sf[1])
             s_gain = float(sf[2]) if len(sf) >= 3 else 1.0
-            if cut_st > 0 and s_t >= cut_st:
+            if is_absolute and s_t >= cut_st:
                 s_t = s_t - cut_st
-            s_t = max(0.0, min(s_t, cut_dur))
+            s_t = max(0.0, min(s_t, max(0.0, cut_dur - 0.5)))
             norm_sfx.append((s_name, s_t, s_gain))
     mix_master_audio(speech_clips, norm_sfx, cut_dur, master_audio)
 
@@ -134,7 +139,7 @@ def run_pipeline(url_or_id: str, upload: bool = False):
     for sub in script.get("subtitles", []):
         st = float(sub.get("start", 0.0))
         et = float(sub.get("end", 0.0))
-        if cut_st > 0 and st >= cut_st:
+        if is_absolute and st >= cut_st:
             st = st - cut_st
             et = et - cut_st
         st = max(0.0, min(st, cut_dur))
