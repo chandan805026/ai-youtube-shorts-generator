@@ -5,8 +5,8 @@ import urllib.request
 import urllib.error
 import edge_tts
 
-SCRATCH_DIR = r"C:\Users\ladu\.gemini\antigravity\scratch"
-LOCAL_VAULT_PATH = os.path.join(SCRATCH_DIR, "eleven_keys_vault.json")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOCAL_VAULT_PATH = os.path.join(BASE_DIR, "eleven_keys_vault.json")
 ELEVEN_VOICE_ID = "pNInz6obpgDQGcFmaJgB"  # Adam - The #1 Viral YouTuber / TikTok Meme Voice
 EDGE_FALLBACK_VOICE = "en-US-ChristopherNeural"   # Expressive American Male Fallback
 
