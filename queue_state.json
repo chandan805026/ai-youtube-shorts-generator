@@ -1,7 +1,16 @@
 {
-  "current_link": "",
-  "current_photo_id": "",
-  "raw_scenes": [],
-  "completed_links_count": 0,
-  "last_updated": ""
+  "current_link": "https://c.kuaishou.com/fw/photo/3xn3pp4gghm5pa4",
+  "current_photo_id": "3xn3pp4gghm5pa4",
+  "raw_scenes": [
+    {
+      "id": "part1",
+      "filename": "clip_3xn3pp4gghm5pa4_part1.mp4",
+      "filepath": "/home/runner/work/ai-youtube-shorts-generator/ai-youtube-shorts-generator/raw_scenes/clip_3xn3pp4gghm5pa4_part1.mp4",
+      "start": 0.0,
+      "duration": 406.4,
+      "title": "Complete Skit"
+    }
+  ],
+  "completed_links_count": 1,
+  "last_updated": "2026-10-07 17:34:32"
 }
