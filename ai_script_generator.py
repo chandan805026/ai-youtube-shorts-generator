@@ -6,10 +6,16 @@ import urllib.error
 import re
 import time
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+if sys.stdout:
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
-# Prioritized list of high-quota (500 RPD) models to prevent suspension
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
+
+# Prioritized list of high-quota (500 RPD) models
 GEMINI_MODELS = [
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
@@ -17,100 +23,166 @@ GEMINI_MODELS = [
 ]
 
 
-def generate_comedy_script_with_gemini(title: str, author: str, duration: float) -> dict:
+def generate_comedy_script_with_gemini(video_path: str, caption: str, author: str, total_duration: float) -> dict:
     """
-    Calls Google Gemini (primary: gemini-3.5-flash-lite with 500 RPD safe quota) to generate:
-    1. Continuous natural scene cut matching video duration
-    2. Adam voiceover lines with SILENCE POCKETS for meme sounds
-    3. Meme sound effect cue points (vine_boom, bruh, wheeze laugh, etc.)
-    4. Center-Screen Eye-Level Safe Zone Subtitles (MarginV: 420)
+    Analyzes the actual video with Gemini 3.5 Flash Lite Vision to produce:
+    1. Exact narrative roast script matching visual events on screen.
+    2. Continuous scene cut timestamps (cut_start, cut_end, duration).
+    3. Adam voiceover lines with SILENCE POCKETS for meme sounds.
+    4. Meme sound effect cue points (vine_boom, bruh, etc.).
+    5. Center-Screen Eye-Level Safe Zone Subtitles (MarginV: 420).
     """
-    is_short = duration <= 16.0
+    print(f"\n[AI Script] Analyzing video ({total_duration:.1f}s) for '{author}'...")
 
-    if is_short:
-        prompt = f"""You are a master viral YouTube Shorts comedy writer.
-A Chinese comedy video by '{author}' is titled: '{title}'.
-Video duration: {duration:.1f} seconds.
+    # 1. PRIMARY: Gemini Vision via official google-genai SDK
+    if GEMINI_API_KEY and video_path and os.path.exists(video_path):
+        try:
+            from google import genai
+            print(f"[AI Script] Initializing Google GenAI Client (Safe 500 RPD Tier)...")
+            client = genai.Client(api_key=GEMINI_API_KEY)
 
-CRITICAL INSTRUCTIONS FOR SHORT VIDEO:
-Since the video is only {duration:.1f} seconds long:
-1. cut_start must be 0.0 and cut_end must be {duration:.1f}. duration must be {duration:.1f}.
-2. Provide 1 to 2 very short, punchy, hilarious meme roast voiceover lines that fit completely before {max(1.0, duration - 1.0):.1f} seconds.
-3. Add 1 or 2 meme sound effects (e.g., 'vine_boom.mp3', 'bruh.mp3', 'oh_no_wheeze_laugh.mp3') timed with the action.
-4. Add safe zone center subtitles.
+            print(f"[AI Script] Uploading video to Gemini Vision API: {os.path.basename(video_path)} ({os.path.getsize(video_path)/(1024*1024):.2f} MB)...")
+            vf = client.files.upload(file=video_path)
+            
+            # Wait for video processing
+            retries = 0
+            while vf.state.name == "PROCESSING" and retries < 30:
+                time.sleep(2)
+                vf = client.files.get(name=vf.name)
+                retries += 1
 
-Return ONLY valid JSON with this exact schema:
+            if vf.state.name != "ACTIVE":
+                print(f"[AI Script] Video state is {vf.state.name}, proceeding with caution...")
+
+            print(f"[AI Script] Video active on Gemini cloud ({vf.name}). Prompting Gemini 3.5 Flash Lite...")
+
+            target_scene_len = min(total_duration, 38.0)
+            vision_prompt = f"""You are a master viral YouTube Shorts comedy writer and British deadpan narrator (BBC Wildlife Documentary meets sarcastic UK comedian like Adam/David Attenborough).
+You just watched the provided video footage.
+
+Write an authentic, hilarious English voiceover roast script that narrates the EXACT STORY happening on screen.
+
+CRITICAL STORYTELLING RULES:
+1. FACTUAL STORY NARRATION:
+   - Identify the exact visual sequence:
+     - Who is doing what at the start?
+     - Who spots them / snitches on them?
+     - Who is being informed (e.g. eating from a bowl, sitting at home)?
+     - What is the panic, what clever or ridiculous disguise or trick is pulled (e.g. twisting clothes into a top, putting on a wig, hiding in plain sight)?
+     - What happens when the confrontational person arrives (e.g. walking right past them, complete confusion, survival)?
+   - Reference their EXACT clothing, items, expressions, and funny physical actions.
+2. CHARACTERS & TONE:
+   - Give them witty British nicknames (e.g., Darren, Brenda, Gary, Arthur, Susan).
+   - Tone: Deadpan British documentary sarcasm, witty observation of disastrous life choices and genius survivals.
+   - STRICTLY FORBIDDEN: NEVER use cheap generic AI filler phrases like 'Bro thought', 'Wait for it', 'Absolute cinema', 'Heist', 'Legendary difficulty', 'Bro really thought'.
+3. SCENE SELECTION & TIMESTAMPS:
+   - If the video is longer than 45 seconds, identify the single funniest continuous scene (cut_start and cut_end, lasting 30 to 40 seconds).
+   - If video is <= 45 seconds, set cut_start: 0.0, cut_end: {total_duration:.1f}, duration: {total_duration:.1f}.
+   - CRITICAL: All timestamps in 'speech', 'sfx', and 'subtitles' MUST be strictly 0-indexed relative to the start of the scene (from 0.0 to duration).
+   - Space speech lines with 1.0 - 1.5 seconds gap so meme sound effects have dedicated silence pockets.
+   - Each spoken line should be 1-2 punchy sentences.
+4. MEME SFX & SILENCE POCKETS:
+   - Choose 3-5 SFX from:
+     'vine_boom.mp3', 'bruh.mp3', 'ding_idea.mp3', 'fbi_open_up.mp3', 'wait_a_minute.mp3', 'oh_no_wheeze_laugh.mp3', 'Metal Boom.mp3', 'WOW.mp3'.
+   - Place SFX precisely at comedic beats (spotting, alarm, disguise reveal, near miss).
+5. CENTER-SAFE SUBTITLES:
+   - Create synchronized subtitle segments matching the spoken dialogue with emojis.
+
+Return ONLY valid JSON matching this exact schema:
+{{
+  "cut_start": float,
+  "cut_end": float,
+  "duration": float,
+  "title": "Short catchy title",
+  "speech": [
+    ["01", 0.5, "Line 1..."],
+    ["02", 7.0, "Line 2..."],
+    ["03", 14.5, "Line 3..."],
+    ["04", 22.0, "Line 4..."],
+    ["05", 29.5, "Line 5..."]
+  ],
+  "sfx": [
+    ["vine_boom.mp3", 6.5, 0.9],
+    ["ding_idea.mp3", 14.0, 0.85],
+    ["bruh.mp3", 21.5, 0.9],
+    ["oh_no_wheeze_laugh.mp3", 29.0, 0.95]
+  ],
+  "subtitles": [
+    {{"start": 0.5, "end": 6.5, "style": "CenterHook", "text": "SUBTITLE LINE 💀"}},
+    {{"start": 7.0, "end": 14.0, "style": "CenterPunch", "text": "SUBTITLE LINE 🚨"}},
+    {{"start": 14.5, "end": 21.5, "style": "CenterPunch", "text": "SUBTITLE LINE 💇"}},
+    {{"start": 22.0, "end": 28.5, "style": "CenterPunch", "text": "SUBTITLE LINE 🤫"}},
+    {{"start": 29.5, "end": 34.5, "style": "CenterPunch", "text": "SUBTITLE LINE 👑"}}
+  ]
+}}
+"""
+
+            response = client.models.generate_content(
+                model='gemini-3.5-flash-lite',
+                contents=[
+                    client.files.get(name=vf.name),
+                    vision_prompt
+                ],
+                config={
+                    'response_mime_type': 'application/json',
+                    'temperature': 0.7
+                }
+            )
+
+            # Cleanup uploaded file immediately
+            try:
+                client.files.delete(name=vf.name)
+                print(f"[AI Script] Cleaned up temporary video from Gemini cloud.")
+            except Exception:
+                pass
+
+            raw_json = response.text
+            m = re.search(r'\{.*\}', raw_json, re.DOTALL)
+            if m:
+                script_data = json.loads(m.group(0))
+                print(f"[AI Script] Gemini Vision successfully crafted script ({len(script_data.get('speech', []))} lines) based on REAL video events!")
+                return script_data
+
+        except Exception as e:
+            print(f"[AI Script] Gemini Vision processing error: {e}")
+
+    # 2. SECONDARY: Fallback to text prompt if video upload wasn't possible
+    print("[AI Script] Fallback: using text-based prompt...")
+    text_prompt = f"""You are a master viral YouTube Shorts comedy writer and British deadpan narrator.
+A Chinese slapstick comedy creator named "{author}" published a video with caption: "{caption}".
+Video duration: {total_duration:.1f} seconds.
+
+Turn this into a viral 30-38 second UK meme Short with Adam voiceover.
+Tone: Deadpan British documentary sarcasm.
+Return ONLY valid JSON matching:
 {{
   "cut_start": 0.0,
-  "cut_end": {duration:.1f},
-  "duration": {duration:.1f},
+  "cut_end": {min(total_duration, 38.0):.1f},
+  "duration": {min(total_duration, 38.0):.1f},
+  "title": "Slapstick Escape",
   "speech": [
-    ["01", 0.5, "Short hook line..."],
-    ["02", 3.5, "Punchline reaction..."]
+    ["01", 0.5, "Text..."]
   ],
   "sfx": [
     ["vine_boom.mp3", 3.0, 0.9]
   ],
   "subtitles": [
-    {{"start": 0.5, "end": 3.0, "style": "CenterHook", "text": "HOOK TEXT 💀"}},
-    {{"start": 3.5, "end": {duration:.1f}, "style": "CenterPunch", "text": "PUNCHLINE! 😭"}}
-  ]
-}}
-"""
-    else:
-        prompt = f"""You are a master viral YouTube Shorts / TikTok meme creator and comedy writer.
-A Chinese slapstick comedy creator named "{author}" published a video with title/caption: "{title}".
-Video duration: {duration:.1f} seconds.
-
-Your task is to turn this into a viral 30-40 second Western meme Short with Adam voiceover.
-
-CRITICAL RULES:
-1. CONTINUOUS STORY FLOW & TIMESTAMPS: If duration > 50s, select ONE continuous 30-40 second segment where the main comedy action happens. All timestamps in speech, sfx, and subtitles MUST start at 0.0 (relative to the cut, e.g. 0.5, 4.0, 12.0) and must NEVER exceed duration!
-2. VOCAL PAUSES / MEME POCKETS: Leave 1.0 to 1.5 seconds of silence between spoken lines whenever a meme sound effect plays, so the voiceover and meme sound NEVER overlap!
-3. VOICE TONE: Deadpan, sarcastic, Gen-Z / British & American meme reaction style ("Bro really thought...", "Absolute legend", "When you realize...", "Wait for it 💀").
-4. MEME SFX: Choose from available vault sounds:
-   - 'vine_boom.mp3' (shock / impact)
-   - 'bruh.mp3' (disbelief / freeze)
-   - 'ding_idea.mp3' (smart / stupid idea)
-   - 'fbi_open_up.mp3' (action squad entry)
-   - 'wait_a_minute.mp3' (prank / realization)
-   - 'oh_no_wheeze_laugh.mp3' (hilarious failure)
-   - 'Metal Boom.mp3' (dramatic climax)
-   - 'WOW.mp3' (victory celebration)
-
-Return ONLY valid JSON with this exact structure:
-{{
-  "cut_start": float,
-  "cut_end": float,
-  "duration": float,
-  "speech": [
-    ["01", start_sec, "text..."],
-    ["02", start_sec, "text..."]
-  ],
-  "sfx": [
-    ["vine_boom.mp3", start_sec, gain_float],
-    ["bruh.mp3", start_sec, gain_float]
-  ],
-  "subtitles": [
-    {{"start": start_sec, "end": end_sec, "style": "CenterHook", "text": "Hook text 💀"}},
-    {{"start": start_sec, "end": end_sec, "style": "CenterPunch", "text": "PUNCHLINE! 🚨"}}
+    {{"start": 0.5, "end": 3.0, "style": "CenterHook", "text": "Text 💀"}}
   ]
 }}
 """
 
-    # 1. PRIMARY: Official Google Gemini with high-quota Flash Lite models
     if GEMINI_API_KEY:
         for model_name in GEMINI_MODELS:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
             payload = {
-                "contents": [{"parts": [{"text": prompt}]}],
+                "contents": [{"parts": [{"text": text_prompt}]}],
                 "generationConfig": {
                     "response_mime_type": "application/json",
                     "temperature": 0.7
                 }
             }
             try:
-                print(f"[AI Script] Calling Google Gemini model '{model_name}' (Safe 500 RPD Tier)...")
                 req = urllib.request.Request(
                     url,
                     data=json.dumps(payload).encode("utf-8"),
@@ -119,38 +191,24 @@ Return ONLY valid JSON with this exact structure:
                 with urllib.request.urlopen(req, timeout=30) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     text = data["candidates"][0]["content"]["parts"][0]["text"]
-                    # Sanitize any invalid escape sequences before json.loads
-                    text = re.sub(r'\\N', ' ', text)
-                    text = re.sub(r'\\(?![/"\\bfnrtu])', r'\\\\', text)
                     m = re.search(r'\{.*\}', text, re.DOTALL)
                     if m:
-                        script_data = json.loads(m.group(0))
-                        print(f"[AI Script] Google Gemini ({model_name}) generated custom viral script ({len(script_data.get('speech', []))} lines)!")
-                        return script_data
-            except urllib.error.HTTPError as e:
-                print(f"[AI Script] Google Gemini '{model_name}' HTTP {e.code}: {e.reason}")
-                if e.code == 429:
-                    print("[AI Script] Rate limit hit. Backing off 5s before fallback model...")
-                    time.sleep(5)
+                        return json.loads(m.group(0))
             except Exception as e:
-                print(f"[AI Script] Google Gemini error: {e}")
+                print(f"[AI Script] Gemini text fallback error ({model_name}): {e}")
 
-    # 2. SECONDARY: OpenRouter Fallback (if Gemini is unavailable)
     if OPENROUTER_API_KEY:
         try:
-            print("[AI Script] Attempting OpenRouter backup...")
             req = urllib.request.Request(
                 "https://openrouter.ai/api/v1/chat/completions",
                 data=json.dumps({
                     "model": "openrouter/free",
-                    "messages": [{"role": "user", "content": prompt}],
+                    "messages": [{"role": "user", "content": text_prompt}],
                     "temperature": 0.7
                 }).encode("utf-8"),
                 headers={
                     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://github.com/chandan805026/ai-youtube-shorts-generator",
-                    "X-Title": "Shorts Generator"
+                    "Content-Type": "application/json"
                 }
             )
             with urllib.request.urlopen(req, timeout=30) as resp:
@@ -158,77 +216,44 @@ Return ONLY valid JSON with this exact structure:
                 raw = res["choices"][0]["message"]["content"]
                 m = re.search(r'\{.*\}', raw, re.DOTALL)
                 if m:
-                    script_data = json.loads(m.group(0))
-                    print(f"[AI Script] Backup OpenRouter generated script ({len(script_data.get('speech', []))} lines)!")
-                    return script_data
+                    return json.loads(m.group(0))
         except Exception as e:
             print(f"[AI Script] Backup OpenRouter error: {e}")
 
     print("[AI Script] Using high-retention default comedy template.")
-    return get_fallback_template(duration)
+    return get_fallback_template(total_duration)
 
 
 def generate_comedy_script_with_ai(title: str, author: str, duration: float) -> dict:
-    return generate_comedy_script_with_gemini(title, author, duration)
+    return generate_comedy_script_with_gemini("", title, author, duration)
 
 
 def get_fallback_template(duration: float) -> dict:
     """High-retention template adapted to duration with zero audio clashing."""
-    if duration <= 16.0:
-        return {
-            "cut_start": 0.0,
-            "cut_end": duration,
-            "duration": duration,
-            "speech": [
-                ("01", 0.5, "Wait for it... Bro really thought nobody was watching."),
-                ("02", max(2.5, duration - 4.0), "Absolute chaos! You cannot make this up.")
-            ],
-            "sfx": [
-                ("vine_boom.mp3", max(2.0, duration - 4.5), 0.95),
-                ("oh_no_wheeze_laugh.mp3", max(4.0, duration - 2.5), 1.0)
-            ],
-            "subtitles": [
-                {"start": 0.5, "end": max(2.5, duration - 4.0), "style": "CenterHook", "text": "WAIT FOR IT... 💀"},
-                {"start": max(2.5, duration - 4.0), "end": duration, "style": "CenterPunch", "text": "ABSOLUTE CHAOS! 😭🚨"}
-            ]
-        }
-
-    cut_len = min(duration, 38.0)
+    cut_len = min(duration, 35.0)
     return {
         "cut_start": 0.0,
         "cut_end": cut_len,
         "duration": cut_len,
+        "title": "Master of Disguise",
         "speech": [
-            ("01", 0.5, "When your wife catches you going out with the boys and literally builds Alcatraz in the living room..."),
-            ("02", 5.0, "Maximum security lockdown! Bro is in the dog house."),
-            ("03", 8.0, "So he deploys an origami mechanical butterfly to summon the boys..."),
-            ("04", 12.0, "Code Red! The distress signal has been received."),
-            ("05", 15.5, "The squad mobilized in ten seconds! One pulled up in a three-piece suit in the cabbage patch."),
-            ("06", 21.0, "Their master weapon? A mop with a wig to convince her the house is haunted!"),
-            ("07", 26.0, "Bro literally tunneled under the cage like The Shawshank Redemption!"),
-            ("08", 30.5, "Ten minutes later, back at the local pub for another cold round."),
-            ("09", 34.5, "Bros before rules. Absolute legends. Massive W!")
+            ("01", 0.5, "Observe Darren sneaking off to play mahjong with the local lasses, blissfully unaware of impending doom."),
+            ("02", 7.0, "Brenda discovers the betrayal mid-bite, her bowl of rice trembling with pure unbridled fury."),
+            ("03", 14.5, "A tactical alert goes off as Brenda storms the courtyard looking for blood."),
+            ("04", 22.0, "Panicked, Darren converts his singlet into a halterneck top and slaps on a wig at lightning speed."),
+            ("05", 29.5, "The absolute masterclass in camouflage succeeds, leaving Brenda thoroughly baffled by the new lady at the table.")
         ],
         "sfx": [
-            ("metal_clang", 2.2, 0.9),
-            ("vine_boom.mp3", 4.4, 0.95),
-            ("bruh.mp3", 7.2, 0.85),
-            ("ding_idea.mp3", 11.2, 0.8),
-            ("fbi_open_up.mp3", 14.5, 0.85),
-            ("wait_a_minute.mp3", 19.8, 0.9),
-            ("oh_no_wheeze_laugh.mp3", 23.5, 0.95),
-            ("Metal Boom.mp3", 29.5, 0.85),
-            ("WOW.mp3", 33.5, 0.85)
+            ("vine_boom.mp3", 6.5, 0.9),
+            ("ding_idea.mp3", 14.0, 0.85),
+            ("bruh.mp3", 21.5, 0.9),
+            ("oh_no_wheeze_laugh.mp3", 29.0, 0.95)
         ],
         "subtitles": [
-            {"start": 0.5, "end": 4.5, "style": "CenterHook", "text": "Wife caught him going to the pub...\\Nand built ALCATRAZ in the house! 🔒💀"},
-            {"start": 5.0, "end": 7.5, "style": "CenterPunch", "text": "MAXIMUM SECURITY LOCKDOWN! ⛓️"},
-            {"start": 8.0, "end": 11.5, "style": "CenterHook", "text": "So he deployed a mechanical butterfly\\Nto summon the boys! 🦋"},
-            {"start": 12.0, "end": 14.5, "style": "CenterPunch", "text": "CODE RED! DISTRESS SIGNAL! 🚨"},
-            {"start": 15.5, "end": 20.0, "style": "CenterHook", "text": "The squad mobilized!\\nThree-piece suit in the cabbage patch! 🕶️"},
-            {"start": 21.0, "end": 25.0, "style": "CenterPunch", "text": "Master weapon?\\nA mop wig ghost prank! 👻😭"},
-            {"start": 26.0, "end": 29.5, "style": "CenterPunch", "text": "Bro tunneled under the cage\\nlike SHAWSHANK REDEMPTION! ⛏️"},
-            {"start": 30.5, "end": 34.0, "style": "CenterHook", "text": "10 minutes later...\\nBack at the pub with the boys! 🍺"},
-            {"start": 34.5, "end": 37.5, "style": "CenterPunch", "text": "BROS BEFORE RULES.\\nABSOLUTE LEGENDS! 👑"}
+            {"start": 0.5, "end": 6.5, "style": "CenterHook", "text": "Observe Darren sneaking off to play mahjong 🏃"},
+            {"start": 7.0, "end": 14.0, "style": "CenterPunch", "text": "Brenda discovers the betrayal mid-bite 🍚"},
+            {"start": 14.5, "end": 21.5, "style": "CenterPunch", "text": "A tactical alert goes off as Brenda storms in 🚨"},
+            {"start": 22.0, "end": 28.5, "style": "CenterPunch", "text": "Darren converts his singlet into a halterneck 💇"},
+            {"start": 29.5, "end": 34.5, "style": "CenterPunch", "text": "The camouflage masterclass succeeds! 👑"}
         ]
     }
