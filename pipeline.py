@@ -92,7 +92,9 @@ def run_pipeline(url_or_id: str, upload: bool = False):
     script = generate_comedy_script_with_gemini(playable_video, info["caption"], info["author"], total_duration)
 
     cut_st = float(script.get("cut_start", 0.0))
-    cut_dur = float(script.get("duration", min(total_duration, 38.0)))
+    cut_dur = float(script.get("duration", 35.0))
+    if cut_dur > 40.0:
+        cut_dur = 35.0
     
     # 4. Extract continuous clean scene (No choppy cuts!)
     print(f"\n[Step 3/5] Extracting continuous high-retention scene ({cut_st:.1f}s to {cut_st + cut_dur:.1f}s)...")
