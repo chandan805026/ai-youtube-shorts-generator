@@ -4,6 +4,8 @@ import re
 import json
 import subprocess
 import urllib.request
+import requests
+import time
 from bs4 import BeautifulSoup
 
 if sys.stdout:
@@ -122,16 +124,42 @@ def download_and_transcode(video_info: dict, output_dir: str = SCRATCH_DIR) -> s
 
     raw_path = os.path.join(output_dir, f"raw_{photo_id}.mp4")
 
-    # 1. Download in chunks
+    # 1. Download in chunks with robust retry & CDN headers
     if not os.path.exists(raw_path) or os.path.getsize(raw_path) < 1000:
         print(f"[Downloader] Downloading {photo_id} from CDN...")
-        req = urllib.request.Request(video_info["cdn_url"], headers={"User-Agent": IPHONE_UA})
-        with urllib.request.urlopen(req, timeout=30) as resp, open(raw_path, "wb") as f:
-            while True:
-                chunk = resp.read(65536)
-                if not chunk:
+        cdn_headers = {
+            "User-Agent": IPHONE_UA,
+            "Referer": "https://c.kuaishou.com/",
+            "Accept": "*/*",
+            "Connection": "keep-alive"
+        }
+        download_ok = False
+        for attempt in range(3):
+            try:
+                with requests.get(video_info["cdn_url"], headers=cdn_headers, stream=True, timeout=30) as r:
+                    r.raise_for_status()
+                    with open(raw_path, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=1024*1024):
+                            if chunk:
+                                f.write(chunk)
+                if os.path.exists(raw_path) and os.path.getsize(raw_path) > 10000:
+                    download_ok = True
                     break
-                f.write(chunk)
+            except Exception as e:
+                print(f"[Downloader] Stream attempt {attempt+1} failed: {e}")
+                time.sleep(2)
+
+        if not download_ok:
+            print("[Downloader] Falling back to curl...")
+            cmd_curl = [
+                "curl", "-L", "-s",
+                "-H", f"User-Agent: {IPHONE_UA}",
+                "-H", "Referer: https://c.kuaishou.com/",
+                video_info["cdn_url"],
+                "-o", raw_path
+            ]
+            subprocess.run(cmd_curl, check=True)
+
         print(f"[Downloader] Downloaded raw video: {os.path.getsize(raw_path) / (1024*1024):.2f} MB")
 
     # 2. Transcode HEVC -> H.264
