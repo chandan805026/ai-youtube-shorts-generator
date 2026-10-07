@@ -72,18 +72,22 @@ def fetch_kuaishou_video_info(url_or_id: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     page_title = soup.title.string.strip() if soup.title and soup.title.string else ""
 
-    # Find unwatermarked CDN video URL
+    # Find unwatermarked CDN video URL (filter out 8s remux preview snippets)
     mp4_urls = list(set(re.findall(r'https?://[^\s"\'<>]+\.mp4[^\s"\'<>]*', html)))
-    cdn_url = ""
-    for u in mp4_urls:
-        if "kwaicdn.com" in u and "hd" in u:
-            cdn_url = u
-            break
-    if not cdn_url and mp4_urls:
-        cdn_url = mp4_urls[0]
+    full_candidates = [u for u in mp4_urls if "/upic/" in u or ("vod-rt-remux" not in u and ("kwimgs.com" in u or "yximgs.com" in u))]
+    if not full_candidates:
+        full_candidates = [u for u in mp4_urls if "vod-rt-remux" not in u]
+    if not full_candidates:
+        full_candidates = mp4_urls
 
-    if not cdn_url:
+    if not full_candidates:
         raise RuntimeError("No direct MP4 CDN URL found in mobile response!")
+
+    cdn_url = full_candidates[0]
+    for c in full_candidates:
+        if "/upic/" in c:
+            cdn_url = c
+            break
 
     cdn_url = cdn_url.replace(r"\/", "/")
 
