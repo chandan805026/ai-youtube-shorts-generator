@@ -8,8 +8,8 @@ if sys.stdout:
     except Exception:
         pass
 
-SCRATCH_DIR = r"C:\Users\ladu\.gemini\antigravity\scratch"
-VAULT_DIR = os.path.join(SCRATCH_DIR, "meme_sound_vault")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+VAULT_DIR = os.path.join(BASE_DIR, "meme_sound_vault")
 os.makedirs(VAULT_DIR, exist_ok=True)
 
 SOUNDS = {
