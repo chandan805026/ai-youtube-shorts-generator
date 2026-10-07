@@ -106,8 +106,8 @@ def run_pipeline(url_or_id: str, upload: bool = False):
     max_speech_t = max([float(x[1]) for x in speech_raw] or [0.0])
     is_absolute = (cut_st > 0 and max_speech_t > cut_dur)
 
-    # 5. Multi-Key Voice Generation (Adam - ElevenLabs)
-    print("\n[Step 4/5] Synthesizing voiceover with ElevenLabs Adam...")
+    # 5. Multi-Key Voice Generation (Liam - ElevenLabs Viral Comedy)
+    print("\n[Step 4/5] Synthesizing voiceover with ElevenLabs Liam (Viral Comedy)...")
     speech_clips = []
     for code, start_t, line_text in speech_raw:
         clip_path = os.path.join(BASE_DIR, f"tts_{photo_id}_{code}.mp3")
