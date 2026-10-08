@@ -6,11 +6,7 @@ on:
       video_url:
         description: 'Kuaishou Video URL or Photo ID'
         required: true
-        default: 'https://www.kuaishou.com/short-video/3xnhw787utiscgu'
-      creator_name:
-        description: 'Creator Name / Tag'
-        required: false
-        default: '川哥哥 (cczz666888)'
+        default: 'https://c.kuaishou.com/fw/photo/3xhpefxgm7t4c7k'
 
 jobs:
   build-short:
@@ -34,11 +30,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Viral Shorts Pipeline
+      - name: Run TwelveLabs + Gemini Autonomous Shorts Pipeline
         env:
-          ELEVENLABS_KEYS_POOL: ${{ secrets.ELEVENLABS_KEYS_POOL }}
+          TWELVELABS_API_KEY: ${{ secrets.TWELVELABS_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_KEYS_POOL: ${{ secrets.ELEVENLABS_KEYS_POOL }}
         run: |
           python pipeline.py --url "${{ github.event.inputs.video_url }}"
 
