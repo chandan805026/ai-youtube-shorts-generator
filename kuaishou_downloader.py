@@ -84,8 +84,23 @@ def fetch_kuaishou_video_info(url_or_id: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     page_title = soup.title.string.strip() if soup.title and soup.title.string else ""
 
+    clean_html = html.replace(r'\/', '/').replace(r'\u002F', '/')
+
     # Find unwatermarked CDN video URL (filter out 8s remux preview snippets)
-    mp4_urls = list(set(re.findall(r'https?://[^\s"\'<>]+\.mp4[^\s"\'<>]*', html)))
+    mp4_urls = list(set(re.findall(r'https?://[^\s"\'<>]+\.mp4[^\s"\'<>]*', clean_html)))
+    if not mp4_urls:
+        for alt_url in [f"https://www.kuaishou.com/short-video/{photo_id}", f"https://m.kuaishou.com/fw/photo/{photo_id}"]:
+            try:
+                req_alt = urllib.request.Request(alt_url, headers={"User-Agent": IPHONE_UA})
+                with urllib.request.urlopen(req_alt, timeout=10) as r_alt:
+                    alt_html = r_alt.read().decode("utf-8", "ignore").replace(r'\/', '/').replace(r'\u002F', '/')
+                    found = list(set(re.findall(r'https?://[^\s"\'<>]+\.mp4[^\s"\'<>]*', alt_html)))
+                    if found:
+                        mp4_urls = found
+                        break
+            except Exception:
+                pass
+
     full_candidates = [u for u in mp4_urls if "/upic/" in u or ("vod-rt-remux" not in u and ("kwimgs.com" in u or "yximgs.com" in u))]
     if not full_candidates:
         full_candidates = [u for u in mp4_urls if "vod-rt-remux" not in u]
