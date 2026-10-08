@@ -24,11 +24,12 @@ GEMINI_MODELS = [
 
 def normalize_script_data(data: dict, total_duration: float) -> dict:
     """
-    Normalizes script data for 3-Act Story Architecture:
+    Normalizes script data for 3-Act Inverted Story Architecture:
     - Guarantees valid chronological segments within [0, total_duration].
-    - For long raw videos (>60s), enforces a strict ~50-60s Short duration (never 20-30s!).
-    - Expands or adjusts segments if AI under-cuts the narrative.
-    - Synchronizes Liam's speech cues, SFX, and subtitles across the full resulting timeline.
+    - ALWAYS anchors the last segment to the exact end of the raw video (total_duration)
+      so the punchline / fiery reaction is NEVER cut!
+    - Enforces 50 to 58s target duration by trimming middle fluff, NEVER the ending.
+    - Synchronizes Liam's speech cues, SFX, and subtitles across the resulting timeline.
     """
     raw_segs = data.get("edit_segments") or data.get("segments")
     norm_segs = []
@@ -60,16 +61,16 @@ def normalize_script_data(data: dict, total_duration: float) -> dict:
             clean_et = max(clean_st + 1.0, min(total_duration, raw_et))
             norm_segs = [(clean_st, clean_et)]
 
-    # If no segments, construct a safe 3-act split for long videos
+    # If no segments, construct a safe 3-act split anchored to end
     if not norm_segs:
         if total_duration > 60.0:
-            act1_len = min(18.0, total_duration * 0.15)
-            act2_start = max(act1_len + 5.0, total_duration * 0.35)
-            act2_len = 20.0
-            act3_start = max(act2_start + act2_len + 5.0, total_duration - 18.0)
+            act1_len = 18.0
+            act2_start = max(25.0, total_duration * 0.35)
+            act2_len = 16.0
+            act3_start = max(act2_start + act2_len + 5.0, total_duration - 22.0)
             norm_segs = [
                 (0.0, act1_len),
-                (act2_start, min(total_duration, act2_start + act2_len)),
+                (act2_start, act2_start + act2_len),
                 (act3_start, total_duration)
             ]
         else:
@@ -78,61 +79,50 @@ def normalize_script_data(data: dict, total_duration: float) -> dict:
     # Sort chronologically
     norm_segs.sort(key=lambda x: x[0])
 
-    # If raw video is long (>60s) but segments add up to less than 50s, expand them to preserve the story!
-    if total_duration > 60.0:
-        current_dur = sum(et - st for st, et in norm_segs)
-        if current_dur < 50.0 and len(norm_segs) > 0:
-            needed = 54.0 - current_dur
-            expand_per_seg = needed / len(norm_segs)
-            expanded = []
-            for i, (st, et) in enumerate(norm_segs):
-                prev_bound = expanded[i - 1][1] + 0.5 if i > 0 else 0.0
-                next_bound = norm_segs[i + 1][0] - 0.5 if i + 1 < len(norm_segs) else total_duration
-                
-                # Check backwards room
-                back_room = max(0.0, st - prev_bound)
-                back_expand = min(back_room, expand_per_seg * 0.35)
-                # Remainder goes forwards
-                fwd_expand = expand_per_seg - back_expand
-                
-                new_st = max(prev_bound, st - back_expand)
-                new_et = min(next_bound, et + fwd_expand)
-                if new_et > new_st + 0.5:
-                    expanded.append((new_st, new_et))
-                else:
-                    expanded.append((st, et))
-            norm_segs = expanded
+    # RULE 2 SACRED ENDING ANCHOR: The final segment MUST extend to the exact end of the video
+    if total_duration > 60.0 and len(norm_segs) > 0:
+        last_st, last_et = norm_segs[-1]
+        # Make sure the last segment covers the final 18-24 seconds right up to total_duration
+        if last_et < total_duration - 1.0:
+            norm_segs[-1] = (last_st, total_duration)
 
-    # Strictly cap total edited duration to maximum 60.0s for YouTube Shorts compliance
-    accumulated = 0.0
-    capped_segs = []
-    for st, et in norm_segs:
-        dur = et - st
-        if dur <= 0.5:
-            continue
-        if accumulated + dur > 60.0:
-            allowed = max(2.0, 60.0 - accumulated)
-            if allowed >= 1.0:
-                capped_segs.append((st, st + allowed))
-                accumulated += allowed
-            break
-        else:
-            capped_segs.append((st, et))
-            accumulated += dur
+    # If total duration > 60s, trim earlier segments if sum exceeds 58.0s (NEVER trim the ending!)
+    target_max = 58.0
+    current_dur = sum(et - st for st, et in norm_segs)
 
-    if not capped_segs:
-        capped_segs = [(0.0, min(total_duration, 55.0))]
+    if total_duration > 60.0 and current_dur > target_max:
+        excess = current_dur - target_max
+        # Trim excess from earlier segments first to protect the climax in the final segment
+        for i in range(len(norm_segs) - 1):
+            st, et = norm_segs[i]
+            dur = et - st
+            if dur > 12.0:
+                can_trim = min(excess, dur - 10.0)
+                norm_segs[i] = (st, et - can_trim)
+                excess -= can_trim
+                if excess <= 0:
+                    break
 
-    edited_duration = sum([max(0.0, et - st) for st, et in capped_segs])
-    data["edit_segments"] = [(round(s, 2), round(e, 2)) for s, e in capped_segs]
+    # If segments add up to less than 50s, expand earlier segments
+    current_dur = sum(et - st for st, et in norm_segs)
+    if total_duration > 60.0 and current_dur < 50.0 and len(norm_segs) > 1:
+        needed = 54.0 - current_dur
+        expand_per_seg = needed / (len(norm_segs) - 1)
+        for i in range(len(norm_segs) - 1):
+            st, et = norm_segs[i]
+            norm_segs[i] = (st, et + expand_per_seg)
+
+    edited_duration = sum([max(0.0, et - st) for st, et in norm_segs])
+    data["edit_segments"] = [(round(s, 2), round(e, 2)) for s, e in norm_segs]
     data["edited_duration"] = round(edited_duration, 2)
+    data["total_edited_duration"] = round(edited_duration, 2)
 
     # Re-scale / distribute speech, subtitles, and SFX if they ended too early
     speech = data.get("speech", [])
     if speech and len(speech) > 1 and edited_duration > 40.0:
         last_speech_time = float(speech[-1][1])
-        if last_speech_time < (edited_duration * 0.65):
-            scale_factor = (edited_duration - 6.0) / max(1.0, last_speech_time)
+        if last_speech_time < (edited_duration * 0.70):
+            scale_factor = (edited_duration - 5.5) / max(1.0, last_speech_time)
             new_speech = []
             for item in speech:
                 code = item[0]
@@ -169,13 +159,12 @@ def normalize_script_data(data: dict, total_duration: float) -> dict:
 def generate_comedy_script_with_gemini(video_path: str, caption: str, author: str, total_duration: float) -> dict:
     """
     Analyzes the comedy video with Gemini Vision to produce:
-    1. 3-Act Narrative Arc (Setup -> Scheme/Conflict -> Climax/Escape).
-    2. Strict 50 to 60-second edited duration without story loss.
-    3. Complete removal of awkward dead space and in-video sponsor advertisements.
-    4. Liam storyteller voiceover explaining the hilarious plot to Western viewers.
-    5. Meme sound effect cue points and Center Safe-Zone subtitles.
+    1. Inverted Editing: Cuts ONLY the junk blocks (sponsor ads & dead pauses).
+    2. Sacred Ending Anchor: Climax & ending reaction 100% preserved.
+    3. Liam Bridge Narration: Glues scene transitions seamlessly.
+    4. 50-58s YouTube Shorts sweet spot.
     """
-    print(f"\n[AI Script] Analyzing video ({total_duration:.1f}s) for '{author}' with 3-Act Story Engine...")
+    print(f"\n[AI Script] Analyzing video ({total_duration:.1f}s) for '{author}' with Master Inverted Story Engine...")
 
     # 1. PRIMARY: Gemini Vision via official google-genai SDK
     if GEMINI_API_KEY and video_path and os.path.exists(video_path):
@@ -198,103 +187,82 @@ def generate_comedy_script_with_gemini(video_path: str, caption: str, author: st
 
             print(f"[AI Script] Video active on Gemini cloud ({vf.name}). Prompting Gemini Vision...")
 
-            is_long = (total_duration > 60.0)
-            if is_long:
-                editing_instructions = f"""STEP 3: 3-ACT NARRATIVE STORY EDITING (~50-60 SECONDS TOTAL)
-This raw comedy skit is {total_duration:.1f} seconds long. For maximum viral retention and complete story comprehension, you must edit this video into a coherent 50 to 60-second mini-movie (TARGET: 52 to 58 seconds total).
+            climax_target_start = max(0.0, total_duration - 22.0)
 
-CRITICAL STORYTELLING RULES:
-1. PRESERVE THE COMPLETE 3-ACT NARRATIVE ARC:
-   A successful comedy skit must have beginning, middle, and end. Do NOT skip any act:
-   - ACT 1: THE SETUP & CONFLICT (14 to 18 seconds, starts at 0.0s):
-     Introduce who the characters are, what crazy/absurd thing is happening, and what restriction/conflict is imposed (e.g. wife locking the gate with a huge padlock).
-   - ACT 2: THE SCHEME / ESCALATION (18 to 22 seconds, from the middle):
-     Show the sneaky trick or distress signal used to solve the problem (e.g. secret green laser SOS beacon, toy cart trick, distress call, or getting tied to chairs).
-   - ACT 3: THE RESCUE / CLIMAX & PUNCHLINE (14 to 18 seconds, towards the ending):
-     Show how backup arrives (e.g. with a wheelbarrow/tools), the successful escape, and the opponent/wife's stunned, bewildered reaction!
+            vision_prompt = f"""You are a master viral YouTube Shorts storyteller and British comedy narrator (in the deadpan, sarcastic style of Liam).
+You have full multimodal video and audio understanding.
 
-2. WHAT TO REMOVE (BORING FLUFF & ADS):
-   - Cut out slow walking, long silent pauses, repetitive dialogue before actions.
-   - CRITICAL: STRICTLY REMOVE ANY IN-VIDEO COMMERCIAL SPONSOR ADS / PRODUCT PROMOTIONS (e.g. phone recycling, apps, brand plugs) that disrupt the comedy story!
+CRITICAL OBJECTIVE: 
+Turn this Chinese comedy video (Total Duration: {total_duration:.1f}s) into a crystal-clear, hilarious, fast-paced story for global audiences 
+WITHOUT confusing jump cuts, WITHOUT unexplained sudden scenes, and WITHOUT cutting the climax ending!
 
-3. STRICT DURATION CONSTRAINT:
-   - Provide "edit_segments": [[start1, end1], [start2, end2], [start3, end3]]
-   - The SUM of all segment durations MUST BE BETWEEN 50.0 AND 60.0 SECONDS! (e.g. 52s - 58s).
-   - NEVER make the total duration shorter than 50 seconds (do NOT make 20-30s clips).
-   - Segments must appear in strictly ascending chronological order.
+TARGET DURATION & 3-ACT MATH:
+- The total duration of all combined 'edit_segments' must be between 50 to 58 seconds (strict YouTube Shorts limit).
+- To preserve the climax without exceeding 58s, divide your cuts smartly:
+  * Segment 1 (The Setup & Conflict): 0.0s to ~20.0s (around 18-22s duration)
+  * Segment 2 (The Secret Trick / Escalation): Middle action (around 12-16s duration)
+  * Segment 3 (The Escape, Climax & Punchline): Start right where the rescue/escape begins and go ALL THE WAY to the exact last second of the video: [{climax_target_start:.1f}, {total_duration:.1f}] (around 18-22s duration).
 
-4. LIAM STORYTELLER NARRATION & SFX:
-   - Provide 8 to 10 punchy voiceover lines for ElevenLabs Liam ("speech").
-   - Liam MUST ACT AS THE STORYTELLER / NARRATOR: Explain what is happening step-by-step so a viewer who does not speak Chinese understands the hilarious plot completely!
-   - Space lines with 1.0 - 1.5s silence pockets between them for meme SFX.
-   - Include 4 to 6 meme SFX ('vine_boom.mp3', 'bruh.mp3', 'ding_idea.mp3', 'oh_no_wheeze_laugh.mp3') timed right after key revelations/punchlines.
-   - Include dynamic Center Eye-Level Safe Zone subtitles with emojis.
-"""
-            else:
-                editing_instructions = f"""STEP 3: COMEDY SCRIPT SYNCHRONIZATION (~{total_duration:.1f}s)
-This video is already within the ideal short duration ({total_duration:.1f}s).
-Keep the whole clip: "edit_segments": [[0.0, {total_duration:.1f}]]
-Write 5 to 7 punchy voiceover lines for Liam, spaced with 1.0 - 1.5s silence pockets for meme sound effects.
-Include 3-4 meme SFX from ('vine_boom.mp3', 'bruh.mp3', 'ding_idea.mp3', 'oh_no_wheeze_laugh.mp3') timed right after key revelations.
-Add center eye-level safe zone subtitles with emojis.
-"""
+RULE 1: INVERTED EDITING (CUT ONLY THE JUNK, KEEP CONTINUITY)
+- Do NOT chop the video into tiny 3-5 second pieces.
+- Identify and remove ONLY the BORING FLUFF & SPONSOR AD BLOCKS:
+  * In-video commercial promotions (e.g. phone recycling apps, brand sponsorships, shop visits).
+  * Long awkward dead walking or repetitive silence.
+- Keep the remaining story as 2 to 3 smooth, continuous scenes.
 
-            vision_prompt = f"""You are a master viral YouTube Shorts comedy writer and British deadpan narrator (BBC Wildlife Documentary meets sarcastic UK comedian like Liam).
+RULE 2: THE SACRED ENDING ANCHOR (NEVER CUT THE PUNCHLINE)
+- The final edit segment MUST extend all the way to the very last second of the video ({total_duration:.1f}s).
+- The big climax payoff, furious reactions (e.g. wife screaming with flames), and the lads' final victory/toast must 100% be preserved!
 
-You have full multimodal vision and audio capabilities.
-CRITICAL MISSION: Watch the visual action and listen to the Chinese dialogue in this video. Your goal is to turn this Chinese comedy skit into a crystal-clear, hilarious 50-60 second Short for global/Western audiences who do not speak Chinese!
+RULE 3: LIAM'S "BRIDGE NARRATION" & MOTIVATION
+- Liam's sarcastic BBC-documentary narration glues the cuts together.
+- If cutting over an ad/dead scene, Liam MUST use a snappy bridge line (e.g., "Skipping past the domestic interrogation, tactical reinforcements have arrived...").
+- Clarify motives simply: Explain WHY the husband was trapped/locked, WHAT the distress tool was, and HOW the lads pulled off the escape.
+- Assign witty British nicknames to the characters (e.g., Gary, Big Dave, Brenda).
 
-STEP 1: UNDERSTAND THE REAL COMEDY STORYLINE
-- What is the premise? (e.g. who are the main characters, what funny hobby/activity is happening, what restriction or conflict is placed on them?)
-- What is the rising tension? (e.g. how do they try to overcome the obstacle, what secret distress signals or absurd tools do they use?)
-- What is the final twist or payoff? (e.g. how do the friends/rescuers break in, how do they escape, what is the wife's stunned reaction?)
-- Ignore and completely cut any in-video commercial sponsor advertisements (e.g. app plugs, phone recycling, product placements).
+RULE 4: AUDIO TIMELINE & PACING (CRITICAL)
+- IMPORTANT: All timestamps in "speech", "sfx", and "subtitles" MUST BE ON THE FINAL EDITED TIMELINE (starting at 0.0s of the concatenated output video, NOT the source video).
+- Provide 7 to 9 punchy speech lines for Liam evenly distributed across the 50-58s timeline (10 to 16 words max per line).
+- Leave 1.0 - 1.5s silent windows between lines for meme SFX (vine_boom, bruh, ding_idea, wheeze_laugh).
+- The final meme sound effect (wheeze_laugh or vine_boom) MUST land directly on the final punchline reaction!
 
-STEP 2: UK / WESTERN ROAST STORYTELLING (FOR ELEVENLABS LIAM)
-- Deliver deadpan, witty British narration that tells the STORY chronologically from start to finish.
-- Give characters British comedy nicknames (e.g. Gary the Barber, Brenda, Terry, Dave).
-- Never leave the viewer confused: explain WHY someone is trapped, WHAT their ridiculous plan is, and HOW they get away with it!
-- STRICTLY FORBIDDEN: NEVER use generic cliches ('Bro thought', 'Wait for it', 'Absolute cinema', 'Legendary difficulty'). Use vivid, descriptive British humor.
-
-{editing_instructions}
-
-Return ONLY valid JSON with this exact schema:
+OUTPUT FORMAT:
+Return ONLY valid, raw JSON (no markdown formatting, no ```json backticks):
 {{
+  "ad_or_junk_range": [70.0, 125.0],
   "edit_segments": [
-    [0.0, 18.0],
-    [45.0, 66.0],
-    [135.0, 154.0]
+    [0.0, 20.0],
+    [45.0, 60.0],
+    [{climax_target_start:.1f}, {total_duration:.1f}]
   ],
-  "edited_duration": 58.0,
-  "title": "Short punchy title",
+  "edited_duration": 56.5,
+  "title": "Witty British Title",
   "speech": [
-    ["01", 0.5, "Line 1 introducing the setup..."],
-    ["02", 6.5, "Line 2..."],
-    ["03", 12.5, "Line 3..."],
-    ["04", 19.0, "Line 4 introducing the plan..."],
-    ["05", 25.5, "Line 5..."],
-    ["06", 32.0, "Line 6..."],
-    ["07", 38.5, "Line 7 introducing the rescue..."],
-    ["08", 45.0, "Line 8..."],
-    ["09", 51.5, "Line 9 delivering punchline..."]
+    ["01", 0.5, "Line 1 introducing Gary and the absurd setup..."],
+    ["02", 7.0, "Line 2 Brenda locking the gate..."],
+    ["03", 14.0, "Line 3 Deploying the secret distress signal..."],
+    ["04", 21.0, "Line 4 The plan gets compromised..."],
+    ["05", 28.5, "Line 5 [Bridge] Skipping the hostage drama, backup arrives..."],
+    ["06", 36.0, "Line 6 Baozi brings the secret tools..."],
+    ["07", 43.5, "Line 7 Hoisted over the wall into freedom..."],
+    ["08", 51.0, "Line 8 Brenda screams in pure fiery rage while the lads celebrate!"]
   ],
   "sfx": [
-    ["vine_boom.mp3", 6.0, 0.9],
-    ["ding_idea.mp3", 18.5, 0.85],
-    ["bruh.mp3", 31.5, 0.9],
-    ["vine_boom.mp3", 38.0, 0.9],
-    ["oh_no_wheeze_laugh.mp3", 51.0, 0.95]
+    ["vine_boom.mp3", 6.5, 0.9],
+    ["bruh.mp3", 13.5, 0.85],
+    ["ding_idea.mp3", 20.5, 0.85],
+    ["vine_boom.mp3", 35.5, 0.9],
+    ["oh_no_wheeze_laugh.mp3", 50.5, 0.95]
   ],
   "subtitles": [
-    {{"start": 0.5, "end": 6.0, "style": "CenterHook", "text": "SUBTITLE LINE 💀"}},
-    {{"start": 6.5, "end": 12.0, "style": "CenterPunch", "text": "SUBTITLE LINE 🚨"}},
-    {{"start": 12.5, "end": 18.5, "style": "CenterPunch", "text": "SUBTITLE LINE 🔒"}},
-    {{"start": 19.0, "end": 25.0, "style": "CenterPunch", "text": "SUBTITLE LINE 💡"}},
-    {{"start": 25.5, "end": 31.5, "style": "CenterPunch", "text": "SUBTITLE LINE 🔦"}},
-    {{"start": 32.0, "end": 38.0, "style": "CenterPunch", "text": "SUBTITLE LINE ⛓️"}},
-    {{"start": 38.5, "end": 44.5, "style": "CenterPunch", "text": "SUBTITLE LINE 🚜"}},
-    {{"start": 45.0, "end": 51.0, "style": "CenterPunch", "text": "SUBTITLE LINE 💨"}},
-    {{"start": 51.5, "end": 56.5, "style": "CenterPunch", "text": "SUBTITLE LINE 👑"}}
+    {{"start": 0.5, "end": 6.5, "style": "CenterHook", "text": "Gary's peaceful poultry grooming 🐔"}},
+    {{"start": 7.0, "end": 13.5, "style": "CenterPunch", "text": "Brenda locks the perimeter gate! 🔒"}},
+    {{"start": 14.0, "end": 20.5, "style": "CenterPunch", "text": "Deploying the tactical laser SOS 🔦"}},
+    {{"start": 21.0, "end": 28.0, "style": "CenterPunch", "text": "Hostage situation on the patio ⛓️"}},
+    {{"start": 28.5, "end": 35.5, "style": "CenterPunch", "text": "Emergency backup mobilizes! 🚨"}},
+    {{"start": 36.0, "end": 43.0, "style": "CenterPunch", "text": "Delivery disguise with angle grinder 🛠️"}},
+    {{"start": 43.5, "end": 50.5, "style": "CenterPunch", "text": "Wheelbarrow extraction into freedom 🚜"}},
+    {{"start": 51.0, "end": 57.0, "style": "CenterPunch", "text": "Brenda screaming with literal flames! 🔥"}}
   ]
 }}
 """
@@ -332,97 +300,14 @@ Return ONLY valid JSON with this exact schema:
             if m:
                 script_data = json.loads(m.group(0))
                 script_data = normalize_script_data(script_data, total_duration)
-                print(f"[AI Script] Gemini Vision 3-Act script ready: {len(script_data.get('speech', []))} lines, {len(script_data.get('edit_segments', []))} segments, {script_data.get('edited_duration', 0):.1f}s total duration!")
+                print(f"[AI Script] Master Story script ready: {len(script_data.get('speech', []))} lines, {len(script_data.get('edit_segments', []))} segments, {script_data.get('edited_duration', 0):.1f}s duration (Ending 100% Anchored)!")
                 return script_data
 
         except Exception as e:
             print(f"[AI Script] Gemini Vision processing error: {e}")
 
-    # 2. SECONDARY: Fallback to text prompt if video upload wasn't possible
-    print("[AI Script] Fallback: using text-based prompt...")
-    text_prompt = f"""You are a master viral YouTube Shorts comedy writer and British deadpan narrator.
-A Chinese slapstick comedy creator named "{author}" published a video with caption: "{caption}".
-Video duration: {total_duration:.1f} seconds.
-
-Turn this into a viral 52-58 second UK meme Short with Liam voiceover.
-Tone: Deadpan British documentary sarcasm.
-Return ONLY valid JSON matching:
-{{
-  "edit_segments": [[0.0, 18.0], [30.0, 50.0], [{max(51.0, total_duration - 18.0):.1f}, {total_duration:.1f}]],
-  "edited_duration": 56.0,
-  "title": "Slapstick Escape",
-  "speech": [
-    ["01", 0.5, "Text..."],
-    ["02", 7.0, "Text..."],
-    ["03", 14.0, "Text..."],
-    ["04", 21.0, "Text..."],
-    ["05", 28.0, "Text..."],
-    ["06", 35.0, "Text..."],
-    ["07", 42.0, "Text..."],
-    ["08", 49.0, "Text..."]
-  ],
-  "sfx": [
-    ["vine_boom.mp3", 6.5, 0.9],
-    ["ding_idea.mp3", 20.5, 0.85],
-    ["bruh.mp3", 34.5, 0.9],
-    ["oh_no_wheeze_laugh.mp3", 48.5, 0.95]
-  ],
-  "subtitles": [
-    {{"start": 0.5, "end": 6.5, "style": "CenterHook", "text": "Text 💀"}},
-    {{"start": 7.0, "end": 13.5, "style": "CenterPunch", "text": "Text 🚨"}}
-  ]
-}}
-"""
-
-    if GEMINI_API_KEY:
-        for model_name in GEMINI_MODELS:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
-            payload = {
-                "contents": [{"parts": [{"text": text_prompt}]}],
-                "generationConfig": {
-                    "response_mime_type": "application/json",
-                    "temperature": 0.7
-                }
-            }
-            try:
-                req = urllib.request.Request(
-                    url,
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers={"Content-Type": "application/json"}
-                )
-                with urllib.request.urlopen(req, timeout=30) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    text = data["candidates"][0]["content"]["parts"][0]["text"]
-                    m = re.search(r'\{.*\}', text, re.DOTALL)
-                    if m:
-                        return normalize_script_data(json.loads(m.group(0)), total_duration)
-            except Exception as e:
-                print(f"[AI Script] Gemini text fallback error ({model_name}): {e}")
-
-    if OPENROUTER_API_KEY:
-        try:
-            req = urllib.request.Request(
-                "https://openrouter.ai/api/v1/chat/completions",
-                data=json.dumps({
-                    "model": "openrouter/free",
-                    "messages": [{"role": "user", "content": text_prompt}],
-                    "temperature": 0.7
-                }).encode("utf-8"),
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json"
-                }
-            )
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                res = json.loads(resp.read().decode("utf-8"))
-                raw = res["choices"][0]["message"]["content"]
-                m = re.search(r'\{.*\}', raw, re.DOTALL)
-                if m:
-                    return normalize_script_data(json.loads(m.group(0)), total_duration)
-        except Exception as e:
-            print(f"[AI Script] Backup OpenRouter error: {e}")
-
-    print("[AI Script] Using high-retention default 3-act comedy template.")
+    # 2. SECONDARY: Fallback to text prompt
+    print("[AI Script] Using high-retention default master comedy template.")
     return normalize_script_data(get_fallback_template(total_duration), total_duration)
 
 
@@ -432,9 +317,10 @@ def generate_comedy_script_with_ai(title: str, author: str, duration: float) -> 
 
 def get_fallback_template(duration: float) -> dict:
     """High-retention 3-Act template adapted to duration with zero audio clashing."""
-    cut_len = min(duration, 55.0)
+    cut_len = min(duration, 56.0)
+    climax_start = max(0.0, duration - 20.0)
     return {
-        "edit_segments": [(0.0, 18.0), (25.0, 45.0), (max(46.0, duration - 15.0), duration)],
+        "edit_segments": [(0.0, 18.0), (30.0, 48.0), (climax_start, duration)],
         "edited_duration": cut_len,
         "title": "The Great Padlock Escape",
         "speech": [
@@ -442,26 +328,26 @@ def get_fallback_template(duration: float) -> dict:
             ("02", 7.0, "Locked inside his own compound, our lad knows standard diplomatic channels have officially failed."),
             ("03", 14.0, "Desperate times call for covert tactical tech. Gary deploys the high-powered green laser distress beacon."),
             ("04", 21.0, "Down at the local pub, the signal is received loud and clear on the brickwork."),
-            ("05", 28.5, "Brenda discovers the secret transmissions and ties the boys to chairs in pure retaliation."),
-            ("06", 35.5, "Under the radar, the extraction squad mobilizes with the heavy-duty rescue wheelbarrow."),
-            ("07", 42.5, "Before Brenda can blink, the boys are hoisted over the perimeter into sweet, glorious freedom."),
-            ("08", 49.5, "Leaving Brenda standing at the open gate, utterly flabbergasted by the great escape.")
+            ("05", 28.5, "Skipping past the domestic interrogation, tactical backup has officially arrived on scene."),
+            ("06", 36.0, "Disguised as a courier, Baozi slips Gary the secret angle grinder right under Brenda's nose."),
+            ("07", 43.5, "Hoisted onto the heavy-duty rescue wheelbarrow, the lads make a break for the perimeter."),
+            ("08", 51.0, "Brenda returns only to find empty chairs, screaming with literal flames while the boys toast to freedom!")
         ],
         "sfx": [
             ("vine_boom.mp3", 6.5, 0.9),
             ("ding_idea.mp3", 13.5, 0.85),
             ("bruh.mp3", 20.5, 0.9),
-            ("vine_boom.mp3", 28.0, 0.9),
-            ("oh_no_wheeze_laugh.mp3", 49.0, 0.95)
+            ("vine_boom.mp3", 35.5, 0.9),
+            ("oh_no_wheeze_laugh.mp3", 50.5, 0.95)
         ],
         "subtitles": [
-            {"start": 0.5, "end": 6.5, "style": "CenterHook", "text": "Brenda brings out the industrial padlock 🔒"},
-            {"start": 7.0, "end": 13.5, "style": "CenterPunch", "text": "Locked inside his own compound! 💀"},
-            {"start": 14.0, "end": 20.5, "style": "CenterPunch", "text": "Gary deploys the tactical laser beacon 🔦"},
+            {"start": 0.5, "end": 6.5, "style": "CenterHook", "text": "Gary's peaceful poultry grooming 🐔"},
+            {"start": 7.0, "end": 13.5, "style": "CenterPunch", "text": "Brenda locks the perimeter gate! 🔒"},
+            {"start": 14.0, "end": 20.5, "style": "CenterPunch", "text": "Deploying the tactical laser SOS 🔦"},
             {"start": 21.0, "end": 28.0, "style": "CenterPunch", "text": "Signal received at the local pub! 🚨"},
-            {"start": 28.5, "end": 35.0, "style": "CenterPunch", "text": "Brenda ties the lads to the chairs ⛓️"},
-            {"start": 35.5, "end": 42.0, "style": "CenterPunch", "text": "Rescue squad arrives with the wheelbarrow! 🚜"},
-            {"start": 42.5, "end": 49.0, "style": "CenterPunch", "text": "Hoisted over the perimeter into freedom 💨"},
-            {"start": 49.5, "end": 55.0, "style": "CenterPunch", "text": "Brenda utterly flabbergasted by the escape! 👑"}
+            {"start": 28.5, "end": 35.5, "style": "CenterPunch", "text": "Emergency backup mobilizes! 🚜"},
+            {"start": 36.0, "end": 43.0, "style": "CenterPunch", "text": "Delivery disguise with angle grinder 🛠️"},
+            {"start": 43.5, "end": 50.5, "style": "CenterPunch", "text": "Wheelbarrow extraction into freedom 💨"},
+            {"start": 51.0, "end": 56.5, "style": "CenterPunch", "text": "Brenda screaming with literal flames! 🔥"}
         ]
     }
