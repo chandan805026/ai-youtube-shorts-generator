@@ -20,10 +20,8 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install FFmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+      - name: Verify Pre-installed FFmpeg
+        run: ffmpeg -version
 
       - name: Install Python Dependencies
         run: |
