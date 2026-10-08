@@ -91,11 +91,10 @@ Tasks:
    - Punchline & Climax: How does it end and what is the final reaction?
 
 2. NATURAL PACING & DYNAMIC SPEED RECOMMENDATIONS:
-   Target Duration: Around 90 to 95 seconds (balanced sweet spot for comedy Shorts and Reels).
-   The video should play moderately fast and energetic right from the start (0:00), but smooth and completely natural to watch:
-   - Base speed for key comedy actions and main story beats: speed = 1.45 to 1.55 (natural, brisk comedic tempo).
-   - For slow walking, dog feeding, or transition moments: speed = 2.2 to 2.4 (smooth fast-forward without chaotic blur).
-   - Divide the entire video into continuous sequential segments covering 0.0s to {total_dur:.1f}s without gaps so total duration sums to ~90-95s.
+   Target Duration: Around 90 to 95 seconds.
+   - Base speed for comedy scenes & main story beats: speed = 1.5 (natural, brisk comedic tempo).
+   - For slow walking, dog feeding, or boring transitions: speed = 2.3 (clean fast-forward).
+   - Divide the entire video into continuous sequential segments covering 0.0s to {total_dur:.1f}s without gaps.
 
 Return ONLY a valid raw JSON object (no markdown, no backticks):
 {{
@@ -103,11 +102,11 @@ Return ONLY a valid raw JSON object (no markdown, no backticks):
   "video_improvements": "Tips on how to make this video most engaging...",
   "segments": [
     {{"start": 0.0, "end": 31.0, "speed": 1.5, "description": "Rooster haircut, toy car wine delivery intercepted, wife padlocks gate"}},
-    {{"start": 31.0, "end": 52.0, "speed": 1.6, "description": "Magnet key theft attempt, caught, sneaking upstairs"}},
+    {{"start": 31.0, "end": 52.0, "speed": 1.5, "description": "Magnet key theft attempt, caught, sneaking upstairs"}},
     {{"start": 52.0, "end": 63.0, "speed": 1.5, "description": "Green laser SOS distress call on outside wall"}},
     {{"start": 63.0, "end": 107.0, "speed": 2.3, "description": "Friend sees laser, brings tools, feeds dog, approaches gate"}},
     {{"start": 107.0, "end": 118.5, "speed": 1.5, "description": "Wife ambushes friend, both men tied to lawn chairs"}},
-    {{"start": 118.5, "end": 156.0, "speed": 2.4, "description": "Mid-scene discussion and setup"}},
+    {{"start": 118.5, "end": 156.0, "speed": 2.3, "description": "Mid-scene discussion and setup"}},
     {{"start": 156.0, "end": {total_dur:.1f}, "speed": 1.5, "description": "Delivery man gives blade, mouth rope cut, wheelbarrow escape, angry wife, river toast"}}
   ]
 }}"""
@@ -144,17 +143,18 @@ Return ONLY a valid raw JSON object (no markdown, no backticks):
         # Robust fallback using Pegasus's natural text analysis
         return {
             "story_summary": raw_text,
-            "video_improvements": "Balanced 90s comedy pacing (1.5x base, 2.3x transitions).",
+            "video_improvements": "Balanced 95s comedy pacing (1.5x base, 2.3x transitions).",
             "segments": [
                 {"start": 0.0, "end": 31.0, "speed": 1.5, "description": "Rooster haircut, toy car wine delivery intercepted, wife padlocks gate"},
-                {"start": 31.0, "end": 52.0, "speed": 1.6, "description": "Magnet key theft attempt, caught, sneaking upstairs"},
+                {"start": 31.0, "end": 52.0, "speed": 1.5, "description": "Magnet key theft attempt, caught, sneaking upstairs"},
                 {"start": 52.0, "end": 63.0, "speed": 1.5, "description": "Green laser SOS distress call on outside wall"},
                 {"start": 63.0, "end": 107.0, "speed": 2.3, "description": "Friend sees laser, brings tools, feeds dog, approaches gate"},
                 {"start": 107.0, "end": 118.5, "speed": 1.5, "description": "Wife ambushes friend, both men tied to lawn chairs"},
-                {"start": 118.5, "end": 156.0, "speed": 2.4, "description": "Mid-scene discussion and setup"},
+                {"start": 118.5, "end": 156.0, "speed": 2.3, "description": "Mid-scene discussion and setup"},
                 {"start": 156.0, "end": total_dur, "speed": 1.5, "description": "Delivery man gives blade, mouth rope cut, wheelbarrow escape, angry wife, river toast"}
             ]
         }
+
 
 
 
