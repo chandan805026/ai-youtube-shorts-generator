@@ -120,17 +120,16 @@ def compose_final_short(source_video: str, twelvelabs_data: dict, script_data: d
         "-map", "[v]",
         "-map", "1:a",
         "-c:v", "libx264",
-        "-b:v", "1400k",
-        "-maxrate", "1600k",
-        "-bufsize", "2000k",
-        "-preset", "veryfast",
+        "-crf", "20",
+        "-preset", "fast",
         "-c:a", "aac",
-        "-b:a", "128k",
+        "-b:a", "192k",
         "-movflags", "+faststart",
         out_video
     ]
     print(f"[Composer] Rendering final Short: {out_video}...")
     subprocess.run(cmd_burn, check=True)
+
 
 
     # Cleanup temporary base
