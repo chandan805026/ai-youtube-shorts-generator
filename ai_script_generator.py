@@ -26,7 +26,7 @@ GEMINI_MODELS = [
 def normalize_script_data(data: dict, total_duration: float) -> dict:
     """
     Ensures edit_segments is a clean list of (start, end) tuples and
-    calculates the exact resulting edited duration.
+    calculates the exact resulting edited duration, strictly capped at ~60-65s for YouTube Shorts.
     """
     raw_segs = data.get("edit_segments") or data.get("segments")
     norm_segs = []
@@ -37,14 +37,33 @@ def normalize_script_data(data: dict, total_duration: float) -> dict:
             elif isinstance(item, dict) and "start" in item and "end" in item:
                 norm_segs.append((max(0.0, float(item["start"])), min(total_duration, float(item["end"]))))
 
+    if not norm_segs and "cut_start" in data and "cut_end" in data:
+        st = max(0.0, float(data["cut_start"]))
+        et = min(total_duration, float(data["cut_end"]))
+        norm_segs = [(st, et)]
+
     if not norm_segs:
         if total_duration > 65.0:
             norm_segs = [(0.0, min(total_duration, 60.0))]
         else:
             norm_segs = [(0.0, total_duration)]
 
-    edited_duration = sum([max(0.0, et - st) for st, et in norm_segs])
-    data["edit_segments"] = norm_segs
+    # Cap total edited duration to maximum 65.0s for Shorts
+    accumulated = 0.0
+    capped_segs = []
+    for st, et in norm_segs:
+        dur = max(0.0, et - st)
+        if accumulated + dur > 65.0:
+            allowed = max(5.0, 65.0 - accumulated)
+            capped_segs.append((st, min(et, st + allowed)))
+            accumulated += allowed
+            break
+        else:
+            capped_segs.append((st, et))
+            accumulated += dur
+
+    edited_duration = sum([max(0.0, et - st) for st, et in capped_segs])
+    data["edit_segments"] = capped_segs
     data["edited_duration"] = edited_duration
     return data
 
@@ -167,17 +186,26 @@ Return ONLY valid JSON with this exact schema:
 }}
 """
 
-            response = client.models.generate_content(
-                model='gemini-3.5-flash-lite',
-                contents=[
-                    client.files.get(name=vf.name),
-                    vision_prompt
-                ],
-                config={
-                    'response_mime_type': 'application/json',
-                    'temperature': 0.7
-                }
-            )
+            response = None
+            for vision_model in ["gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"]:
+                try:
+                    print(f"[AI Script] Querying Gemini model: {vision_model}...")
+                    response = client.models.generate_content(
+                        model=vision_model,
+                        contents=[
+                            client.files.get(name=vf.name),
+                            vision_prompt
+                        ],
+                        config={
+                            'response_mime_type': 'application/json',
+                            'temperature': 0.7
+                        }
+                    )
+                    if response and response.text:
+                        break
+                except Exception as model_err:
+                    print(f"[AI Script] Model {vision_model} error: {model_err}, trying next model...")
+                    time.sleep(2)
 
             # Cleanup uploaded file immediately
             try:
@@ -244,7 +272,7 @@ Return ONLY valid JSON matching:
                     text = data["candidates"][0]["content"]["parts"][0]["text"]
                     m = re.search(r'\{.*\}', text, re.DOTALL)
                     if m:
-                        return json.loads(m.group(0))
+                        return normalize_script_data(json.loads(m.group(0)), total_duration)
             except Exception as e:
                 print(f"[AI Script] Gemini text fallback error ({model_name}): {e}")
 
@@ -267,12 +295,12 @@ Return ONLY valid JSON matching:
                 raw = res["choices"][0]["message"]["content"]
                 m = re.search(r'\{.*\}', raw, re.DOTALL)
                 if m:
-                    return json.loads(m.group(0))
+                    return normalize_script_data(json.loads(m.group(0)), total_duration)
         except Exception as e:
             print(f"[AI Script] Backup OpenRouter error: {e}")
 
     print("[AI Script] Using high-retention default comedy template.")
-    return get_fallback_template(total_duration)
+    return normalize_script_data(get_fallback_template(total_duration), total_duration)
 
 
 def generate_comedy_script_with_ai(title: str, author: str, duration: float) -> dict:

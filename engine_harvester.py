@@ -109,11 +109,20 @@ Return ONLY valid JSON with this exact structure:
 }}
 """
 
-    response = client.models.generate_content(
-        model='gemini-3.5-flash-lite',
-        contents=[client.files.get(name=vf.name), prompt],
-        config={'response_mime_type': 'application/json', 'temperature': 0.3}
-    )
+    response = None
+    for m_name in ["gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"]:
+        try:
+            print(f"[Harvester] Detecting scenes with model: {m_name}...")
+            response = client.models.generate_content(
+                model=m_name,
+                contents=[client.files.get(name=vf.name), prompt],
+                config={'response_mime_type': 'application/json', 'temperature': 0.3}
+            )
+            if response and response.text:
+                break
+        except Exception as err:
+            print(f"[Harvester] Model {m_name} error: {err}, trying next model...")
+            time.sleep(2)
 
     try:
         client.files.delete(name=vf.name)
