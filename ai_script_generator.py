@@ -81,23 +81,29 @@ Return ONLY a valid raw JSON object (no markdown, no ```json backticks):
             from google import genai
             client = genai.Client(api_key=GEMINI_API_KEY)
             print("[Gemini Script] Calling Gemini via official google-genai SDK...")
-            resp = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt
-            )
-            raw_text = resp.text.strip()
-            clean_json = raw_text
-            if clean_json.startswith("```json"):
-                clean_json = clean_json[7:]
-            if clean_json.startswith("```"):
-                clean_json = clean_json[3:]
-            if clean_json.endswith("```"):
-                clean_json = clean_json[:-3]
-            clean_json = clean_json.strip()
+            raw_text = None
+            for m_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
+                try:
+                    resp = client.models.generate_content(model=m_name, contents=prompt)
+                    raw_text = resp.text.strip()
+                    if raw_text:
+                        break
+                except Exception as ex_m:
+                    print(f"[Gemini Script] Model {m_name} failed: {ex_m}")
 
-            data = json.loads(clean_json)
-            print(f"[Gemini Script] Successfully received {len(data.get('speech', []))} speech lines!")
-            return data
+            if raw_text:
+                clean_json = raw_text
+                if clean_json.startswith("```json"):
+                    clean_json = clean_json[7:]
+                if clean_json.startswith("```"):
+                    clean_json = clean_json[3:]
+                if clean_json.endswith("```"):
+                    clean_json = clean_json[:-3]
+                clean_json = clean_json.strip()
+
+                data = json.loads(clean_json)
+                print(f"[Gemini Script] Successfully received {len(data.get('speech', []))} speech lines!")
+                return data
         except Exception as e:
             print(f"[Gemini Script] SDK call warning: {e}, trying direct REST fallback...")
 
@@ -105,11 +111,12 @@ Return ONLY a valid raw JSON object (no markdown, no ```json backticks):
     api_key = GEMINI_API_KEY or os.environ.get("GEMINI_KEY", "")
     if api_key:
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.7, "maxOutputTokens": 2048}
             }
+
             req = urllib.request.Request(
                 url,
                 data=json.dumps(payload).encode("utf-8"),
