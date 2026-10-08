@@ -27,7 +27,11 @@ def run_pipeline(url_or_id: str, output_path: str = None) -> str:
     print("=" * 70)
 
     # 0. Ensure Meme Sound Vault is populated
-    build_meme_vault.download_meme_sounds()
+    if hasattr(build_meme_vault, "download_meme_sounds"):
+        build_meme_vault.download_meme_sounds()
+    elif hasattr(build_meme_vault, "download_all"):
+        build_meme_vault.download_all()
+
 
     # 1. Download & Transcode Video
     print(f"\n[Step 1/4] Downloading Kuaishou/Douyin raw video: {url_or_id}...")

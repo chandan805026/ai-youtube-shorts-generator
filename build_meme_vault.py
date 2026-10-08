@@ -62,5 +62,11 @@ def download_all():
 
     print(f"\nDone! Successfully saved {success} / {len(SOUNDS)} meme audios.")
 
+
+def download_meme_sounds():
+    return download_all()
+
+
 if __name__ == "__main__":
     download_all()
+

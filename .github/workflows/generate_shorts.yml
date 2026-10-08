@@ -25,10 +25,15 @@ jobs:
         with:
           ffmpeg-version: release
 
+      - name: Install Fonts for Subtitles
+        run: |
+          sudo apt-get update && sudo apt-get install -y fonts-dejavu fontconfig
+
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
 
       - name: Run TwelveLabs + Gemini Autonomous Shorts Pipeline
         env:
