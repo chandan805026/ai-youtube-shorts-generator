@@ -43,16 +43,20 @@ def run_pipeline(url_or_id: str, output_path: str = None) -> str:
     print(f"\n[Step 2/4] Analyzing video with TwelveLabs AI (Story & Dynamic Speeds)...")
     twelvelabs_data = analyze_video_with_twelvelabs(raw_video)
     story_summary = twelvelabs_data.get("story_summary", "")
+    character_emotions = twelvelabs_data.get("character_emotions", "")
     segments = twelvelabs_data.get("segments", [])
     
     total_timeline = sum((float(s["end"]) - float(s["start"])) / float(s.get("speed", 1.0)) for s in segments)
     print(f"[Step 2/4] Story captured! Computed timeline duration: {total_timeline:.1f}s")
     print(f"[Step 2/4] Story Preview:\n{story_summary[:250]}...")
+    if character_emotions:
+        print(f"[Step 2/4] Character Face Emotions captured:\n{character_emotions[:250]}...")
 
     # 3. Generate Foreign/UK Script via Gemini
-    print(f"\n[Step 3/4] Adapting story for foreign/UK audience with Gemini...")
-    script_data = generate_foreign_comedy_script(story_summary, total_timeline, segments)
+    print(f"\n[Step 3/4] Adapting story for foreign/UK audience with Gemini (Face Emotion Matched)...")
+    script_data = generate_foreign_comedy_script(story_summary, total_timeline, segments, character_emotions)
     print(f"[Step 3/4] Script generated: '{script_data.get('title', 'Short')}' ({len(script_data.get('speech', []))} lines)")
+
 
     # 4. Compose Final Video
     if not output_path:

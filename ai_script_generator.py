@@ -15,33 +15,37 @@ if sys.stdout:
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 
 
-def generate_foreign_comedy_script(story_summary: str, total_duration: float, segments: list) -> dict:
+def generate_foreign_comedy_script(story_summary: str, total_duration: float, segments: list, character_emotions: str = "") -> dict:
     """
-    Takes TwelveLabs story summary and timeline segments, then uses Gemini
-    to adapt the story for foreign/UK audiences in the deadpan, witty style of Liam.
+    Takes TwelveLabs story summary, character facial emotions, and timeline segments, then uses Gemini
+    to adapt the story for foreign/UK audiences in the deadpan, witty style of Liam matching facial emotions.
     """
-    print(f"\n[Gemini Script] Writing foreign comedy script for {total_duration:.1f}s timeline...")
+    print(f"\n[Gemini Script] Writing foreign comedy script for {total_duration:.1f}s timeline (Face Matched)...")
 
-    num_lines = max(6, min(10, int(total_duration / 8.5)))
+    num_lines = max(7, min(10, int(total_duration / 10.0)))
     
-    prompt = f"""You are a master viral YouTube Shorts storyteller and British comedy narrator (in the deadpan, sarcastic style of Liam).
+    prompt = f"""You are a master viral YouTube Shorts comedy narrator (in the deadpan, sarcastic style of Liam).
 
 CONTEXT FROM VIDEO ANALYSIS:
-Here is the exact real story and event sequence identified from the video:
+Story:
 \"\"\"{story_summary}\"\"\"
+
+Character Facial Emotions & Expressions:
+\"\"\"{character_emotions}\"\"\"
 
 TARGET DURATION:
 The final edited video timeline runs for exactly {total_duration:.1f} seconds.
 
 CRITICAL RULES FOR NARRATION:
-1. GROUNDED & RELATABLE: Do NOT use over-the-top, screaming, or cringe Internet clichés (STRICTLY FORBIDDEN: 'BRO THOUGHT', 'WAIT FOR IT', 'ABSOLUTE CINEMA', 'LEGENDARY DIFFICULTY').
-2. BRITISH DEADPAN WIT: Narrate with dry, calm, sarcastic UK humor (like a BBC documentary host who has completely lost faith in humanity).
+1. MATCH FACIAL EXPRESSIONS: Connect the commentary to what the characters' faces show (e.g. Brenda's angry glare/scowl, Gary's nervous guilt when caught stealing the keys, both blokes looking stunned and defeated on lawn chairs, and Brenda's screaming rage at the end).
+2. GROUNDED BRITISH DEADPAN WIT: Narrate with dry, calm, sarcastic UK humor (like a BBC mockumentary host roasting the absurd schemes). Strictly NO cringe over-screaming or clichés ('BRO THOUGHT', 'WAIT FOR IT', 'ABSOLUTE CINEMA').
 3. NATURAL STORY CONTINUITY: Explain WHY things happen logically:
-   - Gary's absurd opening scheme (e.g. stylish rooster haircut or secret contraband).
-   - Brenda's fierce reaction (locking the gate with the padlock).
+   - Gary's absurd opening scheme (stylish rooster haircut & toy car wine delivery).
+   - Brenda's fierce padlock reaction.
    - The distress signal (laser on the wall) and how the friend arrives.
    - The ambush (both tied to lawn chairs).
    - The secret blade escape and the final victory toast by the river.
+
 4. PACING & GAPS:
    - Provide {num_lines} concise speech lines (10 to 14 words per line) evenly spaced across the 0.0s to {total_duration:.1f}s timeline.
    - Leave 1.5 to 2.5 seconds of silence between speech lines for meme sound effects.

@@ -50,3 +50,32 @@ jobs:
           name: viral-short-preview
           path: viral_short_*.mp4
           retention-days: 7
+
+      - name: Generate Direct Online Streaming Link
+        run: |
+          SHORT_FILE=$(ls viral_short_*.mp4 | head -n 1)
+          echo "Found generated video: $SHORT_FILE ($(du -h $SHORT_FILE | cut -f1))"
+          
+          TMP_RESP=$(curl -s -H "User-Agent: Mozilla/5.0" -F "file=@$SHORT_FILE" https://tmpfiles.org/api/v1/upload || true)
+          echo "Tmpfiles response: $TMP_RESP"
+          
+          STREAM_URL=$(python3 -c "import json, sys; d=json.loads(sys.argv[1]); u=d.get('data',{}).get('url',''); print(u.replace('tmpfiles.org/', 'tmpfiles.org/dl/'))" "$TMP_RESP" 2>/dev/null || true)
+          WEB_PLAYER_URL=$(python3 -c "import json, sys; d=json.loads(sys.argv[1]); print(d.get('data',{}).get('url',''))" "$TMP_RESP" 2>/dev/null || true)
+          
+          UGUU_RESP=$(curl -s -H "User-Agent: Mozilla/5.0" -F "files[]=@$SHORT_FILE" https://uguu.se/upload || true)
+          echo "Uguu response: $UGUU_RESP"
+          UGUU_URL=$(python3 -c "import json, sys; d=json.loads(sys.argv[1]); print(d.get('files',[{}])[0].get('url',''))" "$UGUU_RESP" 2>/dev/null || true)
+
+          echo "=========================================================="
+          echo "ONLINE_WEB_PLAYER_URL=$WEB_PLAYER_URL"
+          echo "ONLINE_STREAM_URL=$STREAM_URL"
+          echo "ONLINE_BACKUP_STREAM_URL=$UGUU_URL"
+          echo "=========================================================="
+          
+          echo "### 🎬 Direct Online Video Links" >> $GITHUB_STEP_SUMMARY
+          echo "- **Web Player (Interactive Player)**: [$WEB_PLAYER_URL]($WEB_PLAYER_URL)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Direct Stream URL**: [$STREAM_URL]($STREAM_URL)" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$UGUU_URL" ]; then
+            echo "- **Backup Direct Stream**: [$UGUU_URL]($UGUU_URL)" >> $GITHUB_STEP_SUMMARY
+          fi
+

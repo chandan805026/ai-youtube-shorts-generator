@@ -83,11 +83,11 @@ def analyze_video_with_twelvelabs(video_path: str) -> dict:
 
     prompt = f"""You are an expert viral video editor. Analyze this entire video ({total_dur:.1f} seconds total).
 Tasks:
-1. STORY BREAKDOWN: Explain the complete comedy story chronologically:
+1. STORY BREAKDOWN & CHARACTER FACIAL EMOTIONS:
    - Premise: Who are the characters and what is the opening situation?
    - Conflict: What restriction or padlock occurs and why?
-   - Rescue Signal: How is the distress signal sent and how does help arrive?
-   - Ambush & Escape: What trap occurs, how is the secret blade used, and how do they escape?
+   - Facial Expressions & Reactions: Detail the exact facial emotions of Husband (focused, guilty, panicked), Wife (angry scowl, screaming), and Friend (sneaky, trapped).
+   - Rescue & Escape: How do they signal, get the secret blade, and escape?
    - Punchline & Climax: How does it end and what is the final reaction?
 
 2. NATURAL PACING & DYNAMIC SPEED RECOMMENDATIONS:
@@ -99,6 +99,7 @@ Tasks:
 Return ONLY a valid raw JSON object (no markdown, no backticks):
 {{
   "story_summary": "Complete detailed chronological explanation of what happens in the video...",
+  "character_emotions": "Detailed facial expressions and emotions of Husband, Wife, and Friend with scene context...",
   "video_improvements": "Tips on how to make this video most engaging...",
   "segments": [
     {{"start": 0.0, "end": 31.0, "speed": 1.5, "description": "Rooster haircut, toy car wine delivery intercepted, wife padlocks gate"}},
@@ -143,6 +144,7 @@ Return ONLY a valid raw JSON object (no markdown, no backticks):
         # Robust fallback using Pegasus's natural text analysis
         return {
             "story_summary": raw_text,
+            "character_emotions": "Husband: focused cutting rooster, guilty caught with key, panicked. Wife: angry scowling, triumphant locking gate, screaming rage at escape. Friend: sneaky dog bribery, stunned on lawn chair.",
             "video_improvements": "Balanced 95s comedy pacing (1.5x base, 2.3x transitions).",
             "segments": [
                 {"start": 0.0, "end": 31.0, "speed": 1.5, "description": "Rooster haircut, toy car wine delivery intercepted, wife padlocks gate"},
@@ -154,6 +156,7 @@ Return ONLY a valid raw JSON object (no markdown, no backticks):
                 {"start": 156.0, "end": total_dur, "speed": 1.5, "description": "Delivery man gives blade, mouth rope cut, wheelbarrow escape, angry wife, river toast"}
             ]
         }
+
 
 
 
