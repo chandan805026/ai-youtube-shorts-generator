@@ -74,7 +74,7 @@ def build_speed_ramped_base_video(source_video: str, segments: list, out_video: 
     return total_timeline
 
 
-def compose_final_short(source_video: str, twelvelabs_data: dict, script_data: dict, out_video: str) -> str:
+def compose_final_short(source_video: str, twelvelabs_data: dict, script_data: dict = None, out_video: str = None) -> str:
     """
     Main Assembly Pipeline:
     1. Renders speed-ramped video based on TwelveLabs recommendations.
@@ -83,6 +83,8 @@ def compose_final_short(source_video: str, twelvelabs_data: dict, script_data: d
     4. Generates safe-zone ASS subtitles.
     5. Burns final high-converting Short.
     """
+    if script_data is None:
+        script_data = twelvelabs_data
     segments = twelvelabs_data.get("segments", [])
     ramped_base = os.path.join(SCRATCH_DIR, "temp_ramped_base.mp4")
     total_timeline = build_speed_ramped_base_video(source_video, segments, ramped_base)
