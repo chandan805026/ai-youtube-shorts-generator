@@ -86,7 +86,7 @@ Return ONLY a valid raw JSON object (no markdown, no ```json backticks):
             client = genai.Client(api_key=GEMINI_API_KEY)
             print("[Gemini Script] Calling Gemini via official google-genai SDK...")
             raw_text = None
-            for m_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
+            for m_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
                 try:
                     resp = client.models.generate_content(model=m_name, contents=prompt)
                     raw_text = resp.text.strip()
