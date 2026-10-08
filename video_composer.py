@@ -15,8 +15,17 @@ def slice_and_concat(source_video: str, cut_ranges: list, out_video: str):
     segment_files = []
     concat_list_file = os.path.join(SCRATCH_DIR, "concat_list.txt")
 
-    for idx, (st, et) in enumerate(cut_ranges):
-        dur = et - st
+    valid_ranges = []
+    for r in cut_ranges:
+        st = max(0.0, float(r[0]))
+        et = float(r[1])
+        if et > st + 0.5:
+            valid_ranges.append((st, et - st))
+
+    if not valid_ranges:
+        valid_ranges = [(0.0, 35.0)]
+
+    for idx, (st, dur) in enumerate(valid_ranges):
         seg_path = os.path.join(SCRATCH_DIR, f"seg_{idx:02d}.mp4")
         cmd_cut = [
             FFMPEG_BIN, "-y",

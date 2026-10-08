@@ -26,21 +26,38 @@ GEMINI_MODELS = [
 def normalize_script_data(data: dict, total_duration: float) -> dict:
     """
     Ensures edit_segments is a clean list of (start, end) tuples and
-    calculates the exact resulting edited duration, strictly capped at ~60-65s for YouTube Shorts.
+    calculates the exact resulting edited duration, strictly capped at ~50-65s for YouTube Shorts.
+    Guarantees every segment has start < end, start < total_duration, and positive duration.
     """
     raw_segs = data.get("edit_segments") or data.get("segments")
     norm_segs = []
     if raw_segs and isinstance(raw_segs, list):
         for item in raw_segs:
+            raw_st = 0.0
+            raw_et = 0.0
             if isinstance(item, (list, tuple)) and len(item) >= 2:
-                norm_segs.append((max(0.0, float(item[0])), min(total_duration, float(item[1]))))
+                raw_st = float(item[0])
+                raw_et = float(item[1])
             elif isinstance(item, dict) and "start" in item and "end" in item:
-                norm_segs.append((max(0.0, float(item["start"])), min(total_duration, float(item["end"]))))
+                raw_st = float(item["start"])
+                raw_et = float(item["end"])
+
+            # Discard hallucinated segments that start beyond total duration
+            if raw_st >= total_duration - 1.0:
+                continue
+
+            clean_st = max(0.0, min(total_duration - 1.0, raw_st))
+            clean_et = max(clean_st + 1.0, min(total_duration, raw_et))
+            if clean_et > clean_st + 0.5:
+                norm_segs.append((clean_st, clean_et))
 
     if not norm_segs and "cut_start" in data and "cut_end" in data:
-        st = max(0.0, float(data["cut_start"]))
-        et = min(total_duration, float(data["cut_end"]))
-        norm_segs = [(st, et)]
+        raw_st = float(data["cut_start"])
+        raw_et = float(data["cut_end"])
+        if raw_st < total_duration - 1.0:
+            clean_st = max(0.0, raw_st)
+            clean_et = max(clean_st + 1.0, min(total_duration, raw_et))
+            norm_segs = [(clean_st, clean_et)]
 
     if not norm_segs:
         if total_duration > 65.0:
@@ -48,19 +65,28 @@ def normalize_script_data(data: dict, total_duration: float) -> dict:
         else:
             norm_segs = [(0.0, total_duration)]
 
+    # Sort chronologically
+    norm_segs.sort(key=lambda x: x[0])
+
     # Cap total edited duration to maximum 65.0s for Shorts
     accumulated = 0.0
     capped_segs = []
     for st, et in norm_segs:
-        dur = max(0.0, et - st)
+        dur = et - st
+        if dur <= 0.5:
+            continue
         if accumulated + dur > 65.0:
-            allowed = max(5.0, 65.0 - accumulated)
-            capped_segs.append((st, min(et, st + allowed)))
-            accumulated += allowed
+            allowed = max(2.0, 65.0 - accumulated)
+            if allowed >= 1.0:
+                capped_segs.append((st, st + allowed))
+                accumulated += allowed
             break
         else:
             capped_segs.append((st, et))
             accumulated += dur
+
+    if not capped_segs:
+        capped_segs = [(0.0, min(total_duration, 55.0))]
 
     edited_duration = sum([max(0.0, et - st) for st, et in capped_segs])
     data["edit_segments"] = capped_segs
@@ -187,7 +213,7 @@ Return ONLY valid JSON with this exact schema:
 """
 
             response = None
-            for vision_model in ["gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"]:
+            for vision_model in ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.5-flash-lite"]:
                 try:
                     print(f"[AI Script] Querying Gemini model: {vision_model}...")
                     response = client.models.generate_content(

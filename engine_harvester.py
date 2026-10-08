@@ -110,7 +110,7 @@ Return ONLY valid JSON with this exact structure:
 """
 
     response = None
-    for m_name in ["gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"]:
+    for m_name in ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.5-flash-lite"]:
         try:
             print(f"[Harvester] Detecting scenes with model: {m_name}...")
             response = client.models.generate_content(
