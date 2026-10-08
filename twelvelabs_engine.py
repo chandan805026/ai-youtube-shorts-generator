@@ -91,24 +91,24 @@ Tasks:
    - Punchline & Climax: How does it end and what is the final reaction?
 
 2. NATURAL PACING & DYNAMIC SPEED RECOMMENDATIONS:
-   The video should play smoothly and engagingly for YouTube Shorts, slightly fast from the start (around 1.1x to 1.15x base speed) so it feels snappy, but completely natural and watchable.
-   - For key comedy actions and main story beats: speed = 1.10 to 1.15
-   - For any slow walking, hesitation, or slightly dull transition: suggest a gentle speed increase (speed = 1.20 to 1.35 max).
-   - DO NOT suggest unnatural high speeds (never exceed 1.4x).
-   - Divide the entire video into continuous sequential segments covering 0.0s to {total_dur:.1f}s without gaps.
+   Target Duration: Around 55 to 65 seconds (standard viral YouTube Shorts duration).
+   The video MUST play visibly fast and snappy right from the start (0:00) so it feels energetic and comedic:
+   - Base speed for key comedy actions and main story beats: speed = 1.9 to 2.2 (visibly fast slapstick tempo).
+   - For slow walking, dog feeding, or transition moments: speed = 3.2 to 3.8 (snappy fast-forward).
+   - Divide the entire video into continuous sequential segments covering 0.0s to {total_dur:.1f}s without gaps so total duration sums to ~55-65s.
 
 Return ONLY a valid raw JSON object (no markdown, no backticks):
 {{
   "story_summary": "Complete detailed chronological explanation of what happens in the video...",
   "video_improvements": "Tips on how to make this video most engaging...",
   "segments": [
-    {{"start": 0.0, "end": 31.0, "speed": 1.15, "description": "Rooster haircut, toy car wine delivery intercepted, wife padlocks gate"}},
-    {{"start": 31.0, "end": 52.0, "speed": 1.25, "description": "Magnet key theft attempt, caught, sneaking upstairs"}},
-    {{"start": 52.0, "end": 63.0, "speed": 1.15, "description": "Green laser SOS distress call on outside wall"}},
-    {{"start": 63.0, "end": 107.0, "speed": 1.25, "description": "Friend sees laser, brings tools, feeds dog, approaches gate"}},
-    {{"start": 107.0, "end": 118.5, "speed": 1.15, "description": "Wife ambushes friend, both men tied to lawn chairs"}},
-    {{"start": 118.5, "end": 156.0, "speed": 1.30, "description": "Mid-scene discussion and setup"}},
-    {{"start": 156.0, "end": {total_dur:.1f}, "speed": 1.15, "description": "Delivery man gives blade, mouth rope cut, wheelbarrow escape, angry wife, river toast"}}
+    {{"start": 0.0, "end": 31.0, "speed": 2.1, "description": "Rooster haircut, toy car wine delivery intercepted, wife padlocks gate"}},
+    {{"start": 31.0, "end": 52.0, "speed": 2.6, "description": "Magnet key theft attempt, caught, sneaking upstairs"}},
+    {{"start": 52.0, "end": 63.0, "speed": 2.0, "description": "Green laser SOS distress call on outside wall"}},
+    {{"start": 63.0, "end": 107.0, "speed": 3.6, "description": "Friend sees laser, brings tools, feeds dog, approaches gate"}},
+    {{"start": 107.0, "end": 118.5, "speed": 2.0, "description": "Wife ambushes friend, both men tied to lawn chairs"}},
+    {{"start": 118.5, "end": 156.0, "speed": 3.8, "description": "Mid-scene discussion and setup"}},
+    {{"start": 156.0, "end": {total_dur:.1f}, "speed": 2.0, "description": "Delivery man gives blade, mouth rope cut, wheelbarrow escape, angry wife, river toast"}}
   ]
 }}"""
 
@@ -144,17 +144,18 @@ Return ONLY a valid raw JSON object (no markdown, no backticks):
         # Robust fallback using Pegasus's natural text analysis
         return {
             "story_summary": raw_text,
-            "video_improvements": "Snappy comedic pacing with slightly fast start and natural timing.",
+            "video_improvements": "Snappy high-energy 60s Shorts comedy pacing.",
             "segments": [
-                {"start": 0.0, "end": 31.0, "speed": 1.15, "description": "Rooster haircut, toy car wine delivery intercepted, wife padlocks gate"},
-                {"start": 31.0, "end": 52.0, "speed": 1.25, "description": "Magnet key theft attempt, caught, sneaking upstairs"},
-                {"start": 52.0, "end": 63.0, "speed": 1.15, "description": "Green laser SOS distress call on outside wall"},
-                {"start": 63.0, "end": 107.0, "speed": 1.25, "description": "Friend sees laser, brings tools, feeds dog, approaches gate"},
-                {"start": 107.0, "end": 118.5, "speed": 1.15, "description": "Wife ambushes friend, both men tied to lawn chairs"},
-                {"start": 118.5, "end": 156.0, "speed": 1.30, "description": "Mid-scene discussion and setup"},
-                {"start": 156.0, "end": total_dur, "speed": 1.15, "description": "Delivery man gives blade, mouth rope cut, wheelbarrow escape, angry wife, river toast"}
+                {"start": 0.0, "end": 31.0, "speed": 2.1, "description": "Rooster haircut, toy car wine delivery intercepted, wife padlocks gate"},
+                {"start": 31.0, "end": 52.0, "speed": 2.6, "description": "Magnet key theft attempt, caught, sneaking upstairs"},
+                {"start": 52.0, "end": 63.0, "speed": 2.0, "description": "Green laser SOS distress call on outside wall"},
+                {"start": 63.0, "end": 107.0, "speed": 3.6, "description": "Friend sees laser, brings tools, feeds dog, approaches gate"},
+                {"start": 107.0, "end": 118.5, "speed": 2.0, "description": "Wife ambushes friend, both men tied to lawn chairs"},
+                {"start": 118.5, "end": 156.0, "speed": 3.8, "description": "Mid-scene discussion and setup"},
+                {"start": 156.0, "end": total_dur, "speed": 2.0, "description": "Delivery man gives blade, mouth rope cut, wheelbarrow escape, angry wife, river toast"}
             ]
         }
+
 
 
 

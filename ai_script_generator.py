@@ -140,34 +140,33 @@ Return ONLY a valid raw JSON object (no markdown, no ```json backticks):
     # Robust local British script fallback
     print("[Gemini Script] Using grounded default British script...")
     return {
-        "title": "Tactical Barnyard Rescue Gone Wrong",
+        "title": "Tactical Barnyard Rescue: High Speed",
         "speech": [
-            ["01", 0.5, "Gary has decided his prize rooster is overdue for a stylish haircut. Brenda considers this treason."],
-            ["02", 8.5, "To smuggle out some celebratory wine, the lads launch a tactical toy car. Stopped by Brendas flip-flop."],
-            ["03", 18.0, "Gate padlocked. Gary attempts a stealth magnetic key theft, and gets caught red-handed."],
-            ["04", 27.5, "Plan B: Gary deploys an emergency laser distress signal onto the neighborhood wall."],
-            ["05", 37.0, "Fast-forwarding past Terrys dog-bribing techniques, backup has arrived at the perimeter."],
-            ["06", 47.0, "Catastrophic failure. Brenda ambushes the rescue, and both blokes are swiftly tied to lawn chairs."],
-            ["07", 56.5, "Skipping the hostage negotiations, a friendly delivery driver slips a covert blade through the bars."],
-            ["08", 64.0, "Gary gnaws through the ropes, initiating a high-speed wheelbarrow escape into freedom."],
-            ["09", 71.5, "Brenda erupts into pure fiery rage, while the lads toast by the river. Brilliant."]
+            ["01", 0.5, "Gary decides his prize rooster needs an emergency haircut. Brenda is thoroughly unimpressed."],
+            ["02", 7.5, "Smuggling wine via toy car fails miserably, so Brenda padlocks the front gate."],
+            ["03", 15.0, "Gary attempts a stealth magnetic key theft and gets caught instantly."],
+            ["04", 22.0, "Plan B: Gary blasts a green laser distress signal across the neighborhood wall."],
+            ["05", 29.5, "Fast-forward past Terrys dog-bribing techniques, backup has arrived."],
+            ["06", 37.0, "Catastrophic ambush: both blokes end up tightly bound to lawn chairs."],
+            ["07", 43.5, "A friendly delivery driver slips a secret blade right through the gate."],
+            ["08", 49.5, "Ropes cut, wheelbarrow sprint, and the lads toast to sweet freedom. Brilliant."]
         ],
         "sfx": [
-            ["vine_boom.mp3", 15.5, 0.85],
-            ["windows_error.mp3", 24.0, 0.80],
-            ["ding_idea.mp3", 28.0, 0.80],
-            ["bruh.mp3", 53.0, 0.90],
-            ["oh_no_wheeze_laugh.mp3", max(0.0, total_duration - 3.0), 0.80]
+            ["vine_boom.mp3", 7.0, 0.85],
+            ["windows_error.mp3", 14.5, 0.80],
+            ["ding_idea.mp3", 21.5, 0.80],
+            ["bruh.mp3", 36.5, 0.90],
+            ["oh_no_wheeze_laugh.mp3", max(0.0, total_duration - 3.5), 0.80]
         ],
         "subtitles": [
-            {"start": 0.5, "end": 6.8, "style": "CenterHook", "text": "ROOSTER GETS A FRESH FADE 💀"},
-            {"start": 8.5, "end": 15.0, "style": "CenterPunch", "text": "TACTICAL WINE SHUTTLE 🍷"},
-            {"start": 17.5, "end": 23.5, "style": "CenterPunch", "text": "STEALTH MAGNETIC KEY THEFT 🧲"},
-            {"start": 26.5, "end": 32.0, "style": "CenterPunch", "text": "EMERGENCY LASER SOS SIGNAL 🚨"},
-            {"start": 36.0, "end": 42.0, "style": "CenterPunch", "text": "FAST-FORWARD: DOG BRIBERY 🐕"},
-            {"start": 46.5, "end": 53.0, "style": "CenterPunch", "text": "BOTH BLOKES BOUND TO CHAIRS 💀"},
-            {"start": 56.0, "end": 61.5, "style": "CenterPunch", "text": "COVERT BLADE SPECIAL DELIVERY 📦"},
-            {"start": 63.5, "end": 69.0, "style": "CenterPunch", "text": "HIGH-SPEED WHEELBARROW ESCAPE 🛞"},
-            {"start": 70.5, "end": 76.0, "style": "CenterPunch", "text": "PURE FIERY RAGE VS FREEDOM 🍻"}
+            {"start": 0.5, "end": 6.8, "style": "CenterHook", "text": "ROOSTER FRESH FADE 💀"},
+            {"start": 7.5, "end": 14.0, "style": "CenterPunch", "text": "TACTICAL WINE SHUTTLE 🍷"},
+            {"start": 14.8, "end": 21.0, "style": "CenterPunch", "text": "STEALTH MAGNETIC KEY THEFT 🧲"},
+            {"start": 21.8, "end": 28.5, "style": "CenterPunch", "text": "EMERGENCY LASER SOS 🚨"},
+            {"start": 29.5, "end": 36.0, "style": "CenterPunch", "text": "FAST-FORWARD: DOG BRIBERY 🐕"},
+            {"start": 36.8, "end": 42.5, "style": "CenterPunch", "text": "BOUND TO LAWN CHAIRS 💀"},
+            {"start": 43.2, "end": 48.8, "style": "CenterPunch", "text": "COVERT BLADE DELIVERY 📦"},
+            {"start": 49.5, "end": 55.5, "style": "CenterPunch", "text": "WHEELBARROW ESCAPE & TOAST 🍻"}
         ]
     }
+
