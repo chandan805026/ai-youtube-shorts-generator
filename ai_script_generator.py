@@ -34,6 +34,40 @@ def get_gemini_api_key():
     return get_candidate_gemini_keys()[0]
 
 
+def sanitize_speech_text(text: str) -> str:
+    if not text:
+        return ""
+    # 1. Remove file extensions .mp3, .wav, .ogg
+    text = re.sub(r'\b[\w\-]+(?:\.mp3|\.wav|\.ogg)\b', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\.(?:mp3|wav|ogg)\b', '', text, flags=re.IGNORECASE)
+
+    # 2. Remove bracketed/parenthesized tags like [vine_boom], (sfx), [sound]
+    text = re.sub(r'\[.*?\]', '', text)
+    text = re.sub(r'\(.*?\)', '', text)
+    text = re.sub(r'\*.*?\*', '', text)
+
+    # 3. Remove SFX / Sound labels
+    text = re.sub(r'\b(?:SFX|SOUND EFFECT|FX|MEME)\s*:?\b', '', text, flags=re.I)
+
+    # 4. Remove standalone meme sound names if present
+    sfx_patterns = [
+        r'\bvine[\s_\-]*boom\b', r'\bwindows[\s_\-]*error\b', r'\bmetal[\s_\-]*pipe\b',
+        r'\bsad[\s_\-]*violin\b', r'\btitanic[\s_\-]*bad[\s_\-]*recorder\b',
+        r'\bno[\s_\-]*god[\s_\-]*please[\s_\-]*no\b', r'\bincorrect[\s_\-]*buzzer\b',
+        r'\boh[\s_\-]*no[\s_\-]*wheeze[\s_\-]*laugh\b', r'\bsuspense[\s_\-]*sting\b',
+        r'\bfbi[\s_\-]*open[\s_\-]*up\b', r'\bding[\s_\-]*idea\b', r'\bwait[\s_\-]*a[\s_\-]*minute\b',
+        r'\banime[\s_\-]*wow\b', r'\bbruh\b', r'\byeet\b', r'\brizz\b'
+    ]
+    for pat in sfx_patterns:
+        text = re.sub(pat, '', text, flags=re.IGNORECASE)
+
+    # 5. Clean up extra punctuation and spaces
+    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r'^[\s\-_:,\.]+|[\s\-_:,\.]+$', '', text).strip()
+    return text
+
+
+
 
 def get_video_duration(video_path: str) -> float:
     cmd = [FFMPEG_BIN, "-i", video_path]
@@ -174,7 +208,12 @@ RULES:
    - FAIL/CAUGHT: 'windows_error.mp3', 'bruh.mp3', 'no_god_please_no.mp3', 'sad_violin.mp3', 'incorrect_buzzer.mp3', 'titanic_bad_recorder.mp3'
    - SNEAKY/ACTION: 'ding_idea.mp3', 'suspense_sting.mp3', 'fbi_open_up.mp3', 'yeet.mp3'
    - LAUGHTER/FUN: 'oh_no_wheeze_laugh.mp3', 'anime_wow.mp3', 'rizz.mp3'
-   Also provide punchy, bold 3-5 word subtitles with emojis.
+
+5. STRICT DIALOGUE RULE - NEVER MENTION SOUND NAMES IN SPEECH:
+   - The "speech" field is 100% PURE STORYTELLER NARRATION ONLY.
+   - NEVER write sound effect names (NEVER write 'vine_boom', 'vine boom mp3', 'windows_error', 'bruh') in speech lines!
+   - NEVER write file extensions like '.mp3' or sound tags like [vine_boom] anywhere in speech.
+   - Sound effects belong EXCLUSIVELY in the separate "sfx" list!
 
 OUTPUT FORMAT:
 Return ONLY this valid JSON (no markdown backticks, no other text):
@@ -187,10 +226,6 @@ Return ONLY this valid JSON (no markdown backticks, no other text):
   "sfx": [
     ["vine_boom.mp3", 5.0, 0.85],
     ["windows_error.mp3", 15.2, 0.80]
-  ],
-  "subtitles": [
-    {{"start": 0.5, "end": 4.0, "style": "CenterHook", "text": "SHORT HOOK TEXT 💀"}},
-    {{"start": 4.2, "end": 8.0, "style": "CenterPunch", "text": "NEXT PUNCHLINE 😱"}}
   ]
 }}"""
 
@@ -217,9 +252,20 @@ Return ONLY this valid JSON (no markdown backticks, no other text):
                         if clean_json.endswith("```"): clean_json = clean_json[:-3]
                         clean_json = clean_json.strip()
                         data = json.loads(clean_json)
-                        if "speech" in data and len(data["speech"]) >= 12:
-                            print(f"[Gemini] Successfully received {len(data['speech'])} script lines from {model}!")
-                            # Auto-normalize timestamps to strictly fit total_dur timeline
+
+                        # Filter & sanitize speech lines to remove any accidental sound tags
+                        clean_speech = []
+                        for sp in data.get("speech", []):
+                            s_id = sp[0] if len(sp) > 2 else f"line_{len(clean_speech):02d}"
+                            s_t = float(sp[1]) if len(sp) > 2 else 0.5
+                            s_txt = str(sp[2]) if len(sp) > 2 else str(sp[0])
+                            s_clean = sanitize_speech_text(s_txt)
+                            if len(s_clean.split()) >= 2:
+                                clean_speech.append([s_id, s_t, s_clean])
+                        data["speech"] = clean_speech
+
+                        if len(data["speech"]) >= 10:
+                            print(f"[Gemini] Successfully received {len(data['speech'])} sanitized script lines from {model}!")
                             data = normalize_script_timeline(data, total_dur)
                             return data
                 except Exception as ex_m:

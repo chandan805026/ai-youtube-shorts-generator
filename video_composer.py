@@ -2,9 +2,44 @@ import os
 import sys
 import subprocess
 import json
+import re
 import tts_rotator
 import audio_sfx_mixer
 import subtitle_engine
+
+
+def sanitize_speech_text(text: str) -> str:
+    if not text:
+        return ""
+    # 1. Remove file extensions .mp3, .wav, .ogg
+    text = re.sub(r'\b[\w\-]+(?:\.mp3|\.wav|\.ogg)\b', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\.(?:mp3|wav|ogg)\b', '', text, flags=re.IGNORECASE)
+
+    # 2. Remove bracketed/parenthesized tags like [vine_boom], (sfx), [sound]
+    text = re.sub(r'\[.*?\]', '', text)
+    text = re.sub(r'\(.*?\)', '', text)
+    text = re.sub(r'\*.*?\*', '', text)
+
+    # 3. Remove SFX / Sound labels
+    text = re.sub(r'\b(?:SFX|SOUND EFFECT|FX|MEME)\s*:?\b', '', text, flags=re.I)
+
+    # 4. Remove standalone meme sound names if present
+    sfx_patterns = [
+        r'\bvine[\s_\-]*boom\b', r'\bwindows[\s_\-]*error\b', r'\bmetal[\s_\-]*pipe\b',
+        r'\bsad[\s_\-]*violin\b', r'\btitanic[\s_\-]*bad[\s_\-]*recorder\b',
+        r'\bno[\s_\-]*god[\s_\-]*please[\s_\-]*no\b', r'\bincorrect[\s_\-]*buzzer\b',
+        r'\boh[\s_\-]*no[\s_\-]*wheeze[\s_\-]*laugh\b', r'\bsuspense[\s_\-]*sting\b',
+        r'\bfbi[\s_\-]*open[\s_\-]*up\b', r'\bding[\s_\-]*idea\b', r'\bwait[\s_\-]*a[\s_\-]*minute\b',
+        r'\banime[\s_\-]*wow\b', r'\bbruh\b', r'\byeet\b', r'\brizz\b'
+    ]
+    for pat in sfx_patterns:
+        text = re.sub(pat, '', text, flags=re.IGNORECASE)
+
+    # 5. Clean up extra punctuation and spaces
+    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r'^[\s\-_:,\.]+|[\s\-_:,\.]+$', '', text).strip()
+    return text
+
 
 SCRATCH_DIR = os.path.dirname(os.path.abspath(__file__))
 FFMPEG_BIN = r"C:\Users\ladu\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe"
@@ -54,11 +89,18 @@ def compose_final_short(video_input: str, script_data: dict, out_video: str = No
     sub_cues = script_data.get("subtitles", [])
     next_avail = 0.0
 
-    print(f"[Composer] Synthesizing {len(speech_lines)} Liam speech lines at natural timeline...")
+    print(f"[Composer] Synthesizing speech lines & generating 100% word-accurate subtitles...")
     for idx, item in enumerate(speech_lines):
         line_id = item[0] if len(item) > 2 else f"line_{idx:02d}"
         st = float(item[1]) if len(item) > 2 else 0.5
-        text = str(item[2]) if len(item) > 2 else str(item[0])
+        raw_text = str(item[2]) if len(item) > 2 else str(item[0])
+
+        # 1. Sanitize text: Completely remove meme names, .mp3, brackets, sound tags
+        text = sanitize_speech_text(raw_text)
+        words = text.split()
+        if len(words) < 2:
+            print(f"[Composer] Skipping non-dialogue line {idx}: '{raw_text}'")
+            continue
 
         # Prevent dialogue collision
         if st < next_avail:
@@ -71,21 +113,35 @@ def compose_final_short(video_input: str, script_data: dict, out_video: str = No
         speech_clips.append({"path": mp3_out, "start": st})
         next_avail = st + clip_dur + 0.3
 
-        # Match subtitle display to spoken duration
-        sub_text = ""
-        if idx < len(sub_cues) and "text" in sub_cues[idx]:
-            sub_text = sub_cues[idx]["text"]
-        else:
-            words = text.split()
-            sub_text = " ".join(words[:4]).upper() + " 💥"
+        # 2. Build 100% word-accurate subtitles matching what is SPOKEN
+        clean_ascii = re.sub(r'[^\x20-\x7E]+', ' ', text).strip()
+        sub_words = clean_ascii.split()
+        if sub_words:
+            n_w = len(sub_words)
+            if n_w <= 7:
+                chunks = [" ".join(sub_words)]
+            elif n_w <= 13:
+                mid = (n_w + 1) // 2
+                chunks = [" ".join(sub_words[:mid]), " ".join(sub_words[mid:])]
+            else:
+                t1 = (n_w + 2) // 3
+                t2 = (2 * n_w + 1) // 3
+                chunks = [
+                    " ".join(sub_words[:t1]),
+                    " ".join(sub_words[t1:t2]),
+                    " ".join(sub_words[t2:])
+                ]
 
-        # Scale subtitle timestamps by 1.15x for the final video
-        sub_items.append({
-            "start": round(st / speed_factor, 2),
-            "end": round((st + clip_dur) / speed_factor, 2),
-            "text": sub_text,
-            "style": "CenterPunch"
-        })
+            dur_per_chunk = clip_dur / len(chunks)
+            for c_i, ch in enumerate(chunks):
+                ch_st = st + (c_i * dur_per_chunk)
+                ch_et = st + ((c_i + 1) * dur_per_chunk)
+                sub_items.append({
+                    "start": round(ch_st / speed_factor, 2),
+                    "end": round(ch_et / speed_factor, 2),
+                    "text": ch.upper(),
+                    "style": "CenterPunch"
+                })
 
     # 2. Mix master audio at natural timeline
     sfx_events = script_data.get("sfx", [])
