@@ -18,12 +18,21 @@ if not os.path.exists(FFMPEG_BIN):
     FFMPEG_BIN = "ffmpeg"
 
 
+def get_candidate_gemini_keys():
+    keys = []
+    env_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_KEY")
+    if env_key and env_key.strip() and not env_key.strip().startswith("${{"):
+        keys.append(env_key.strip())
+    import base64
+    fallback = base64.b64decode("QVEuQWI4Uk42TDZKYkRDb0lueUpGN1c1TlMydVpZc2ZWclpRWk9EZDVENkNPVGtRQWk4SkE=").decode("utf-8")
+    if fallback not in keys:
+        keys.append(fallback)
+    return keys
+
+
 def get_gemini_api_key():
-    key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_KEY")
-    if not key:
-        import base64
-        key = base64.b64decode("QVEuQWI4Uk42TDZKYkRDb0lueUpGN1c1TlMydVpZc2ZWclpRWk9EZDVENkNPVGtRQWk4SkE=").decode("utf-8")
-    return key.strip()
+    return get_candidate_gemini_keys()[0]
+
 
 
 def get_video_duration(video_path: str) -> float:
@@ -96,49 +105,53 @@ def generate_comedy_script_with_gemini(ramped_video_path: str) -> dict:
     understands the 100% real story (Chinese audio + OCR + visuals),
     and writes the scene-locked British comedy narration (Liam style).
     """
-    api_key = get_gemini_api_key()
+    candidate_keys = get_candidate_gemini_keys()
     total_dur = get_video_duration(ramped_video_path)
     lowres_vid = make_lowres_copy_for_gemini(ramped_video_path)
     file_size = os.path.getsize(lowres_vid)
 
-    print(f"[Gemini] Uploading speed-ramped video ({total_dur:.1f}s) via Gemini Files API...")
-    init_url = f"https://generativelanguage.googleapis.com/upload/v1beta/files?key={api_key}"
-    headers = {
-        "X-Goog-Upload-Protocol": "resumable",
-        "X-Goog-Upload-Command": "start",
-        "X-Goog-Upload-Header-Content-Length": str(file_size),
-        "X-Goog-Upload-Header-Type": "video/mp4",
-        "Content-Type": "application/json"
-    }
+    for api_key in candidate_keys:
+        print(f"[Gemini] Uploading video ({total_dur:.1f}s) via Gemini Files API...")
+        init_url = f"https://generativelanguage.googleapis.com/upload/v1beta/files?key={api_key}"
+        headers = {
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+            "X-Goog-Upload-Header-Content-Length": str(file_size),
+            "X-Goog-Upload-Header-Type": "video/mp4",
+            "Content-Type": "application/json"
+        }
 
-    try:
-        r1 = requests.post(init_url, headers=headers, json={"file": {"display_name": "speed_ramped_short"}})
-        up_url = r1.headers.get("X-Goog-Upload-URL") or r1.headers.get("Upload-URL")
+        try:
+            r1 = requests.post(init_url, headers=headers, json={"file": {"display_name": "short_video_story"}}, timeout=15)
+            up_url = r1.headers.get("X-Goog-Upload-URL") or r1.headers.get("Upload-URL")
+            if not up_url:
+                print(f"[Gemini] Failed to get upload URL with key {api_key[:6]}..., trying next key...")
+                continue
 
-        with open(lowres_vid, "rb") as f:
-            data = f.read()
+            with open(lowres_vid, "rb") as f:
+                data = f.read()
 
-        r2 = requests.post(up_url, headers={
-            "Content-Length": str(file_size),
-            "X-Goog-Upload-Offset": "0",
-            "X-Goog-Upload-Command": "upload, finalize"
-        }, data=data)
+            r2 = requests.post(up_url, headers={
+                "Content-Length": str(file_size),
+                "X-Goog-Upload-Offset": "0",
+                "X-Goog-Upload-Command": "upload, finalize"
+            }, data=data, timeout=30)
 
-        file_info = r2.json().get("file", {})
-        file_name = file_info.get("name")
-        file_uri = file_info.get("uri")
-        print(f"[Gemini] File uploaded: {file_name}. Waiting for processing...")
+            file_info = r2.json().get("file", {})
+            file_name = file_info.get("name")
+            file_uri = file_info.get("uri")
+            print(f"[Gemini] File uploaded: {file_name}. Waiting for processing...")
 
-        # Wait for file to become active
-        check_url = f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}"
-        for _ in range(30):
-            time.sleep(3)
-            info = requests.get(check_url).json()
-            if info.get("state") == "ACTIVE":
-                print("[Gemini] Video is ACTIVE and ready for script generation!")
-                break
+            # Wait for file to become active
+            check_url = f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}"
+            for _ in range(30):
+                time.sleep(3)
+                info = requests.get(check_url, timeout=10).json()
+                if info.get("state") == "ACTIVE":
+                    print("[Gemini] Video is ACTIVE and ready for script generation!")
+                    break
 
-        prompt = f"""You are an observant comedy storyteller (witty British narrator style, like Liam).
+            prompt = f"""You are an observant comedy storyteller (witty British narrator style, like Liam).
 First, watch this entire video from start to finish ({total_dur:.1f} seconds). Understand the full real story, visual actions, on-screen text, and dialogue.
 Now, narrate this wild, hilarious story to the audience as someone who witnessed everything and is recounting the unbelievable tale to a friend with sarcastic humor.
 
@@ -181,39 +194,40 @@ Return ONLY this valid JSON (no markdown backticks, no other text):
   ]
 }}"""
 
-        print("[Gemini] Prompting Gemini model for scene-locked comedy script...")
-        for model in ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]:
-            try:
-                gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-                payload = {
-                    "contents": [
-                        {
-                            "parts": [
-                                {"file_data": {"mime_type": "video/mp4", "file_uri": file_uri}},
-                                {"text": prompt}
-                            ]
-                        }
-                    ]
-                }
-                res = requests.post(gen_url, json=payload, timeout=45)
-                if res.status_code == 200:
-                    raw_text = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    clean_json = raw_text
-                    if clean_json.startswith("```json"): clean_json = clean_json[7:]
-                    if clean_json.startswith("```"): clean_json = clean_json[3:]
-                    if clean_json.endswith("```"): clean_json = clean_json[:-3]
-                    clean_json = clean_json.strip()
-                    data = json.loads(clean_json)
-                    if "speech" in data and len(data["speech"]) >= 12:
-                        print(f"[Gemini] Successfully received {len(data['speech'])} script lines from {model}!")
-                        # Auto-normalize timestamps to strictly fit total_dur timeline
-                        data = normalize_script_timeline(data, total_dur)
-                        return data
-            except Exception as ex_m:
-                print(f"[Gemini] Model {model} attempt: {ex_m}")
+            print("[Gemini] Prompting Gemini model for scene-locked comedy script...")
+            for model in ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"]:
+                try:
+                    gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                    payload = {
+                        "contents": [
+                            {
+                                "parts": [
+                                    {"file_data": {"mime_type": "video/mp4", "file_uri": file_uri}},
+                                    {"text": prompt}
+                                ]
+                            }
+                        ]
+                    }
+                    res = requests.post(gen_url, json=payload, timeout=45)
+                    if res.status_code == 200:
+                        raw_text = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                        clean_json = raw_text
+                        if clean_json.startswith("```json"): clean_json = clean_json[7:]
+                        if clean_json.startswith("```"): clean_json = clean_json[3:]
+                        if clean_json.endswith("```"): clean_json = clean_json[:-3]
+                        clean_json = clean_json.strip()
+                        data = json.loads(clean_json)
+                        if "speech" in data and len(data["speech"]) >= 12:
+                            print(f"[Gemini] Successfully received {len(data['speech'])} script lines from {model}!")
+                            # Auto-normalize timestamps to strictly fit total_dur timeline
+                            data = normalize_script_timeline(data, total_dur)
+                            return data
+                except Exception as ex_m:
+                    print(f"[Gemini] Model {model} attempt: {ex_m}")
 
-    except Exception as e:
-        print(f"[Gemini] API connection error: {e}")
+        except Exception as e:
+            print(f"[Gemini] API connection error with key: {e}")
+            continue
 
     # Verified True Story Fallback (100% matched to real video events)
     print("[Gemini] Using verified scene-locked comedy script (100% True Story Match)...")

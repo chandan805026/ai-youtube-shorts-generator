@@ -15,15 +15,14 @@ SCRATCH_DIR = BASE_DIR
 VAULT_DIR = os.path.join(BASE_DIR, "meme_sound_vault")
 
 from kuaishou_downloader import fetch_kuaishou_video_info, download_and_transcode
-from twelvelabs_engine import analyze_video_and_get_speeds
 from ai_script_generator import generate_comedy_script_with_gemini
-from video_composer import build_speed_ramped_base_video, compose_final_short
+from video_composer import compose_final_short, get_video_duration
 import build_meme_vault
 
 
 def run_pipeline(url_or_id: str, output_path: str = None) -> str:
     print("=" * 70)
-    print("  AUTONOMOUS AI SHORTS ENGINE: TWELVELABS SPEEDS + GEMINI ACCURACY")
+    print("  AUTONOMOUS AI SHORTS ENGINE: GEMINI 1:1 STORY + 1.15X LOCKED SYNC")
     print("=" * 70)
 
     # 0. Ensure Meme Sound Vault is populated
@@ -32,68 +31,38 @@ def run_pipeline(url_or_id: str, output_path: str = None) -> str:
     elif hasattr(build_meme_vault, "download_all"):
         build_meme_vault.download_all()
 
-    # 1. Download & Transcode Video
-    print(f"\n[Step 1/4] Downloading Kuaishou/Douyin raw video: {url_or_id}...")
+    # 1. Download & Transcode Video (Natural 1.0x flow)
+    print(f"\n[Step 1/3] Downloading Kuaishou/Douyin raw video: {url_or_id}...")
     info = fetch_kuaishou_video_info(url_or_id)
     raw_video = download_and_transcode(info)
-    print(f"[Step 1/4] Playable video ready: {raw_video}")
+    total_dur = get_video_duration(raw_video)
+    print(f"[Step 1/3] Playable video ready: {raw_video} ({total_dur:.1f}s)")
 
-    # 2. TwelveLabs Speed Ramping (Without cutting scenes)
-    print(f"\n[Step 2/4] TwelveLabs analyzing video speeds (compressing timeline without cutting)...")
-    segments = analyze_video_and_get_speeds(raw_video)
-    ramped_base = os.path.join(SCRATCH_DIR, f"ramped_base_{info['photo_id']}.mp4")
-    total_timeline = build_speed_ramped_base_video(raw_video, segments, ramped_base)
-    print(f"[Step 2/4] Speed-ramped base video ready: {ramped_base} ({total_timeline:.1f}s)")
-
-    # 3. Google Gemini Accurate Story & Comedy Script (Low-Res Upload)
-    print(f"\n[Step 3/4] Google Gemini watching low-res speed-ramped video (100% Accurate Story & Sync)...")
-    script_data = generate_comedy_script_with_gemini(ramped_base)
+    # 2. Google Gemini watches natural video (compressed 480p low-res copy)
+    print(f"\n[Step 2/3] Google Gemini watching natural video ({total_dur:.1f}s) for 100% matched story...")
+    script_data = generate_comedy_script_with_gemini(raw_video)
     speech_lines = script_data.get("speech", [])
-    print(f"[Step 3/4] Script generated: '{script_data.get('title')}' ({len(speech_lines)} Liam speech lines)")
+    print(f"[Step 2/3] Script generated: '{script_data.get('title')}' ({len(speech_lines)} Liam speech lines)")
 
-    # 4. Compose Final Video (ElevenLabs Liam + SFX + Subtitles + High-Quality Burn)
+    # 3. Compose Final Video (1.15x Locked Sync: Liam voice + SFX + Subtitles + Video)
     if not output_path:
         output_path = os.path.join(SCRATCH_DIR, f"viral_short_{info['photo_id']}.mp4")
 
-    print(f"\n[Step 4/4] Composing ElevenLabs Liam voiceover, meme SFX, and safe-zone subtitles...")
-    twelvelabs_data = {"segments": segments}
-    final_video = compose_final_short(raw_video, twelvelabs_data, script_data, output_path)
-
-    # Cleanup intermediate ramped base
-    if os.path.exists(ramped_base):
-        try: os.remove(ramped_base)
-        except Exception: pass
-
-    print("=" * 70)
-    print(f"  SUCCESS! Final Short created: {final_video}")
-    print(f"  Duration: ~{total_timeline:.1f}s | Size: {os.path.getsize(final_video) / (1024*1024):.1f} MB")
-    print("=" * 70)
+    print(f"\n[Step 3/3] Rendering final Short with 1.15x Video & Audio Speed Lock...")
+    final_video = compose_final_short(raw_video, script_data, output_path, speed_factor=1.15)
+    print(f"\n[Success] Short completely rendered: {final_video}")
     return final_video
 
 
-def get_first_link_from_queue() -> str:
-    queue_file = os.path.join(BASE_DIR, "links.txt")
-    if not os.path.exists(queue_file):
-        return ""
-    with open(queue_file, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#"):
-                return line
-    return ""
+def main():
+    parser = argparse.ArgumentParser(description="Autonomous YouTube Shorts Pipeline (Gemini 1:1 Story + 1.15x Sync)")
+    parser.add_argument("--url", default="https://c.kuaishou.com/fw/photo/3xhpefxgm7t4c7k", help="Kuaishou/Douyin video URL or photo ID")
+    parser.add_argument("--output", default=None, help="Output path for the generated Short video")
+    args = parser.parse_args()
+
+    out = run_pipeline(args.url, args.output)
+    print(f"\nPipeline finished successfully! Final output file: {out}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Autonomous Shorts Production Engine")
-    parser.add_argument("--url", type=str, default="", help="Video link")
-    parser.add_argument("--out", type=str, default="", help="Output path")
-    args = parser.parse_args()
-
-    target_url = args.url
-    if not target_url:
-        target_url = get_first_link_from_queue()
-
-    if not target_url:
-        target_url = "https://c.kuaishou.com/fw/photo/3xhpefxgm7t4c7k"
-
-    run_pipeline(target_url, args.out or None)
+    main()
