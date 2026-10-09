@@ -86,13 +86,12 @@ def compose_final_short(video_input: str, script_data: dict, out_video: str = No
     speech_lines = script_data.get("speech", [])
     speech_clips = []
     sub_items = []
-    sub_cues = script_data.get("subtitles", [])
-    next_avail = 0.0
+    prev_end_time = 0.0
 
-    print(f"[Composer] Synthesizing speech lines & generating 100% word-accurate subtitles...")
+    print(f"[Composer] Synthesizing speech lines with Zero-Drift Scene Anchoring...")
     for idx, item in enumerate(speech_lines):
         line_id = item[0] if len(item) > 2 else f"line_{idx:02d}"
-        st = float(item[1]) if len(item) > 2 else 0.5
+        target_t = float(item[1]) if len(item) > 2 else 0.5
         raw_text = str(item[2]) if len(item) > 2 else str(item[0])
 
         # 1. Sanitize text: Completely remove meme names, .mp3, brackets, sound tags
@@ -102,16 +101,44 @@ def compose_final_short(video_input: str, script_data: dict, out_video: str = No
             print(f"[Composer] Skipping non-dialogue line {idx}: '{raw_text}'")
             continue
 
-        # Prevent dialogue collision
-        if st < next_avail:
-            st = next_avail
-
         mp3_out = os.path.join(SCRATCH_DIR, f"tts_{line_id}.mp3")
         tts_rotator.synthesize_speech(text, mp3_out)
         clip_dur = get_audio_duration(mp3_out)
 
-        speech_clips.append({"path": mp3_out, "start": st})
-        next_avail = st + clip_dur + 0.3
+        # Look ahead to find next speech line's visual timestamp
+        next_target_t = None
+        for nxt in speech_lines[idx + 1:]:
+            nxt_txt = sanitize_speech_text(str(nxt[2]) if len(nxt) > 2 else str(nxt[0]))
+            if len(nxt_txt.split()) >= 2:
+                next_target_t = float(nxt[1]) if len(nxt) > 2 else float(nxt[1]) + 5.0
+                break
+
+        # If this line would overlap into the next scene, gently fit its tempo (1.02x - 1.25x)
+        if next_target_t is not None and (target_t + clip_dur) > (next_target_t - 0.2) and (next_target_t > target_t):
+            avail_window = max(1.2, next_target_t - target_t - 0.2)
+            needed_rate = clip_dur / avail_window
+            speed_rate = min(1.25, max(1.02, needed_rate))
+            faster_mp3 = os.path.join(SCRATCH_DIR, f"tts_{line_id}_fit.mp3")
+            try:
+                cmd_speed = [
+                    FFMPEG_BIN, "-y",
+                    "-i", mp3_out,
+                    "-filter:a", f"atempo={speed_rate:.3f}",
+                    "-vn",
+                    faster_mp3
+                ]
+                subprocess.run(cmd_speed, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                mp3_out = faster_mp3
+                clip_dur = get_audio_duration(mp3_out)
+            except Exception:
+                pass
+
+        # Scene-Anchor: Always anchor firmly at the true visual timestamp target_t!
+        # If previous line ran slightly over, shift ONLY by the tiny overlap, but never cascade!
+        actual_st = max(target_t, prev_end_time + 0.1)
+        prev_end_time = actual_st + clip_dur
+
+        speech_clips.append({"path": mp3_out, "start": actual_st})
 
         # 2. Build 100% word-accurate subtitles matching what is SPOKEN
         clean_ascii = re.sub(r'[^\x20-\x7E]+', ' ', text).strip()
@@ -134,8 +161,8 @@ def compose_final_short(video_input: str, script_data: dict, out_video: str = No
 
             dur_per_chunk = clip_dur / len(chunks)
             for c_i, ch in enumerate(chunks):
-                ch_st = st + (c_i * dur_per_chunk)
-                ch_et = st + ((c_i + 1) * dur_per_chunk)
+                ch_st = actual_st + (c_i * dur_per_chunk)
+                ch_et = actual_st + ((c_i + 1) * dur_per_chunk)
                 sub_items.append({
                     "start": round(ch_st / speed_factor, 2),
                     "end": round(ch_et / speed_factor, 2),

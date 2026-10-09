@@ -103,34 +103,26 @@ def make_lowres_copy_for_gemini(src_path: str) -> str:
 
 
 def normalize_script_timeline(data: dict, total_dur: float) -> dict:
-    if "speech" not in data or len(data["speech"]) < 3:
+    if "speech" not in data or not data["speech"]:
         return data
 
     speech = data["speech"]
-    max_t = max(10.0, total_dur - 2.5)
-    last_t = float(speech[-1][1])
+    max_allowed = max(5.0, total_dur - 2.5)
 
-    if last_t > max_t:
-        scale = max_t / last_t
-        for row in speech:
-            row[1] = round(float(row[1]) * scale, 1)
-        for row in data.get("sfx", []):
-            row[1] = round(float(row[1]) * scale, 1)
-        for row in data.get("subtitles", []):
-            row["start"] = round(float(row["start"]) * scale, 1)
-            row["end"] = round(float(row["end"]) * scale, 1)
+    # Strictly preserve authentic visual timestamps; only clamp to total video bounds
+    for row in speech:
+        row[1] = round(min(max_allowed, max(0.2, float(row[1]))), 1)
 
-    # Smooth any large dead-air gaps (> 5.5 seconds)
-    for i in range(1, len(speech)):
-        prev_t = float(speech[i - 1][1])
-        cur_t = float(speech[i][1])
-        if cur_t - prev_t > 5.5:
-            shift = (cur_t - prev_t) - 4.5
-            for j in range(i, len(speech)):
-                speech[j][1] = round(max(prev_t + 1.0, float(speech[j][1]) - shift), 1)
+    speech.sort(key=lambda x: float(x[1]))
+    data["speech"] = speech
 
-    print(f"[Gemini] Normalized {len(speech)} speech lines smoothly across {total_dur:.1f}s timeline.")
+    # Clean SFX timestamps to remain within video boundaries
+    for row in data.get("sfx", []):
+        row[1] = round(min(max_allowed, max(0.2, float(row[1]))), 1)
+
+    print(f"[Gemini] Preserved {len(speech)} authentic visual timestamps locked to video frames across {total_dur:.1f}s.")
     return data
+
 
 
 def generate_comedy_script_with_gemini(ramped_video_path: str) -> dict:
@@ -192,14 +184,15 @@ Now, narrate this wild, hilarious story to the audience as someone who witnessed
 RULES:
 1. REAL OBSERVED STORY: Tell the TRUE story of what physically happened on screen from start to finish. Zero made-up facts or hallucinations. Explain the real events in a funny, engaging storytelling voice.
 
-2. 1:1 AUDIO-VIDEO SYNC & TIMELINE BOUNDARIES:
+2. 1:1 AUDIO-VIDEO SYNC & SCENE ANCHORING:
    - The total video duration is EXACTLY {total_dur:.1f} seconds.
-   - All speech timestamps MUST be between 0.0s and {total_dur - 2.5:.1f}s. NEVER exceed {total_dur - 2.5:.1f}s!
-   - Space the 17 to 22 lines continuously across the full timeline with 0.5s - 0.8s micro-pauses (no dead-air gaps).
-   - The sentence starting at timestamp T must describe ONLY the visual action occurring at timestamp T.
-   - DYNAMIC SPEED PACING:
-     * Fast-forward / quick montage scenes: Use SHORT, SNAPPY lines (4 to 7 words).
-     * Main story / comedy scenes: Use full witty lines (8 to 12 words).
+   - All speech timestamps MUST be between 0.5s and {total_dur - 3.0:.1f}s.
+   - Timestamp T must be the EXACT physical second where that action begins on screen.
+   - PUNCHY CONCISE SENTENCES (CRITICAL FOR PERFECT SYNC):
+     * Keep each line punchy, witty, and concise (5 to 9 words maximum).
+     * Each sentence must finish speaking BEFORE the next visual event starts!
+     * Never write long rambling sentences that overflow into subsequent scenes.
+
 
 3. STORYTELLER COMEDY TONE: Witty, sarcastic, highly engaging storytelling (giving funny nicknames to characters, reacting to their crazy plans and hilarious fails).
 
