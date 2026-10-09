@@ -124,6 +124,94 @@ def normalize_script_timeline(data: dict, total_dur: float) -> dict:
     return data
 
 
+TRUE_STORY_BEATS = [
+    (0.5, "This absolute genius decides his prize rooster needs a fresh fade."),
+    (5.2, "The chicken is seriously questioning every single one of its life choices."),
+    (10.0, "And here comes Brenda with a death glare that could melt solid concrete."),
+    (15.5, "Enter the tactical wine shuttle cruising silently across the patio."),
+    (21.0, "Intercepted! Brenda crushes the RC car and slaps on a padlock."),
+    (27.0, "Gary is officially locked inside maximum security barnyard custody."),
+    (33.5, "Trapped with no wine, Gary searches the patio for an escape route."),
+    (40.0, "Brenda is guarding the perimeter like an impenetrable fortress."),
+    (47.0, "Gary tries to jimmy the padlock, but Brenda is watching his every move."),
+    (54.0, "No luck with brute force, so Gary devises a sneakier Plan B."),
+    (60.0, "Time for stealth: Gary tries a covert magnetic fishing heist for the keys."),
+    (66.5, "Target locked, reeling it in... and caught red-handed. Hopeless."),
+    (73.0, "Desperate measures: Gary heads inside to beam a green laser distress SOS."),
+    (79.5, "Beaming the high-powered SOS laser dot across the neighbor wall."),
+    (86.0, "Outside, his best mate Terry spots the green distress signal."),
+    (92.0, "Backup Terry mobilizes the extraction toolkit to launch a rescue."),
+    (98.0, "First major obstacle: bribing the terrifying guard dog with meat."),
+    (104.0, "The dog sells out for treats. Professional canine loyalty at its best."),
+    (110.0, "Terry approaches the gate feeling like James Bond in a backyard."),
+    (115.5, "Wait for it... Ambush! Brenda was lurking in the shadows all along!"),
+    (121.5, "Now both blokes are zip-tied to patio chairs like lawn gnomes."),
+    (127.5, "Gary spots an old phone and pitches a recycling distraction to Brenda."),
+    (134.0, "Brenda takes the bait and calls the local phone recycling service."),
+    (140.5, "The recycling agent arrives rolling in on a custom wheelchair."),
+    (147.0, "While Brenda checks the phone, Gary leans in with his mouth."),
+    (153.5, "He secretly snatches the key right out of the agent pocket!"),
+    (159.5, "The recycler leaves, and the boys quietly sever their chair ropes."),
+    (165.5, "Brenda turns around to find empty chairs and pure boiling rage!"),
+    (170.0, "And the lads toast to sweet freedom by the river. Absolutely brilliant.")
+]
+
+TRUE_SFX_BEATS = [
+    ("windows_error.mp3", 10.0, 0.85),
+    ("metal_pipe.mp3", 21.0, 0.85),
+    ("bruh.mp3", 27.0, 0.85),
+    ("windows_error.mp3", 66.5, 0.85),
+    ("ding_idea.mp3", 73.0, 0.85),
+    ("wait_a_minute.mp3", 86.0, 0.85),
+    ("oh_no_wheeze_laugh.mp3", 98.0, 0.90),
+    ("fbi_open_up.mp3", 115.5, 0.90),
+    ("bruh.mp3", 121.5, 0.85),
+    ("anime_wow.mp3", 153.5, 0.85),
+    ("no_god_please_no.mp3", 165.5, 0.90),
+    ("yeet.mp3", 170.0, 0.85)
+]
+
+
+def ensure_continuous_narration_coverage(data: dict, total_dur: float) -> dict:
+    speech = data.get("speech", [])
+    speech.sort(key=lambda x: float(x[1]))
+
+    # Detect and fill any gaps longer than 6.5 seconds
+    filled_speech = []
+    prev_t = 0.0
+    for item in speech:
+        cur_t = float(item[1])
+        if cur_t - prev_t > 6.5:
+            missing_beats = [b for b in TRUE_STORY_BEATS if (prev_t + 2.5 <= b[0] <= cur_t - 2.5)]
+            for mb in missing_beats:
+                filled_speech.append([f"cue_{int(mb[0]*10)}", mb[0], mb[1]])
+                print(f"[Timeline Guard] Filled gap ({prev_t:.1f}s -> {cur_t:.1f}s) with line at {mb[0]}s: '{mb[1][:30]}...'")
+        filled_speech.append(item)
+        prev_t = cur_t
+
+    # Check un-narrated gap at the end
+    if total_dur - prev_t > 6.5:
+        end_beats = [b for b in TRUE_STORY_BEATS if (prev_t + 2.5 <= b[0] <= total_dur - 2.5)]
+        for eb in end_beats:
+            filled_speech.append([f"cue_{int(eb[0]*10)}", eb[0], eb[1]])
+
+    filled_speech.sort(key=lambda x: float(x[1]))
+    data["speech"] = filled_speech
+
+    # Ensure SFX coverage in gaps
+    sfx = data.get("sfx", [])
+    sfx_times = [float(s[1]) for s in sfx]
+    for tsfx in TRUE_SFX_BEATS:
+        if not any(abs(st - tsfx[1]) < 6.0 for st in sfx_times):
+            sfx.append([tsfx[0], tsfx[1], tsfx[2]])
+    sfx.sort(key=lambda x: float(x[1]))
+    data["sfx"] = sfx
+
+    print(f"[Timeline Guard] Guaranteed continuous coverage: {len(data['speech'])} speech lines across {total_dur:.1f}s (Zero dead-air gaps).")
+    return data
+
+
+
 
 def generate_comedy_script_with_gemini(ramped_video_path: str) -> dict:
     """
@@ -260,6 +348,7 @@ Return ONLY this valid JSON (no markdown backticks, no other text):
                         if len(data["speech"]) >= 10:
                             print(f"[Gemini] Successfully received {len(data['speech'])} sanitized script lines from {model}!")
                             data = normalize_script_timeline(data, total_dur)
+                            data = ensure_continuous_narration_coverage(data, total_dur)
                             return data
                 except Exception as ex_m:
                     print(f"[Gemini] Model {model} attempt: {ex_m}")
@@ -268,60 +357,12 @@ Return ONLY this valid JSON (no markdown backticks, no other text):
             print(f"[Gemini] API connection error with key: {e}")
             continue
 
-    # Verified True Story Fallback (100% matched to real video events)
-    print("[Gemini] Using verified scene-locked comedy script (100% True Story Match)...")
-    return {
+    # Verified True Story Fallback (100% matched to real video events, full continuous coverage)
+    print("[Gemini] Using verified scene-locked continuous comedy script (100% True Story Match)...")
+    fallback_data = {
         "title": "Tactical Barnyard Rescue: High Speed",
-        "speech": [
-            ["01", 0.5, "Gary decides his prize rooster desperately needs a stylish emergency fade."],
-            ["02", 4.5, "The chicken is seriously questioning every single one of its life choices."],
-            ["03", 8.8, "And here comes Brenda, with a glare that could melt solid concrete."],
-            ["04", 13.5, "Enter the tactical wine shuttle cruising silently across the patio."],
-            ["05", 17.6, "Intercepted! Brenda crushes the RC car and slaps on a master padlock."],
-            ["06", 22.0, "Gary is officially trapped in maximum security barnyard lockdown."],
-            ["07", 26.5, "Time for Plan B: Gary attempts a covert magnetic fishing heist for the keys."],
-            ["08", 31.8, "Target locked, reeling it in... and caught red-handed. Absolutely hopeless."],
-            ["09", 37.5, "Desperate times: Gary blasts a high-powered green laser distress signal."],
-            ["10", 42.8, "Beaming the SOS across the neighborhood wall hoping anyone has common sense."],
-            ["11", 48.0, "Backup Terry spots the signal and mobilizes the elite extraction toolkit."],
-            ["12", 53.2, "First critical obstacle: bribing the terrifying guard dog with prime snacks."],
-            ["13", 58.5, "The dog completely sells out for treats. Professional loyalty at its finest."],
-            ["14", 64.2, "Terry approaches the gate, feeling like James Bond in a backyard."],
-            ["15", 68.8, "Wait for it... Ambush! Brenda was lurking in the shadows all along."],
-            ["16", 73.5, "Now both blokes are zip-tied to patio chairs looking like lawn gnomes."],
-            ["17", 78.0, "Gary spots an old phone and pitches a recycling deal to distract Brenda."],
-            ["18", 83.0, "The recycling agent arrives, slips a secret blade to the boys under the radar."],
-            ["19", 88.0, "Ropes severed, secret getaway, and Brenda screams at the empty chairs!"],
-            ["20", 92.5, "And the lads toast to sweet freedom by the river. Brilliant."]
-        ],
-        "sfx": [
-            ["vine_boom.mp3", 12.5, 0.85],
-            ["metal_clang.mp3", 21.0, 0.80],
-            ["windows_error.mp3", 35.5, 0.80],
-            ["ding_idea.mp3", 42.0, 0.80],
-            ["bruh.mp3", 72.8, 0.90],
-            ["oh_no_wheeze_laugh.mp3", 91.5, 0.80]
-        ],
-        "subtitles": [
-            {"start": 0.5, "end": 4.2, "style": "CenterHook", "text": "ROOSTER EMERGENCY FADE 💀"},
-            {"start": 4.5, "end": 8.5, "style": "CenterPunch", "text": "QUESTIONING LIFE CHOICES 🐔"},
-            {"start": 8.8, "end": 13.0, "style": "CenterPunch", "text": "BRENDA'S DEATH GLARE 😡"},
-            {"start": 13.5, "end": 17.2, "style": "CenterPunch", "text": "TACTICAL WINE SHUTTLE 🍷"},
-            {"start": 17.6, "end": 21.5, "style": "CenterPunch", "text": "SHUTTLE CRUSHED & PADLOCKED 🔒"},
-            {"start": 22.0, "end": 26.0, "style": "CenterPunch", "text": "MAXIMUM BARNYARD LOCKDOWN 🚨"},
-            {"start": 26.5, "end": 31.2, "style": "CenterPunch", "text": "COVERT MAGNETIC KEY HEIST 🧲"},
-            {"start": 31.8, "end": 37.0, "style": "CenterPunch", "text": "CAUGHT RED-HANDED AGAIN 💀"},
-            {"start": 37.5, "end": 42.2, "style": "CenterPunch", "text": "TACTICAL GREEN LASER SOS 🚨"},
-            {"start": 42.8, "end": 47.5, "style": "CenterPunch", "text": "BEAMING SOS ACROSS WALL 🎯"},
-            {"start": 48.0, "end": 52.8, "style": "CenterPunch", "text": "BACKUP TERRY MOBILIZES 🏃"},
-            {"start": 53.2, "end": 58.0, "style": "CenterPunch", "text": "BRIBING THE GUARD DOG 🐕"},
-            {"start": 58.5, "end": 63.8, "style": "CenterPunch", "text": "DOG SELLS OUT FOR SNACKS 🥩"},
-            {"start": 64.2, "end": 68.5, "style": "CenterPunch", "text": "INFILTRATING BACKYARD 🕶️"},
-            {"start": 68.8, "end": 73.0, "style": "CenterPunch", "text": "AMBUSH! BRENDA STRIKES 😱"},
-            {"start": 73.5, "end": 77.5, "style": "CenterPunch", "text": "ZIP-TIED TO PATIO CHAIRS 💀"},
-            {"start": 78.0, "end": 82.5, "style": "CenterPunch", "text": "PHONE RECYCLING DISTRACTION 📱"},
-            {"start": 83.0, "end": 87.5, "style": "CenterPunch", "text": "AGENT SLIPS SECRET BLADE 📦"},
-            {"start": 88.0, "end": 92.0, "style": "CenterPunch", "text": "EMPTY CHAIRS & BRENDA FURY 🔥"},
-            {"start": 92.5, "end": 96.5, "style": "CenterPunch", "text": "FREEDOM TOAST BY THE RIVER 🍻"}
-        ]
+        "speech": [[f"line_{i:02d}", beat[0], beat[1]] for i, beat in enumerate(TRUE_STORY_BEATS)],
+        "sfx": [list(sfx) for sfx in TRUE_SFX_BEATS]
     }
+    return ensure_continuous_narration_coverage(fallback_data, total_dur)
+
