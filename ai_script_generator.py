@@ -175,7 +175,9 @@ TRUE_SFX_BEATS = [
 ]
 
 
-def ensure_continuous_narration_coverage(data: dict, total_dur: float) -> dict:
+def ensure_continuous_narration_coverage(data: dict, total_dur: float, is_rooster_video: bool = False) -> dict:
+    if not is_rooster_video:
+        return data
     speech = data.get("speech", [])
     speech.sort(key=lambda x: float(x[1]))
 
@@ -223,15 +225,16 @@ def generate_comedy_script_with_gemini(ramped_video_path: str) -> dict:
     """
     total_dur = get_video_duration(ramped_video_path)
 
-    # Frame-verified lock for target video (160s-185s): Guaranteed 100% physical frame sync!
-    if 160.0 <= total_dur <= 185.0:
+    # Frame-verified lock only for target rooster escape video (3xhpefxgm7t4c7k)
+    is_rooster = "3xhpefxgm7t4c7k" in ramped_video_path
+    if is_rooster and 160.0 <= total_dur <= 185.0:
         print(f"[Gemini] Using 100% frame-verified, scene-locked British comedy script ({len(TRUE_STORY_BEATS)} lines across {total_dur:.1f}s)...")
         script_data = {
             "title": "Tactical Barnyard Rescue: High Speed",
             "speech": [[f"line_{i:02d}", beat[0], beat[1]] for i, beat in enumerate(TRUE_STORY_BEATS)],
             "sfx": [list(sfx) for sfx in TRUE_SFX_BEATS]
         }
-        return ensure_continuous_narration_coverage(script_data, total_dur)
+        return ensure_continuous_narration_coverage(script_data, total_dur, is_rooster_video=True)
 
     candidate_keys = get_candidate_gemini_keys()
     lowres_vid = make_lowres_copy_for_gemini(ramped_video_path)
@@ -358,10 +361,11 @@ Return ONLY this valid JSON (no markdown backticks, no other text):
                                 clean_speech.append([s_id, s_t, s_clean])
                         data["speech"] = clean_speech
 
-                        if len(data["speech"]) >= 10:
+                        min_lines = max(3, int(total_dur / 15.0))
+                        if len(data["speech"]) >= min_lines:
                             print(f"[Gemini] Successfully received {len(data['speech'])} sanitized script lines from {model}!")
                             data = normalize_script_timeline(data, total_dur)
-                            data = ensure_continuous_narration_coverage(data, total_dur)
+                            data = ensure_continuous_narration_coverage(data, total_dur, is_rooster_video=is_rooster)
                             return data
                 except Exception as ex_m:
                     print(f"[Gemini] Model {model} attempt: {ex_m}")
@@ -370,12 +374,42 @@ Return ONLY this valid JSON (no markdown backticks, no other text):
             print(f"[Gemini] API connection error with key: {e}")
             continue
 
-    # Verified True Story Fallback (100% matched to real video events, full continuous coverage)
-    print("[Gemini] Using verified scene-locked continuous comedy script (100% True Story Match)...")
-    fallback_data = {
-        "title": "Tactical Barnyard Rescue: High Speed",
-        "speech": [[f"line_{i:02d}", beat[0], beat[1]] for i, beat in enumerate(TRUE_STORY_BEATS)],
-        "sfx": [list(sfx) for sfx in TRUE_SFX_BEATS]
+    if is_rooster:
+        print("[Gemini] Using verified scene-locked continuous comedy script (Rooster Story)...")
+        fallback_data = {
+            "title": "Tactical Barnyard Rescue: High Speed",
+            "speech": [[f"line_{i:02d}", beat[0], beat[1]] for i, beat in enumerate(TRUE_STORY_BEATS)],
+            "sfx": [list(sfx) for sfx in TRUE_SFX_BEATS]
+        }
+        return ensure_continuous_narration_coverage(fallback_data, total_dur, is_rooster_video=True)
+
+    print("[Gemini] Using dynamic narrative fallback for video...")
+    step_interval = max(5.0, total_dur / 8.0)
+    generic_beats = []
+    t = 0.5
+    idx = 1
+    comedy_lines = [
+        "Right, you won't believe what these absolute legends are getting up to.",
+        "Look at the sheer confidence on this guy right now.",
+        "Wait for it... this is where things get completely unhinged.",
+        "I have witnessed some wild things, but this takes the absolute biscuit.",
+        "Bro really thought nobody would notice what was happening.",
+        "The reaction right here is pure comedy gold, honestly.",
+        "You can't even script this level of chaotic genius.",
+        "And that, ladies and gentlemen, is how you achieve legendary status."
+    ]
+    for line in comedy_lines:
+        if t < total_dur - 3.0:
+            generic_beats.append([f"line_{idx:02d}", round(t, 1), line])
+            t += step_interval
+            idx += 1
+    return {
+        "title": "When The Plan Actually Works 😂",
+        "speech": generic_beats,
+        "sfx": [
+            ["vine_boom.mp3", 1.0, 0.85],
+            ["windows_error.mp3", min(round(total_dur * 0.4, 1), total_dur - 4.0), 0.85],
+            ["yeet.mp3", max(0.5, round(total_dur - 2.0, 1)), 0.85]
+        ]
     }
-    return ensure_continuous_narration_coverage(fallback_data, total_dur)
 
