@@ -76,8 +76,7 @@ def upload_short(video_source=None, title=None, desc=None):
         refresh_token=refresh_token,
         token_uri="https://oauth2.googleapis.com/token",
         client_id=client_id,
-        client_secret=client_secret,
-        scopes=["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube"]
+        client_secret=client_secret
     )
 
     try:
