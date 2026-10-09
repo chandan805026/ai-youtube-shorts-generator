@@ -74,20 +74,36 @@ def build_speed_ramped_base_video(source_video: str, segments: list, out_video: 
     return total_timeline
 
 
-def compose_final_short(source_video: str, twelvelabs_data: dict, script_data: dict = None, out_video: str = None) -> str:
+def get_video_duration(video_path: str) -> float:
+    cmd = [FFMPEG_BIN, "-i", video_path]
+    p = subprocess.run(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, errors="replace")
+    for line in p.stderr.splitlines():
+        if "Duration:" in line:
+            parts = line.split("Duration:")[1].split(",")[0].strip().split(":")
+            return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+    return 95.0
+
+
+def compose_final_short(video_input: str, twelvelabs_or_script: dict, script_data: dict = None, out_video: str = None) -> str:
     """
     Main Assembly Pipeline:
-    1. Renders speed-ramped video based on TwelveLabs recommendations.
-    2. Synthesizes Liam narration via ElevenLabs.
-    3. Mixes master audio (Speech + Meme SFX + ducked background).
-    4. Generates safe-zone ASS subtitles.
-    5. Burns final high-converting Short.
+    Overlays synthesized Liam voice, SFX, and safe-zone subtitles onto the speed-ramped video.
     """
     if script_data is None:
-        script_data = twelvelabs_data
-    segments = twelvelabs_data.get("segments", [])
-    ramped_base = os.path.join(SCRATCH_DIR, "temp_ramped_base.mp4")
-    total_timeline = build_speed_ramped_base_video(source_video, segments, ramped_base)
+        # Pre-ramped video passed directly: compose_final_short(ramped_video, script_data, out_video)
+        script_data = twelvelabs_or_script
+        ramped_base = video_input
+        total_timeline = get_video_duration(ramped_base)
+        cleanup_ramped = False
+    else:
+        # Raw video passed: compose_final_short(raw_video, twelvelabs_data, script_data, out_video)
+        segments = twelvelabs_or_script.get("segments", [])
+        ramped_base = os.path.join(SCRATCH_DIR, "temp_ramped_base.mp4")
+        total_timeline = build_speed_ramped_base_video(video_input, segments, ramped_base)
+        cleanup_ramped = True
+
+    if out_video is None:
+        out_video = os.path.join(SCRATCH_DIR, "viral_short_output.mp4")
 
     # 1. Synthesize Liam speech lines
     speech_lines = script_data.get("speech", [])
@@ -134,8 +150,8 @@ def compose_final_short(source_video: str, twelvelabs_data: dict, script_data: d
 
 
 
-    # Cleanup temporary base
-    if os.path.exists(ramped_base):
+    # Cleanup temporary base if created internally
+    if cleanup_ramped and os.path.exists(ramped_base):
         try:
             os.remove(ramped_base)
         except Exception:

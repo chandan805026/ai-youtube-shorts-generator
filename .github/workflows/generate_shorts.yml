@@ -35,9 +35,10 @@ jobs:
           pip install -r requirements.txt
 
 
-      - name: Run TwelveLabs + ElevenLabs Autonomous Shorts Pipeline
+      - name: Run TwelveLabs Speeds + Gemini Story Autonomous Shorts Pipeline
         env:
           TWELVELABS_API_KEY: ${{ secrets.TWELVELABS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_KEYS_POOL: ${{ secrets.ELEVENLABS_KEYS_POOL }}
         run: |

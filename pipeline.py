@@ -15,14 +15,15 @@ SCRATCH_DIR = BASE_DIR
 VAULT_DIR = os.path.join(BASE_DIR, "meme_sound_vault")
 
 from kuaishou_downloader import fetch_kuaishou_video_info, download_and_transcode
-from twelvelabs_engine import analyze_video_and_generate_script
-from video_composer import compose_final_short
+from twelvelabs_engine import analyze_video_and_get_speeds
+from ai_script_generator import generate_comedy_script_with_gemini
+from video_composer import build_speed_ramped_base_video, compose_final_short
 import build_meme_vault
 
 
 def run_pipeline(url_or_id: str, output_path: str = None) -> str:
     print("=" * 70)
-    print("  AUTONOMOUS AI SHORTS ENGINE: TWELVELABS + ELEVENLABS PIPELINE")
+    print("  AUTONOMOUS AI SHORTS ENGINE: TWELVELABS SPEEDS + GEMINI ACCURACY")
     print("=" * 70)
 
     # 0. Ensure Meme Sound Vault is populated
@@ -32,30 +33,36 @@ def run_pipeline(url_or_id: str, output_path: str = None) -> str:
         build_meme_vault.download_all()
 
     # 1. Download & Transcode Video
-    print(f"\n[Step 1/3] Downloading Kuaishou/Douyin raw video: {url_or_id}...")
+    print(f"\n[Step 1/4] Downloading Kuaishou/Douyin raw video: {url_or_id}...")
     info = fetch_kuaishou_video_info(url_or_id)
     raw_video = download_and_transcode(info)
-    print(f"[Step 1/3] Playable video ready: {raw_video}")
+    print(f"[Step 1/4] Playable video ready: {raw_video}")
 
-    # 2. Analyze & Generate Script directly via TwelveLabs AI
-    print(f"\n[Step 2/3] Analyzing video with TwelveLabs AI (Dynamic Speeds + Comedy Script)...")
-    twelvelabs_data = analyze_video_and_generate_script(raw_video)
-    title = twelvelabs_data.get("title", "Viral Short")
-    segments = twelvelabs_data.get("segments", [])
-    speech_lines = twelvelabs_data.get("speech", [])
-    
-    total_timeline = sum((float(s["end"]) - float(s["start"])) / float(s.get("speed", 1.0)) for s in segments)
-    print(f"[Step 2/3] Script generated: '{title}' ({len(speech_lines)} Liam speech lines)")
-    print(f"[Step 2/3] Computed timeline duration: {total_timeline:.1f}s")
-    for idx, sp in enumerate(speech_lines[:3]):
-        print(f"  - Line {idx+1}: {sp[2] if len(sp) > 2 else sp}")
+    # 2. TwelveLabs Speed Ramping (Without cutting scenes)
+    print(f"\n[Step 2/4] TwelveLabs analyzing video speeds (compressing timeline without cutting)...")
+    segments = analyze_video_and_get_speeds(raw_video)
+    ramped_base = os.path.join(SCRATCH_DIR, f"ramped_base_{info['photo_id']}.mp4")
+    total_timeline = build_speed_ramped_base_video(raw_video, segments, ramped_base)
+    print(f"[Step 2/4] Speed-ramped base video ready: {ramped_base} ({total_timeline:.1f}s)")
 
-    # 3. Compose Final Video (ElevenLabs Liam Voiceover + SFX + Subtitles)
+    # 3. Google Gemini Accurate Story & Comedy Script (Low-Res Upload)
+    print(f"\n[Step 3/4] Google Gemini watching low-res speed-ramped video (100% Accurate Story & Sync)...")
+    script_data = generate_comedy_script_with_gemini(ramped_base)
+    speech_lines = script_data.get("speech", [])
+    print(f"[Step 3/4] Script generated: '{script_data.get('title')}' ({len(speech_lines)} Liam speech lines)")
+
+    # 4. Compose Final Video (ElevenLabs Liam + SFX + Subtitles + High-Quality Burn)
     if not output_path:
         output_path = os.path.join(SCRATCH_DIR, f"viral_short_{info['photo_id']}.mp4")
 
-    print(f"\n[Step 3/3] Composing speed-ramped video, Liam voice, and subtitles...")
-    final_video = compose_final_short(raw_video, twelvelabs_data, twelvelabs_data, output_path)
+    print(f"\n[Step 4/4] Composing ElevenLabs Liam voiceover, meme SFX, and safe-zone subtitles...")
+    twelvelabs_data = {"segments": segments}
+    final_video = compose_final_short(raw_video, twelvelabs_data, script_data, output_path)
+
+    # Cleanup intermediate ramped base
+    if os.path.exists(ramped_base):
+        try: os.remove(ramped_base)
+        except Exception: pass
 
     print("=" * 70)
     print(f"  SUCCESS! Final Short created: {final_video}")
