@@ -33,7 +33,11 @@ SOUNDS = {
     
     # 4. Action & Comedy Beats
     "ding_idea.mp3": "https://raw.githubusercontent.com/Lexz-08/YouTube-Memes/main/DING.mp3",
-    "yeet.mp3": "https://raw.githubusercontent.com/Lexz-08/YouTube-Memes/main/YEET.mp3"
+    "yeet.mp3": "https://raw.githubusercontent.com/Lexz-08/YouTube-Memes/main/YEET.mp3",
+
+    # 5. Viral Comedy Background Music (Eliminates dead silence)
+    "monkeys_spinning_monkeys.mp3": "https://upload.wikimedia.org/wikipedia/commons/e/e9/Monkeys_Spinning_Monkeys_%28ISRC_USUAN1400011%29.mp3",
+    "sneaky_snitch.mp3": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Sneaky_Snitch_%28ISRC_USUAN1100772%29.mp3"
 }
 
 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}

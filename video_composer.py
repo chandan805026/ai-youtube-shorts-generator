@@ -138,7 +138,7 @@ def compose_final_short(video_input: str, script_data: dict, out_video: str = No
         actual_st = max(target_t, prev_end_time + 0.1)
         prev_end_time = actual_st + clip_dur
 
-        speech_clips.append({"path": mp3_out, "start": actual_st})
+        speech_clips.append({"path": mp3_out, "start": actual_st, "dur": clip_dur})
 
         # 2. Build 100% word-accurate subtitles matching what is SPOKEN
         clean_ascii = re.sub(r'[^\x20-\x7E]+', ' ', text).strip()

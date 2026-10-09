@@ -115,6 +115,35 @@ def build_bgm_track(total_len_sec: float, sr=SAMPLE_RATE) -> np.ndarray:
     return bgm * 0.35
 
 
+def get_comedy_bgm_track(total_samples: int, sr=SAMPLE_RATE) -> np.ndarray:
+    """Loads viral comedy BGM (Monkeys Spinning Monkeys / Sneaky Snitch) tiled across full duration."""
+    bgm_candidates = ["monkeys_spinning_monkeys.mp3", "sneaky_snitch.mp3"]
+    raw_bgm = None
+    for cand in bgm_candidates:
+        cand_wave = load_vault_audio(cand, sr)
+        if cand_wave is not None and len(cand_wave) > sr * 5:
+            raw_bgm = cand_wave
+            print(f"[Mixer] Loaded viral comedy BGM track: '{cand}' ({len(raw_bgm)/sr:.1f}s)")
+            break
+
+    if raw_bgm is None:
+        print("[Mixer] Vault BGM track not loaded, using procedural comedy groove fallback...")
+        raw_bgm = build_bgm_track(float(total_samples) / sr, sr)
+
+    # Tile seamlessly if video is longer than track
+    if len(raw_bgm) < total_samples:
+        reps = int(np.ceil(total_samples / len(raw_bgm)))
+        bgm_track = np.tile(raw_bgm, reps)[:total_samples]
+    else:
+        bgm_track = raw_bgm[:total_samples]
+
+    # Normalize BGM track to baseline 1.0 peak
+    b_peak = np.max(np.abs(bgm_track))
+    if b_peak > 0.01:
+        bgm_track = bgm_track / b_peak
+    return bgm_track
+
+
 def mix_master_audio(speech_clips: list, sfx_events: list, total_len_sec: float, out_wav_path: str):
     """
     speech_clips: list of dicts [{'path': '...mp3', 'start': float}]
@@ -186,18 +215,41 @@ def mix_master_audio(speech_clips: list, sfx_events: list, total_len_sec: float,
             sfx_layer[idx:end_idx] += wave[:slice_len]
             print(f"[Mixer] Mixed meme SFX '{sfx_name}' at {t_sec:.2f}s (gain={gain})")
 
-    # 3. Add BGM groove
-    actual_len_sec = float(total_samples) / sr
-    bgm = build_bgm_track(actual_len_sec, sr)
-    if len(bgm) < total_samples:
-        bgm = np.pad(bgm, (0, total_samples - len(bgm)))
-    else:
-        bgm = bgm[:total_samples]
+    # 3. Add Continuous Comedy BGM with Smart Dynamic Ducking
+    bgm_track = get_comedy_bgm_track(total_samples, sr)
+    bgm_gap_gain = 0.34      # Energetic comedy groove during pauses (eradicates dead silence!)
+    bgm_speech_gain = 0.13   # Subtle backing during speech (Liam voice stays 100% crisp)
+    duck_env = np.ones(total_samples, dtype=np.float32) * bgm_gap_gain
+
+    for clip in speech_clips:
+        st = float(clip.get("start", 0.0))
+        dur = float(clip.get("dur", 3.0))
+        et = st + dur
+        i_st = int(st * sr)
+        i_et = int(et * sr)
+
+        # Ramp down 0.15s before speech starts
+        r_st = max(0, i_st - int(0.15 * sr))
+        if i_st > r_st:
+            duck_env[r_st:i_st] = np.minimum(duck_env[r_st:i_st], np.linspace(bgm_gap_gain, bgm_speech_gain, i_st - r_st))
+
+        # Hold at subtle backing while Liam is speaking
+        hold_end = min(total_samples, i_et)
+        if hold_end > i_st:
+            duck_env[i_st:hold_end] = bgm_speech_gain
+
+        # Ramp up 0.25s after Liam finishes speaking (music swells to fill the pause!)
+        r_et = min(total_samples, i_et + int(0.25 * sr))
+        if r_et > i_et:
+            duck_env[i_et:r_et] = np.minimum(duck_env[i_et:r_et], np.linspace(bgm_speech_gain, bgm_gap_gain, r_et - i_et))
+
+    ducked_bgm = bgm_track * duck_env
+    print(f"[Mixer] Dynamic Ducking active: BGM swells to {bgm_gap_gain*100:.0f}% in pauses, ducks to {bgm_speech_gain*100:.0f}% during dialogue.")
 
     # 4. Master Gain & Normalization (Loud YouTube Shorts Standard)
-    dialogue = dialogue * 1.50
+    dialogue = dialogue * 1.45
     sfx_layer = sfx_layer * 1.00
-    master = dialogue + sfx_layer + (bgm * 0.70)
+    master = dialogue + sfx_layer + ducked_bgm
     
     peak = np.max(np.abs(master))
     if peak > 0.01:
