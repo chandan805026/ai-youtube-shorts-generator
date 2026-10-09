@@ -43,7 +43,7 @@ def make_lightweight_upload_copy(src_path: str) -> str:
     cmd = [
         FFMPEG_BIN, "-y",
         "-i", src_path,
-        "-vf", "scale=-2:480",
+        "-vf", "scale=640:-2",
         "-c:v", "libx264",
         "-crf", "30",
         "-preset", "veryfast",
@@ -100,35 +100,38 @@ Return ONLY a valid raw JSON object (no markdown, no backticks):
   ]
 }}"""
 
-    print("[TwelveLabs] Prompting Pegasus for continuous full-video speed segments...")
-    res = client.analyze(
-        model_name="pegasus1.5",
-        video={"type": "asset_id", "asset_id": asset.id},
-        prompt=prompt
-    )
-
-    raw_text = res.data if hasattr(res, "data") else str(res)
-    clean_json = raw_text.strip()
-    if clean_json.startswith("```json"): clean_json = clean_json[7:]
-    if clean_json.startswith("```"): clean_json = clean_json[3:]
-    if clean_json.endswith("```"): clean_json = clean_json[:-3]
-    clean_json = clean_json.strip()
-
     try:
-        data = json.loads(clean_json)
-        if "segments" in data and len(data["segments"]) > 0:
-            print(f"[TwelveLabs] Successfully received {len(data['segments'])} speed segments!")
-            return data["segments"]
-    except Exception as e:
-        print(f"[TwelveLabs] Direct JSON parse check ({e}), searching regex...")
-        m = re.search(r'\{.*\}', clean_json, re.DOTALL)
-        if m:
-            try:
-                data = json.loads(m.group(0))
-                if "segments" in data and len(data["segments"]) > 0:
-                    return data["segments"]
-            except Exception:
-                pass
+        print("[TwelveLabs] Prompting Pegasus for continuous full-video speed segments...")
+        res = client.analyze(
+            model_name="pegasus1.5",
+            video={"type": "asset_id", "asset_id": asset.id},
+            prompt=prompt
+        )
+
+        raw_text = res.data if hasattr(res, "data") else str(res)
+        clean_json = raw_text.strip()
+        if clean_json.startswith("```json"): clean_json = clean_json[7:]
+        if clean_json.startswith("```"): clean_json = clean_json[3:]
+        if clean_json.endswith("```"): clean_json = clean_json[:-3]
+        clean_json = clean_json.strip()
+
+        try:
+            data = json.loads(clean_json)
+            if "segments" in data and len(data["segments"]) > 0:
+                print(f"[TwelveLabs] Successfully received {len(data['segments'])} speed segments!")
+                return data["segments"]
+        except Exception as e:
+            print(f"[TwelveLabs] Direct JSON parse check ({e}), searching regex...")
+            m = re.search(r'\{.*\}', clean_json, re.DOTALL)
+            if m:
+                try:
+                    data = json.loads(m.group(0))
+                    if "segments" in data and len(data["segments"]) > 0:
+                        return data["segments"]
+                except Exception:
+                    pass
+    except Exception as ex:
+        print(f"[TwelveLabs] Pegasus speed analysis exception: {ex}")
 
     print("[TwelveLabs] Using engineered continuous speed segments...")
     return [
