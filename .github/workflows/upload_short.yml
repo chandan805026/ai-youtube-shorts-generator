@@ -5,12 +5,20 @@ on:
     inputs:
       video_url:
         description: 'Direct stream URL of the Short'
-        required: false
-        default: 'https://n.uguu.se/ssEHaavH.mp4'
+        required: true
+        default: 'https://d.uguu.se/jFmhgjql.mp4'
       title:
         description: 'YouTube Short Title'
+        required: true
+        default: 'Bro Really Thought He Could Escape! 💨😂 #Shorts'
+      desc:
+        description: 'YouTube Short Description'
         required: false
-        default: "Gary's Tactical Barnyard Prison Break! 🐔🍷 #Shorts"
+        default: ''
+      publish_at:
+        description: 'Scheduled Publish Time (ISO 8601 UTC, e.g. 2026-10-09T21:00:00.000Z for 2:30 AM IST)'
+        required: false
+        default: ''
 
 jobs:
   upload-youtube:
@@ -34,4 +42,11 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: |
-          python upload_to_youtube.py --video "${{ github.event.inputs.video_url }}" --title "${{ github.event.inputs.title }}"
+          ARGS="--video '${{ github.event.inputs.video_url }}' --title '${{ github.event.inputs.title }}'"
+          if [ -n "${{ github.event.inputs.desc }}" ]; then
+            ARGS="$ARGS --desc '${{ github.event.inputs.desc }}'"
+          fi
+          if [ -n "${{ github.event.inputs.publish_at }}" ]; then
+            ARGS="$ARGS --publish-at '${{ github.event.inputs.publish_at }}'"
+          fi
+          eval python upload_to_youtube.py $ARGS

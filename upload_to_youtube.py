@@ -12,7 +12,7 @@ if sys.stdout:
         pass
 
 
-def upload_short(video_source=None, title=None, desc=None):
+def upload_short(video_source=None, title=None, desc=None, tags=None, publish_at=None):
     print("=" * 60)
     print("🚀 YOUTUBE SHORTS CLOUD PUBLISHER 🚀")
     print("=" * 60)
@@ -106,6 +106,13 @@ def upload_short(video_source=None, title=None, desc=None):
         "Barnyard", "Escape", "Meme", "Trending", "Rooster", "BritishNarrator"
     ]
 
+    status_dict = {
+        "privacyStatus": "private" if publish_at else "public",
+        "selfDeclaredMadeForKids": False
+    }
+    if publish_at:
+        status_dict["publishAt"] = publish_at
+
     body = {
         "snippet": {
             "title": title,
@@ -113,16 +120,16 @@ def upload_short(video_source=None, title=None, desc=None):
             "tags": tags,
             "categoryId": "23"  # Comedy category
         },
-        "status": {
-            "privacyStatus": "public",
-            "selfDeclaredMadeForKids": False
-        }
+        "status": status_dict
     }
 
     print(f"\n📺 Publishing YouTube Short:")
     print(f"   📌 Title: {title}")
     print(f"   📂 Category: Comedy (23)")
-    print(f"   🌐 Visibility: Public")
+    if publish_at:
+        print(f"   ⏰ Scheduled Publish Time: {publish_at} (Private until release)")
+    else:
+        print(f"   🌐 Visibility: Public")
     print(f"\n🚀 Uploading video stream to YouTube...")
 
     media = MediaFileUpload(video_path, chunksize=1024 * 1024 * 5, resumable=True, mimetype="video/mp4")
@@ -161,6 +168,7 @@ if __name__ == "__main__":
     parser.add_argument("--video", default=None, help="Video file path or HTTP stream URL")
     parser.add_argument("--title", default=None, help="Video Title")
     parser.add_argument("--desc", default=None, help="Video Description")
+    parser.add_argument("--publish-at", default=None, help="Scheduled publish time in ISO-8601 UTC")
     args = parser.parse_args()
 
-    upload_short(video_source=args.video, title=args.title, desc=args.desc)
+    upload_short(video_source=args.video, title=args.title, desc=args.desc, publish_at=args.publish_at)
