@@ -20,10 +20,10 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Setup FFmpeg (Fast Static Binary)
-        uses: FedericoCarboni/setup-ffmpeg@v3
-        with:
-          ffmpeg-version: release
+      - name: Setup FFmpeg
+        run: |
+          which ffmpeg || sudo apt-get install -y ffmpeg
+          ffmpeg -version | head -n 1
 
       - name: Install Fonts for Subtitles
         run: |
