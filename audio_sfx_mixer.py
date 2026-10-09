@@ -121,7 +121,13 @@ def mix_master_audio(speech_clips: list, sfx_events: list, total_len_sec: float,
     sfx_events: list of tuples [('vine_boom.mp3', 4.0), ('bruh.mp3', 6.5), ...]
     """
     sr = SAMPLE_RATE
-    total_samples = int(total_len_sec * sr)
+    # Dynamically accommodate last speech clip if it extends slightly past video duration
+    max_speech_end = total_len_sec
+    for clip in speech_clips:
+        st_val = float(clip.get("start", 0))
+        if st_val + 5.0 > max_speech_end:
+            max_speech_end = st_val + 5.0
+    total_samples = int(max(total_len_sec, max_speech_end) * sr)
     
     dialogue = np.zeros(total_samples, dtype=np.float32)
     sfx_layer = np.zeros(total_samples, dtype=np.float32)
@@ -137,8 +143,13 @@ def mix_master_audio(speech_clips: list, sfx_events: list, total_len_sec: float,
         data = data.astype(np.float32) / 32768.0
         
         idx = int(st * sr)
+        if idx >= total_samples or idx < 0:
+            continue
         end_idx = min(idx + len(data), total_samples)
-        dialogue[idx:end_idx] += data[:end_idx - idx]
+        slice_len = end_idx - idx
+        if slice_len <= 0:
+            continue
+        dialogue[idx:end_idx] += data[:slice_len]
         
     if os.path.exists(temp_wav):
         os.remove(temp_wav)
@@ -166,12 +177,22 @@ def mix_master_audio(speech_clips: list, sfx_events: list, total_len_sec: float,
         if wave is not None:
             wave = wave * gain
             idx = int(t_sec * sr)
+            if idx >= total_samples or idx < 0:
+                continue
             end_idx = min(idx + len(wave), total_samples)
-            sfx_layer[idx:end_idx] += wave[:end_idx - idx]
+            slice_len = end_idx - idx
+            if slice_len <= 0:
+                continue
+            sfx_layer[idx:end_idx] += wave[:slice_len]
             print(f"[Mixer] Mixed meme SFX '{sfx_name}' at {t_sec:.2f}s (gain={gain})")
 
     # 3. Add BGM groove
-    bgm = build_bgm_track(total_len_sec, sr)
+    actual_len_sec = float(total_samples) / sr
+    bgm = build_bgm_track(actual_len_sec, sr)
+    if len(bgm) < total_samples:
+        bgm = np.pad(bgm, (0, total_samples - len(bgm)))
+    else:
+        bgm = bgm[:total_samples]
 
     # 4. Master Gain & Normalization (Loud YouTube Shorts Standard)
     dialogue = dialogue * 1.50
