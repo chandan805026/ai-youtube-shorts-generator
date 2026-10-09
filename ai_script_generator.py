@@ -22,7 +22,7 @@ def get_gemini_api_key():
     key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_KEY")
     if not key:
         import base64
-        key = base64.b64decode("QVEuQWI4Uk42TDZKYkRDb0lueUpGN1c1TlMydVpZc2ZWclpRWk9EZDU2Q09Ua1FBaThKQQ==").decode("utf-8")
+        key = base64.b64decode("QVEuQWI4Uk42TDZKYkRDb0lueUpGN1c1TlMydVpZc2ZWclpRWk9EZDVENkNPVGtRQWk4SkE=").decode("utf-8")
     return key.strip()
 
 
@@ -57,6 +57,37 @@ def make_lowres_copy_for_gemini(src_path: str) -> str:
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     print(f"[Gemini] Low-res copy ready: {os.path.getsize(dst_path) / (1024*1024):.1f} MB")
     return dst_path
+
+
+def normalize_script_timeline(data: dict, total_dur: float) -> dict:
+    if "speech" not in data or len(data["speech"]) < 3:
+        return data
+
+    speech = data["speech"]
+    max_t = max(10.0, total_dur - 2.5)
+    last_t = float(speech[-1][1])
+
+    if last_t > max_t:
+        scale = max_t / last_t
+        for row in speech:
+            row[1] = round(float(row[1]) * scale, 1)
+        for row in data.get("sfx", []):
+            row[1] = round(float(row[1]) * scale, 1)
+        for row in data.get("subtitles", []):
+            row["start"] = round(float(row["start"]) * scale, 1)
+            row["end"] = round(float(row["end"]) * scale, 1)
+
+    # Smooth any large dead-air gaps (> 5.5 seconds)
+    for i in range(1, len(speech)):
+        prev_t = float(speech[i - 1][1])
+        cur_t = float(speech[i][1])
+        if cur_t - prev_t > 5.5:
+            shift = (cur_t - prev_t) - 4.5
+            for j in range(i, len(speech)):
+                speech[j][1] = round(max(prev_t + 1.0, float(speech[j][1]) - shift), 1)
+
+    print(f"[Gemini] Normalized {len(speech)} speech lines smoothly across {total_dur:.1f}s timeline.")
+    return data
 
 
 def generate_comedy_script_with_gemini(ramped_video_path: str) -> dict:
@@ -107,76 +138,46 @@ def generate_comedy_script_with_gemini(ramped_video_path: str) -> dict:
                 print("[Gemini] Video is ACTIVE and ready for script generation!")
                 break
 
-        prompt = f"""You are a master viral YouTube Shorts comedy narrator (in the witty, sarcastic style of Liam).
-Watch this speed-ramped video carefully ({total_dur:.1f} seconds total).
-You understand everything: visual actions, character expressions, on-screen Chinese text, and spoken dialogue.
+        prompt = f"""You are an observant comedy storyteller (witty British narrator style, like Liam).
+First, watch this entire video from start to finish ({total_dur:.1f} seconds). Understand the full real story, visual actions, on-screen text, and dialogue.
+Now, narrate this wild, hilarious story to the audience as someone who witnessed everything and is recounting the unbelievable tale to a friend with sarcastic humor.
 
-CRITICAL REQUIREMENTS:
-1. ACCURATE STORY GROUNDING:
-   - Narrate what is ACTUALLY happening on screen (Gary styling the rooster with scissors, Brenda padlocking the gate, magnet key heist, green laser SOS on wall, friend bribing guard dog, both tied to bamboo chairs, phone recycling deal, empty chairs escape, and freedom toast by the river).
-   - NO false hallucinations (no random black dogs, no fake wheelbarrows).
-2. SCENE-LOCKED CONTINUOUS COMMENTARY (18 to 20 speech lines):
-   - Zero dead air/silence: Lines should be spaced across 0.0s to {total_dur:.1f}s with only 0.5s - 0.8s micro-pauses between sentences.
-   - 100% sync: Each line must strictly match what is visually occurring at that timestamp.
-3. MEME SFX PLACEMENT:
-   - Place meme sound effects during comedy punchlines ('vine_boom.mp3', 'windows_error.mp3', 'ding_idea.mp3', 'bruh.mp3', 'oh_no_wheeze_laugh.mp3').
-4. SAFE-ZONE EYE-LEVEL SUBTITLES:
-   - Provide punchy, bold subtitles.
+RULES:
+1. REAL OBSERVED STORY: Tell the TRUE story of what physically happened on screen from start to finish. Zero made-up facts or hallucinations. Explain the real events in a funny, engaging storytelling voice.
 
-Return ONLY a valid raw JSON object (no markdown, no ```json backticks):
+2. 1:1 AUDIO-VIDEO SYNC & TIMELINE BOUNDARIES:
+   - The total video duration is EXACTLY {total_dur:.1f} seconds.
+   - All speech timestamps MUST be between 0.0s and {total_dur - 2.5:.1f}s. NEVER exceed {total_dur - 2.5:.1f}s!
+   - Space the 17 to 22 lines continuously across the full timeline with 0.5s - 0.8s micro-pauses (no dead-air gaps).
+   - The sentence starting at timestamp T must describe ONLY the visual action occurring at timestamp T.
+   - DYNAMIC SPEED PACING:
+     * Fast-forward / quick montage scenes: Use SHORT, SNAPPY lines (4 to 7 words).
+     * Main story / comedy scenes: Use full witty lines (8 to 12 words).
+
+3. STORYTELLER COMEDY TONE: Witty, sarcastic, highly engaging storytelling (giving funny nicknames to characters, reacting to their crazy plans and hilarious fails).
+
+4. PERFECT SFX TIMING: Place meme sounds at the exact second where that emotion happens on screen (never place randomly):
+   - SHOCK/TWIST: 'vine_boom.mp3', 'wait_a_minute.mp3', 'metal_pipe.mp3'
+   - FAIL/CAUGHT: 'windows_error.mp3', 'bruh.mp3', 'no_god_please_no.mp3', 'sad_violin.mp3', 'incorrect_buzzer.mp3', 'titanic_bad_recorder.mp3'
+   - SNEAKY/ACTION: 'ding_idea.mp3', 'suspense_sting.mp3', 'fbi_open_up.mp3', 'yeet.mp3'
+   - LAUGHTER/FUN: 'oh_no_wheeze_laugh.mp3', 'anime_wow.mp3', 'rizz.mp3'
+   Also provide punchy, bold 3-5 word subtitles with emojis.
+
+OUTPUT FORMAT:
+Return ONLY this valid JSON (no markdown backticks, no other text):
 {{
-  "title": "Tactical Barnyard Rescue",
+  "title": "Short Funny Title",
   "speech": [
-    ["01", 0.5, "Gary decides his prize rooster desperately needs a stylish emergency fade."],
-    ["02", 4.5, "The chicken is seriously questioning every single one of its life choices."],
-    ["03", 8.8, "And here comes Brenda, with a glare that could melt solid concrete."],
-    ["04", 13.5, "Enter the tactical wine shuttle cruising silently across the patio."],
-    ["05", 17.6, "Intercepted! Brenda crushes the RC car and slaps on a master padlock."],
-    ["06", 22.0, "Gary is officially trapped in maximum security barnyard lockdown."],
-    ["07", 26.5, "Time for Plan B: Gary attempts a covert magnetic fishing heist for the keys."],
-    ["08", 31.8, "Target locked, reeling it in... and caught red-handed. Absolutely hopeless."],
-    ["09", 37.5, "Desperate times: Gary blasts a high-powered green laser distress signal."],
-    ["10", 42.8, "Beaming the SOS across the neighborhood wall hoping anyone has common sense."],
-    ["11", 48.0, "Backup Terry spots the signal and mobilizes the elite extraction toolkit."],
-    ["12", 53.2, "First critical obstacle: bribing the terrifying guard dog with prime snacks."],
-    ["13", 58.5, "The dog completely sells out for treats. Professional loyalty at its finest."],
-    ["14", 64.2, "Terry approaches the gate, feeling like James Bond in a backyard."],
-    ["15", 68.8, "Wait for it... Ambush! Brenda was lurking in the shadows all along."],
-    ["16", 73.5, "Now both blokes are zip-tied to patio chairs looking like lawn gnomes."],
-    ["17", 78.0, "Gary spots an old phone and pitches a recycling deal to distract Brenda."],
-    ["18", 83.0, "The recycling agent arrives, slips a secret blade to the boys under the radar."],
-    ["19", 88.0, "Ropes severed, secret getaway, and Brenda screams at the empty chairs!"],
-    ["20", 92.5, "And the lads toast to sweet freedom by the river. Brilliant."]
+    ["01", 0.5, "Hook line describing opening action."],
+    ["02", 4.2, "Funny line describing next action."]
   ],
   "sfx": [
-    ["vine_boom.mp3", 12.5, 0.85],
-    ["metal_clang.mp3", 21.0, 0.80],
-    ["windows_error.mp3", 35.5, 0.80],
-    ["ding_idea.mp3", 42.0, 0.80],
-    ["bruh.mp3", 72.8, 0.90],
-    ["oh_no_wheeze_laugh.mp3", 91.5, 0.80]
+    ["vine_boom.mp3", 5.0, 0.85],
+    ["windows_error.mp3", 15.2, 0.80]
   ],
   "subtitles": [
-    {{"start": 0.5, "end": 4.2, "style": "CenterHook", "text": "ROOSTER EMERGENCY FADE 💀"}},
-    {{"start": 4.5, "end": 8.5, "style": "CenterPunch", "text": "QUESTIONING LIFE CHOICES 🐔"}},
-    {{"start": 8.8, "end": 13.0, "style": "CenterPunch", "text": "BRENDA'S DEATH GLARE 😡"}},
-    {{"start": 13.5, "end": 17.2, "style": "CenterPunch", "text": "TACTICAL WINE SHUTTLE 🍷"}},
-    {{"start": 17.6, "end": 21.5, "style": "CenterPunch", "text": "SHUTTLE CRUSHED & PADLOCKED 🔒"}},
-    {{"start": 22.0, "end": 26.0, "style": "CenterPunch", "text": "MAXIMUM BARNYARD LOCKDOWN 🚨"}},
-    {{"start": 26.5, "end": 31.2, "style": "CenterPunch", "text": "COVERT MAGNETIC KEY HEIST 🧲"}},
-    {{"start": 31.8, "end": 37.0, "style": "CenterPunch", "text": "CAUGHT RED-HANDED AGAIN 💀"}},
-    {{"start": 37.5, "end": 42.2, "style": "CenterPunch", "text": "TACTICAL GREEN LASER SOS 🚨"}},
-    {{"start": 42.8, "end": 47.5, "style": "CenterPunch", "text": "BEAMING SOS ACROSS WALL 🎯"}},
-    {{"start": 48.0, "end": 52.8, "style": "CenterPunch", "text": "BACKUP TERRY MOBILIZES 🏃"}},
-    {{"start": 53.2, "end": 58.0, "style": "CenterPunch", "text": "BRIBING THE GUARD DOG 🐕"}},
-    {{"start": 58.5, "end": 63.8, "style": "CenterPunch", "text": "DOG SELLS OUT FOR SNACKS 🥩"}},
-    {{"start": 64.2, "end": 68.5, "style": "CenterPunch", "text": "INFILTRATING BACKYARD 🕶️"}},
-    {{"start": 68.8, "end": 73.0, "style": "CenterPunch", "text": "AMBUSH! BRENDA STRIKES 😱"}},
-    {{"start": 73.5, "end": 77.5, "style": "CenterPunch", "text": "ZIP-TIED TO PATIO CHAIRS 💀"}},
-    {{"start": 78.0, "end": 82.5, "style": "CenterPunch", "text": "PHONE RECYCLING DISTRACTION 📱"}},
-    {{"start": 83.0, "end": 87.5, "style": "CenterPunch", "text": "AGENT SLIPS SECRET BLADE 📦"}},
-    {{"start": 88.0, "end": 92.0, "style": "CenterPunch", "text": "EMPTY CHAIRS & BRENDA FURY 🔥"}},
-    {{"start": 92.5, "end": 96.5, "style": "CenterPunch", "text": "FREEDOM TOAST BY THE RIVER 🍻"}}
+    {{"start": 0.5, "end": 4.0, "style": "CenterHook", "text": "SHORT HOOK TEXT 💀"}},
+    {{"start": 4.2, "end": 8.0, "style": "CenterPunch", "text": "NEXT PUNCHLINE 😱"}}
   ]
 }}"""
 
@@ -205,6 +206,8 @@ Return ONLY a valid raw JSON object (no markdown, no ```json backticks):
                     data = json.loads(clean_json)
                     if "speech" in data and len(data["speech"]) >= 12:
                         print(f"[Gemini] Successfully received {len(data['speech'])} script lines from {model}!")
+                        # Auto-normalize timestamps to strictly fit total_dur timeline
+                        data = normalize_script_timeline(data, total_dur)
                         return data
             except Exception as ex_m:
                 print(f"[Gemini] Model {model} attempt: {ex_m}")
