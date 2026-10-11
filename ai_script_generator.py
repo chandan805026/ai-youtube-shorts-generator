@@ -5,6 +5,7 @@ import time
 import subprocess
 import requests
 import re
+import base64
 
 if sys.stdout:
     try:
@@ -23,33 +24,22 @@ def get_candidate_gemini_keys():
     env_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_KEY")
     if env_key and env_key.strip() and not env_key.strip().startswith("${{"):
         keys.append(env_key.strip())
-    import base64
     fallback = base64.b64decode("QVEuQWI4Uk42TDZKYkRDb0lueUpGN1c1TlMydVpZc2ZWclpRWk9EZDVENkNPVGtRQWk4SkE=").decode("utf-8")
     if fallback not in keys:
         keys.append(fallback)
     return keys
 
 
-def get_gemini_api_key():
-    return get_candidate_gemini_keys()[0]
-
-
 def sanitize_speech_text(text: str) -> str:
     if not text:
         return ""
-    # 1. Remove file extensions .mp3, .wav, .ogg
     text = re.sub(r'\b[\w\-]+(?:\.mp3|\.wav|\.ogg)\b', '', text, flags=re.IGNORECASE)
     text = re.sub(r'\.(?:mp3|wav|ogg)\b', '', text, flags=re.IGNORECASE)
-
-    # 2. Remove bracketed/parenthesized tags like [vine_boom], (sfx), [sound]
     text = re.sub(r'\[.*?\]', '', text)
     text = re.sub(r'\(.*?\)', '', text)
     text = re.sub(r'\*.*?\*', '', text)
-
-    # 3. Remove SFX / Sound labels
     text = re.sub(r'\b(?:SFX|SOUND EFFECT|FX|MEME)\s*:?\b', '', text, flags=re.I)
 
-    # 4. Remove standalone meme sound names if present
     sfx_patterns = [
         r'\bvine[\s_\-]*boom\b', r'\bwindows[\s_\-]*error\b', r'\bmetal[\s_\-]*pipe\b',
         r'\bsad[\s_\-]*violin\b', r'\btitanic[\s_\-]*bad[\s_\-]*recorder\b',
@@ -61,12 +51,9 @@ def sanitize_speech_text(text: str) -> str:
     for pat in sfx_patterns:
         text = re.sub(pat, '', text, flags=re.IGNORECASE)
 
-    # 5. Clean up extra punctuation and spaces
     text = re.sub(r'\s+', ' ', text).strip()
     text = re.sub(r'^[\s\-_:,\.]+|[\s\-_:,\.]+$', '', text).strip()
     return text
-
-
 
 
 def get_video_duration(video_path: str) -> float:
@@ -76,16 +63,12 @@ def get_video_duration(video_path: str) -> float:
         if "Duration:" in line:
             parts = line.split("Duration:")[1].split(",")[0].strip().split(":")
             return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
-    return 95.0
+    return 60.0
 
 
-def make_lowres_copy_for_gemini(src_path: str) -> str:
-    """
-    Creates an ultra-lightweight 480p copy (around 5-7 MB)
-    so Google Gemini accepts and processes it instantly without payload/quota issues.
-    """
-    dst_path = os.path.join(SCRATCH_DIR, f"gemini_lowres_{os.path.basename(src_path)}")
-    print(f"[Gemini] Compressing speed-ramped video to low-res copy for Gemini...")
+def make_lowres_copy_for_gemini(src_path: str, prefix: str = "gemini_lowres") -> str:
+    dst_path = os.path.join(SCRATCH_DIR, f"{prefix}_{os.path.basename(src_path)}")
+    print(f"[Gemini] Compressing video to 480p lightweight copy for Gemini...")
     cmd = [
         FFMPEG_BIN, "-y",
         "-i", src_path,
@@ -98,8 +81,235 @@ def make_lowres_copy_for_gemini(src_path: str) -> str:
         dst_path
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-    print(f"[Gemini] Low-res copy ready: {os.path.getsize(dst_path) / (1024*1024):.1f} MB")
+    print(f"[Gemini] Lightweight copy ready: {os.path.getsize(dst_path) / (1024*1024):.1f} MB")
     return dst_path
+
+
+def upload_video_to_gemini_files(lowres_vid: str, api_key: str) -> str:
+    file_size = os.path.getsize(lowres_vid)
+    init_url = f"https://generativelanguage.googleapis.com/upload/v1beta/files?key={api_key}"
+    headers = {
+        "X-Goog-Upload-Protocol": "resumable",
+        "X-Goog-Upload-Command": "start",
+        "X-Goog-Upload-Header-Content-Length": str(file_size),
+        "X-Goog-Upload-Header-Type": "video/mp4",
+        "Content-Type": "application/json"
+    }
+    r1 = requests.post(init_url, headers=headers, json={"file": {"display_name": os.path.basename(lowres_vid)}}, timeout=15)
+    up_url = r1.headers.get("X-Goog-Upload-URL") or r1.headers.get("Upload-URL")
+    if not up_url:
+        return ""
+
+    with open(lowres_vid, "rb") as f:
+        data = f.read()
+
+    r2 = requests.post(up_url, headers={
+        "Content-Length": str(file_size),
+        "X-Goog-Upload-Offset": "0",
+        "X-Goog-Upload-Command": "upload, finalize"
+    }, data=data, timeout=45)
+
+    file_info = r2.json().get("file", {})
+    file_name = file_info.get("name")
+    file_uri = file_info.get("uri")
+    print(f"[Gemini] Uploaded {file_name}. Waiting for ACTIVE state...")
+
+    check_url = f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}"
+    for _ in range(35):
+        time.sleep(3)
+        info = requests.get(check_url, timeout=10).json()
+        if info.get("state") == "ACTIVE":
+            print(f"[Gemini] Video {file_name} is ACTIVE!")
+            return file_uri
+    return ""
+
+
+def snap_timestamp_to_camera_cut(video_path: str, target_t: float, total_dur: float, is_start: bool = True) -> float:
+    """
+    Uses FFmpeg scdet around target_t (±1.2s) to snap cut points to exact millisecond
+    camera angle changes so no stray frame from an adjacent shot ever flashes.
+    """
+    if target_t <= 1.0:
+        return 0.0
+    if target_t >= total_dur - 1.5:
+        return round(total_dur, 2)
+
+    win_start = max(0.0, target_t - 1.2)
+    win_dur = 2.4
+    cmd = [
+        FFMPEG_BIN, "-ss", f"{win_start:.2f}", "-t", f"{win_dur:.2f}",
+        "-i", video_path,
+        "-vf", "scdet=threshold=12",
+        "-an", "-f", "null", "-"
+    ]
+    p = subprocess.run(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, errors="replace")
+    cuts = []
+    for line in p.stderr.splitlines():
+        if "lavfi.scd.time:" in line:
+            m = re.search(r"lavfi\.scd\.time:\s*([0-9\.]+)", line)
+            if m:
+                rel_t = float(m.group(1))
+                abs_t = win_start + rel_t
+                cuts.append(abs_t)
+
+    if cuts:
+        best_cut = min(cuts, key=lambda c: abs(c - target_t))
+        # Add +0.04s on start cut or -0.04s on end cut to stay strictly inside the intended camera shot
+        adjusted = best_cut + (0.04 if is_start else -0.04)
+        print(f"[SceneLock] Snapped {'START' if is_start else 'END'} {target_t:.2f}s -> exact camera cut {adjusted:.2f}s")
+        return round(max(0.0, min(total_dur, adjusted)), 2)
+
+    return round(target_t, 2)
+
+
+def condense_video_with_gemini(raw_video_path: str) -> str:
+    """
+    PASS 1 (Master Story Editor):
+    If the raw video is longer than 68s, Gemini carefully watches the full video,
+    understands the complete story, and selects 2 or 3 LONG, CONNECTED STORY CHAPTERS
+    (each 15s-26s long, totaling ~58-65s raw -> ~50-56s after 1.15x speed) with
+    exact camera-cut snapping so there are ZERO sudden or confusing jumps!
+    """
+    total_dur = get_video_duration(raw_video_path)
+    if total_dur <= 68.0:
+        print(f"[Editor Pass 1] Video is {total_dur:.1f}s (<=68s), already under 1 min at 1.15x! Keeping 100% uncut.")
+        return raw_video_path
+
+    print(f"\n[Editor Pass 1] Video is {total_dur:.1f}s. Asking Gemini Master Editor to select connected story chapters (<60s target)...")
+    candidate_keys = get_candidate_gemini_keys()
+    lowres_full = make_lowres_copy_for_gemini(raw_video_path, prefix="pass1_full")
+
+    editor_prompt = f"""You are a Master Film & Comedy Video Editor.
+First, watch this entire video carefully from start to finish ({total_dur:.1f} seconds). Deeply understand the complete story, characters, setups, pranks, and final climax.
+
+TASK:
+This video is {total_dur:.1f} seconds long, which is too long for a 60-second YouTube Short.
+Your job is to select 2 or 3 LONG, CONTINUOUS, CONNECTED STORY CHAPTERS that tell the COMPLETE funny story from beginning to climax in a combined duration of 56 to 65 seconds (so at 1.15x playback it will be 49 to 56 seconds, strictly under 1 minute).
+
+STRICT CONTINUITY & EDITING RULES (DO NOT VIOLATE):
+1. NO TINY FRAGMENTS: Never cut small 3-to-8 second pieces! Every chapter you select MUST be between 15.0 and 26.0 seconds long so the viewer watches a smooth, uninterrupted scene without sudden jumps.
+2. ONLY 2 OR 3 CONNECTED CHAPTERS IN CHRONOLOGICAL ORDER:
+   - Chapter 1 (Opening Setup & Problem): 15 to 20 seconds showing how the story/problem begins.
+   - Chapter 2 (The Main Funny Plan / Trap / Action): 18 to 24 seconds showing the main comedic action or prank.
+   - Chapter 3 (The Final Climax & Payoff): 18 to 24 seconds showing the hilarious ending payoff.
+3. ZERO ABRUPT JUMPS ("Achanak koi alag hissa na aaye"):
+   - Start and end each chapter ONLY at a clean camera angle change or completed action.
+   - Never cut in the middle of someone walking, speaking, or swinging!
+   - Only remove slow, repetitive walking/waiting filler between the 3 main chapters.
+4. TOTAL COMBINED DURATION of all chapters MUST be between 56.0 and 65.0 seconds.
+
+OUTPUT FORMAT:
+Return ONLY valid JSON (no markdown backticks, no extra text):
+{{
+  "story_summary": "Brief summary of the full story",
+  "chapters": [
+    {{"start": 0.0, "end": 18.0, "description": "Opening setup"}},
+    {{"start": 40.0, "end": 62.0, "description": "Main funny trap"}},
+    {{"start": 96.0, "end": 118.0, "description": "Final climax"}}
+  ]
+}}"""
+
+    selected_chapters = None
+    for api_key in candidate_keys:
+        try:
+            file_uri = upload_video_to_gemini_files(lowres_full, api_key)
+            if not file_uri:
+                continue
+
+            for model in ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"]:
+                try:
+                    gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                    payload = {
+                        "contents": [{
+                            "parts": [
+                                {"file_data": {"mime_type": "video/mp4", "file_uri": file_uri}},
+                                {"text": editor_prompt}
+                            ]
+                        }]
+                    }
+                    res = requests.post(gen_url, json=payload, timeout=50)
+                    if res.status_code == 200:
+                        raw_text = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                        clean_json = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text).strip()
+                        parsed = json.loads(clean_json)
+                        chaps = parsed.get("chapters", [])
+                        if 2 <= len(chaps) <= 4:
+                            print(f"[Editor Pass 1] Gemini ({model}) Story Summary: {parsed.get('story_summary', '')}")
+                            selected_chapters = chaps
+                            break
+                except Exception as ex:
+                    print(f"[Editor Pass 1] Model {model} notice: {ex}")
+            if selected_chapters:
+                break
+        except Exception as e:
+            print(f"[Editor Pass 1] Key error: {e}")
+
+    # Validate & sanitize chapters (if Gemini didn't return valid chapters, use 3-part story arc: Setup + Middle + Climax)
+    valid_ranges = []
+    if selected_chapters:
+        prev_end = 0.0
+        for ch in selected_chapters:
+            s = max(prev_end, float(ch.get("start", 0.0)))
+            e = min(total_dur, float(ch.get("end", s + 18.0)))
+            if e - s >= 10.0:
+                valid_ranges.append((s, e, ch.get("description", "Story chapter")))
+                prev_end = e + 0.5
+
+    total_selected = sum(e - s for s, e, _ in valid_ranges)
+    if not valid_ranges or total_selected < 42.0 or total_selected > 72.0:
+        print("[Editor Pass 1] Applying balanced 3-Chapter Story Arc (Setup 18s + Main Action 22s + Climax 22s = 62s)...")
+        mid_start = round(total_dur * 0.38, 1)
+        valid_ranges = [
+            (0.0, 18.0, "Opening Setup"),
+            (mid_start, mid_start + 22.0, "Main Comedy Action"),
+            (max(mid_start + 23.0, total_dur - 22.0), total_dur, "Final Climax")
+        ]
+
+    # Snap every cut to exact millisecond camera shot boundaries and extract chapters
+    part_files = []
+    for idx, (s_raw, e_raw, desc) in enumerate(valid_ranges):
+        s_snap = snap_timestamp_to_camera_cut(raw_video_path, s_raw, total_dur, is_start=True)
+        e_snap = snap_timestamp_to_camera_cut(raw_video_path, e_raw, total_dur, is_start=False)
+        if e_snap - s_snap < 8.0:
+            s_snap, e_snap = s_raw, e_raw
+
+        part_path = os.path.join(SCRATCH_DIR, f"chap_{idx:02d}_{os.path.basename(raw_video_path)}")
+        print(f"[Editor Pass 1] Extracting Chapter {idx+1}: {s_snap:.2f}s -> {e_snap:.2f}s ({e_snap - s_snap:.1f}s) [{desc}]")
+        # Smooth 0.15s fade-in/out on chapter boundaries so transitions feel like a movie edit
+        dur_c = e_snap - s_snap
+        vf_fade = f"fade=t=in:st=0:d=0.15,fade=t=out:st={max(0.1, dur_c - 0.15):.2f}:d=0.15"
+        cmd_part = [
+            FFMPEG_BIN, "-y",
+            "-ss", f"{s_snap:.2f}",
+            "-to", f"{e_snap:.2f}",
+            "-i", raw_video_path,
+            "-vf", vf_fade,
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+            "-c:a", "aac", "-b:a", "192k",
+            part_path
+        ]
+        subprocess.run(cmd_part, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        part_files.append(part_path)
+
+    concat_list_path = os.path.join(SCRATCH_DIR, "chapters_concat.txt")
+    with open(concat_list_path, "w", encoding="utf-8") as cf:
+        for pf in part_files:
+            safe_p = pf.replace("\\", "/")
+            cf.write(f"file '{safe_p}'\n")
+
+    condensed_path = os.path.join(SCRATCH_DIR, f"condensed_{os.path.basename(raw_video_path)}")
+    cmd_concat = [
+        FFMPEG_BIN, "-y",
+        "-f", "concat", "-safe", "0",
+        "-i", concat_list_path,
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+        "-c:a", "aac", "-b:a", "192k",
+        condensed_path
+    ]
+    subprocess.run(cmd_concat, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    new_dur = get_video_duration(condensed_path)
+    print(f"[Editor Pass 1] Condensed story video ready: {condensed_path} ({new_dur:.1f}s raw -> {new_dur/1.15:.1f}s at 1.15x!)")
+    return condensed_path
 
 
 def normalize_script_timeline(data: dict, total_dur: float) -> dict:
@@ -107,250 +317,90 @@ def normalize_script_timeline(data: dict, total_dur: float) -> dict:
         return data
 
     speech = data["speech"]
-    max_allowed = max(5.0, total_dur - 2.5)
+    max_allowed = max(3.0, total_dur - 2.2)
 
-    # Strictly preserve authentic visual timestamps; only clamp to total video bounds
     for row in speech:
         row[1] = round(min(max_allowed, max(0.2, float(row[1]))), 1)
 
     speech.sort(key=lambda x: float(x[1]))
     data["speech"] = speech
 
-    # Clean SFX timestamps to remain within video boundaries
     for row in data.get("sfx", []):
         row[1] = round(min(max_allowed, max(0.2, float(row[1]))), 1)
 
-    print(f"[Gemini] Preserved {len(speech)} authentic visual timestamps locked to video frames across {total_dur:.1f}s.")
+    print(f"[Gemini Pass 2] Locked {len(speech)} authentic visual timestamps across {total_dur:.1f}s edited video.")
     return data
 
 
-TRUE_STORY_BEATS = [
-    (0.5, "This absolute genius decides his prize rooster needs a fresh fade."),
-    (5.0, "The chicken is seriously questioning every single one of its life choices."),
-    (9.0, "And here comes Brenda with a death glare that could melt solid concrete."),
-    (14.0, "Terry deploys the secret wine shuttle down the wooden plank ramp."),
-    (19.0, "Intercepted! Brenda crushes the toy car and slaps on a padlock."),
-    (25.0, "Gary is officially trapped in maximum security barnyard lockdown."),
-    (30.5, "Brenda falls asleep on the patio, guarding the house keys."),
-    (36.0, "Gary spots the keys and reaches through the window with a long stick."),
-    (42.0, "Almost got it... he hooks the brass padlock key!"),
-    (47.5, "Busted! Brenda wakes up and snatches the stick right away."),
-    (53.0, "Plan A failed, so Gary heads inside for desperate measures."),
-    (58.5, "Gary beams a green SOS laser distress signal out the window."),
-    (64.0, "Outside, Terry spots the SOS laser and rushes in with his detector."),
-    (70.5, "The detector starts beeping furiously right over the grass!"),
-    (76.0, "Disaster: the puppy swallowed the gate key into its stomach!"),
-    (82.0, "Terry quickly mixes a bowl of laxative powder by the pond."),
-    (88.0, "The pup gobbles the treat, and Terry recovers the precious key!"),
-    (94.0, "Terry sneaks up to the front gate to unlock the heavy padlock."),
-    (100.0, "The padlock clicks open! Terry swings the gate wide open."),
-    (106.0, "Wait for it... Ambush! Brenda was waiting right behind the gate!"),
-    (112.0, "Both lads are instantly captured and rope-tied to patio chairs."),
-    (118.0, "Gary spots an old phone and pitches a recycling trade-in to Brenda."),
-    (125.0, "Brenda takes the bait and calls the phone recycling technician."),
-    (132.0, "The recycling agent arrives rolling into the patio on a wheelchair."),
-    (139.5, "While Brenda inspects the old phone, Gary leans in with his teeth."),
-    (147.0, "Sneak level 100: Gary plucks the door key right from his pocket!"),
-    (154.5, "The agent leaves, and the boys silently sever their chair ropes."),
-    (161.5, "Freedom sprint! They bolt across the yard before Brenda notices."),
-    (167.5, "Brenda turns around to empty chairs and pure boiling fury!"),
-    (171.5, "And the boys toast cold drinks by the river. Absolutely legendary.")
-]
-
-TRUE_SFX_BEATS = [
-    ("windows_error.mp3", 9.0, 0.85),       # Brenda angry death glare
-    ("metal_pipe.mp3", 19.5, 0.85),         # Brenda stomps RC car
-    ("bruh.mp3", 26.0, 0.85),               # Padlock on gate
-    ("windows_error.mp3", 48.0, 0.85),      # Brenda wakes up and catches stick
-    ("ding_idea.mp3", 59.0, 0.85),          # Green laser distress SOS
-    ("metal_pipe.mp3", 71.0, 0.80),         # Metal detector beep
-    ("bruh.mp3", 76.5, 0.85),               # Puppy ate the key!
-    ("ding_idea.mp3", 88.5, 0.85),          # Key recovered
-    ("metal_pipe.mp3", 95.0, 0.80),         # Padlock picking
-    ("fbi_open_up.mp3", 106.5, 0.90),       # Brenda ambush behind gate!
-    ("bruh.mp3", 113.0, 0.85),              # Both tied to chairs
-    ("anime_wow.mp3", 147.5, 0.85),         # Key stolen with mouth
-    ("no_god_please_no.mp3", 168.0, 0.90),  # Brenda furious scream at empty chairs
-    ("yeet.mp3", 172.0, 0.85)               # Lads toast victory
-]
-
-
-def ensure_continuous_narration_coverage(data: dict, total_dur: float, is_rooster_video: bool = False) -> dict:
-    if not is_rooster_video:
-        return data
-    speech = data.get("speech", [])
-    speech.sort(key=lambda x: float(x[1]))
-
-    # Detect and fill any gaps longer than 6.5 seconds
-    filled_speech = []
-    prev_t = 0.0
-    for item in speech:
-        cur_t = float(item[1])
-        if cur_t - prev_t > 6.5:
-            missing_beats = [b for b in TRUE_STORY_BEATS if (prev_t + 2.5 <= b[0] <= cur_t - 2.5)]
-            for mb in missing_beats:
-                filled_speech.append([f"cue_{int(mb[0]*10)}", mb[0], mb[1]])
-                print(f"[Timeline Guard] Filled gap ({prev_t:.1f}s -> {cur_t:.1f}s) with line at {mb[0]}s: '{mb[1][:30]}...'")
-        filled_speech.append(item)
-        prev_t = cur_t
-
-    # Check un-narrated gap at the end
-    if total_dur - prev_t > 6.5:
-        end_beats = [b for b in TRUE_STORY_BEATS if (prev_t + 2.5 <= b[0] <= total_dur - 2.5)]
-        for eb in end_beats:
-            filled_speech.append([f"cue_{int(eb[0]*10)}", eb[0], eb[1]])
-
-    filled_speech.sort(key=lambda x: float(x[1]))
-    data["speech"] = filled_speech
-
-    # Ensure SFX coverage in gaps
-    sfx = data.get("sfx", [])
-    sfx_times = [float(s[1]) for s in sfx]
-    for tsfx in TRUE_SFX_BEATS:
-        if not any(abs(st - tsfx[1]) < 6.0 for st in sfx_times):
-            sfx.append([tsfx[0], tsfx[1], tsfx[2]])
-    sfx.sort(key=lambda x: float(x[1]))
-    data["sfx"] = sfx
-
-    print(f"[Timeline Guard] Guaranteed continuous coverage: {len(data['speech'])} speech lines across {total_dur:.1f}s (Zero dead-air gaps).")
-    return data
-
-
-
-
-def generate_comedy_script_with_gemini(ramped_video_path: str) -> dict:
+def generate_comedy_script_with_gemini(edited_video_path: str) -> dict:
     """
-    Step 2: Produces 100% physically scene-anchored comedy narration.
-    For this viral escape video, uses the frame-by-frame verified timeline (100% match, zero drift, zero mismatch).
+    PASS 2 (1:1 Storyteller on the Condensed Video):
+    Gemini watches the ALREADY-CONDENSED ~60s video from start to finish and writes
+    a seamless, connected comedy narrative locked 1:1 to its exact timestamps!
     """
-    total_dur = get_video_duration(ramped_video_path)
-
-    # Frame-verified lock only for target rooster escape video (3xhpefxgm7t4c7k)
-    is_rooster = "3xhpefxgm7t4c7k" in ramped_video_path
-    if is_rooster and 160.0 <= total_dur <= 185.0:
-        print(f"[Gemini] Using 100% frame-verified, scene-locked British comedy script ({len(TRUE_STORY_BEATS)} lines across {total_dur:.1f}s)...")
-        script_data = {
-            "title": "Tactical Barnyard Rescue: High Speed",
-            "speech": [[f"line_{i:02d}", beat[0], beat[1]] for i, beat in enumerate(TRUE_STORY_BEATS)],
-            "sfx": [list(sfx) for sfx in TRUE_SFX_BEATS]
-        }
-        return ensure_continuous_narration_coverage(script_data, total_dur, is_rooster_video=True)
-
+    total_dur = get_video_duration(edited_video_path)
     candidate_keys = get_candidate_gemini_keys()
-    lowres_vid = make_lowres_copy_for_gemini(ramped_video_path)
-    file_size = os.path.getsize(lowres_vid)
+    lowres_vid = make_lowres_copy_for_gemini(edited_video_path, prefix="pass2_edited")
 
-    for api_key in candidate_keys:
-        print(f"[Gemini] Uploading video ({total_dur:.1f}s) via Gemini Files API...")
-        init_url = f"https://generativelanguage.googleapis.com/upload/v1beta/files?key={api_key}"
-        headers = {
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "start",
-            "X-Goog-Upload-Header-Content-Length": str(file_size),
-            "X-Goog-Upload-Header-Type": "video/mp4",
-            "Content-Type": "application/json"
-        }
+    prompt = f"""You are an observant comedy storyteller (witty British/Global meme narrator style, like Liam).
+First, watch this entire {total_dur:.1f}-second video from start to finish. Understand the full story, visual actions, and comedy payoff.
+Now, narrate this wild, hilarious story to the audience so that every single sentence matches what is physically happening on screen at that exact second, AND smoothly connects the story from beginning to climax!
 
-        try:
-            r1 = requests.post(init_url, headers=headers, json={"file": {"display_name": "short_video_story"}}, timeout=15)
-            up_url = r1.headers.get("X-Goog-Upload-URL") or r1.headers.get("Upload-URL")
-            if not up_url:
-                print(f"[Gemini] Failed to get upload URL with key {api_key[:6]}..., trying next key...")
-                continue
-
-            with open(lowres_vid, "rb") as f:
-                data = f.read()
-
-            r2 = requests.post(up_url, headers={
-                "Content-Length": str(file_size),
-                "X-Goog-Upload-Offset": "0",
-                "X-Goog-Upload-Command": "upload, finalize"
-            }, data=data, timeout=30)
-
-            file_info = r2.json().get("file", {})
-            file_name = file_info.get("name")
-            file_uri = file_info.get("uri")
-            print(f"[Gemini] File uploaded: {file_name}. Waiting for processing...")
-
-            # Wait for file to become active
-            check_url = f"https://generativelanguage.googleapis.com/v1beta/{file_name}?key={api_key}"
-            for _ in range(30):
-                time.sleep(3)
-                info = requests.get(check_url, timeout=10).json()
-                if info.get("state") == "ACTIVE":
-                    print("[Gemini] Video is ACTIVE and ready for script generation!")
-                    break
-
-            prompt = f"""You are an observant comedy storyteller (witty British narrator style, like Liam).
-First, watch this entire video from start to finish ({total_dur:.1f} seconds). Understand the full real story, visual actions, on-screen text, and dialogue.
-Now, narrate this wild, hilarious story to the audience as someone who witnessed everything and is recounting the unbelievable tale to a friend with sarcastic humor.
-
-RULES:
-1. REAL OBSERVED STORY: Tell the TRUE story of what physically happened on screen from start to finish. Zero made-up facts or hallucinations. Explain the real events in a funny, engaging storytelling voice.
-
+STRICT RULES:
+1. 100% REAL OBSERVED STORY & SMOOTH BRIDGING:
+   - Tell the TRUE story of what physically happens on screen from 0.0s to {total_dur:.1f}s.
+   - Whenever the camera transitions to the next chapter of the story, smoothly bridge the narrative in your sentence (e.g., "So to get revenge, he set up this trap...", "Moments later, his plan completely backfired when...") so the viewer experiences one seamless, unbroken story!
 2. 1:1 AUDIO-VIDEO SYNC & SCENE ANCHORING:
-   - The total video duration is EXACTLY {total_dur:.1f} seconds.
-   - All speech timestamps MUST be between 0.5s and {total_dur - 3.0:.1f}s.
-   - Timestamp T must be the EXACT physical second where that action begins on screen.
-   - PUNCHY CONCISE SENTENCES (CRITICAL FOR PERFECT SYNC):
-     * Keep each line punchy, witty, and concise (5 to 9 words maximum).
-     * Each sentence must finish speaking BEFORE the next visual event starts!
-     * Never write long rambling sentences that overflow into subsequent scenes.
-
-
-3. STORYTELLER COMEDY TONE: Witty, sarcastic, highly engaging storytelling (giving funny nicknames to characters, reacting to their crazy plans and hilarious fails).
-
-4. PERFECT SFX TIMING: Place meme sounds at the exact second where that emotion happens on screen (never place randomly):
-   - SHOCK/TWIST: 'vine_boom.mp3', 'wait_a_minute.mp3', 'metal_pipe.mp3'
-   - FAIL/CAUGHT: 'windows_error.mp3', 'bruh.mp3', 'no_god_please_no.mp3', 'sad_violin.mp3', 'incorrect_buzzer.mp3', 'titanic_bad_recorder.mp3'
-   - SNEAKY/ACTION: 'ding_idea.mp3', 'suspense_sting.mp3', 'fbi_open_up.mp3', 'yeet.mp3'
-   - LAUGHTER/FUN: 'oh_no_wheeze_laugh.mp3', 'anime_wow.mp3', 'rizz.mp3'
-
-5. STRICT DIALOGUE RULE - NEVER MENTION SOUND NAMES IN SPEECH:
-   - The "speech" field is 100% PURE STORYTELLER NARRATION ONLY.
-   - NEVER write sound effect names (NEVER write 'vine_boom', 'vine boom mp3', 'windows_error', 'bruh') in speech lines!
-   - NEVER write file extensions like '.mp3' or sound tags like [vine_boom] anywhere in speech.
-   - Sound effects belong EXCLUSIVELY in the separate "sfx" list!
+   - Total video duration is EXACTLY {total_dur:.1f} seconds.
+   - All speech timestamps MUST be between 0.4s and {total_dur - 2.5:.1f}s.
+   - Provide a lively line every 4 to 5 seconds (around 10 to 14 lines total) so there is zero awkward silence.
+   - Keep each line punchy and concise (5 to 9 words maximum) so it finishes before the next line starts.
+3. UNIVERSAL VIRAL MEME TITLE:
+   - Write a broad, mass-appeal viral title (e.g., "Bro Really Thought His 200 IQ Plan Would Work 💀" or "Instant Karma Hit Him at 100 MPH 😂") — never use boring domestic labels.
+4. PERFECT SFX TIMING:
+   - Place meme sounds at the exact second where shock, fail, or laughter happens:
+     'vine_boom.mp3', 'wait_a_minute.mp3', 'metal_pipe.mp3', 'windows_error.mp3', 'bruh.mp3', 'no_god_please_no.mp3', 'sad_violin.mp3', 'oh_no_wheeze_laugh.mp3', 'anime_wow.mp3', 'fbi_open_up.mp3', 'ding_idea.mp3', 'yeet.mp3'
+5. NEVER MENTION SOUND NAMES IN SPEECH:
+   - The "speech" list is 100% pure spoken comedy storytelling. Never write '.mp3' or sound names in speech.
 
 OUTPUT FORMAT:
-Return ONLY this valid JSON (no markdown backticks, no other text):
+Return ONLY valid JSON (no markdown backticks, no extra text):
 {{
-  "title": "Short Funny Title",
+  "title": "Bro Really Thought His 200 IQ Plan Would Work 💀 #Shorts",
   "speech": [
-    ["01", 0.5, "Hook line describing opening action."],
-    ["02", 4.2, "Funny line describing next action."]
+    ["01", 0.5, "Opening hook matching the first scene."],
+    ["02", 4.8, "Next witty line matching the action."]
   ],
   "sfx": [
-    ["vine_boom.mp3", 5.0, 0.85],
-    ["windows_error.mp3", 15.2, 0.80]
+    ["vine_boom.mp3", 4.8, 0.85],
+    ["oh_no_wheeze_laugh.mp3", 25.0, 0.85]
   ]
 }}"""
 
-            print("[Gemini] Prompting Gemini model for scene-locked comedy script...")
+    for api_key in candidate_keys:
+        try:
+            file_uri = upload_video_to_gemini_files(lowres_vid, api_key)
+            if not file_uri:
+                continue
+
+            print(f"[Gemini Pass 2] Prompting Gemini for 1:1 scene-locked script on {total_dur:.1f}s video...")
             for model in ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"]:
                 try:
                     gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
                     payload = {
-                        "contents": [
-                            {
-                                "parts": [
-                                    {"file_data": {"mime_type": "video/mp4", "file_uri": file_uri}},
-                                    {"text": prompt}
-                                ]
-                            }
-                        ]
+                        "contents": [{
+                            "parts": [
+                                {"file_data": {"mime_type": "video/mp4", "file_uri": file_uri}},
+                                {"text": prompt}
+                            ]
+                        }]
                     }
-                    res = requests.post(gen_url, json=payload, timeout=45)
+                    res = requests.post(gen_url, json=payload, timeout=50)
                     if res.status_code == 200:
                         raw_text = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                        clean_json = raw_text
-                        if clean_json.startswith("```json"): clean_json = clean_json[7:]
-                        if clean_json.startswith("```"): clean_json = clean_json[3:]
-                        if clean_json.endswith("```"): clean_json = clean_json[:-3]
-                        clean_json = clean_json.strip()
+                        clean_json = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text).strip()
                         data = json.loads(clean_json)
 
-                        # Filter & sanitize speech lines to remove any accidental sound tags
                         clean_speech = []
                         for sp in data.get("speech", []):
                             s_id = sp[0] if len(sp) > 2 else f"line_{len(clean_speech):02d}"
@@ -361,55 +411,37 @@ Return ONLY this valid JSON (no markdown backticks, no other text):
                                 clean_speech.append([s_id, s_t, s_clean])
                         data["speech"] = clean_speech
 
-                        min_lines = max(3, int(total_dur / 15.0))
-                        if len(data["speech"]) >= min_lines:
-                            print(f"[Gemini] Successfully received {len(data['speech'])} sanitized script lines from {model}!")
-                            data = normalize_script_timeline(data, total_dur)
-                            data = ensure_continuous_narration_coverage(data, total_dur, is_rooster_video=is_rooster)
-                            return data
+                        if len(data["speech"]) >= 5:
+                            print(f"[Gemini Pass 2] Received {len(data['speech'])} scene-locked lines from {model}!")
+                            return normalize_script_timeline(data, total_dur)
                 except Exception as ex_m:
-                    print(f"[Gemini] Model {model} attempt: {ex_m}")
-
+                    print(f"[Gemini Pass 2] Model {model} attempt: {ex_m}")
         except Exception as e:
-            print(f"[Gemini] API connection error with key: {e}")
-            continue
+            print(f"[Gemini Pass 2] API error: {e}")
 
-    if is_rooster:
-        print("[Gemini] Using verified scene-locked continuous comedy script (Rooster Story)...")
-        fallback_data = {
-            "title": "Tactical Barnyard Rescue: High Speed",
-            "speech": [[f"line_{i:02d}", beat[0], beat[1]] for i, beat in enumerate(TRUE_STORY_BEATS)],
-            "sfx": [list(sfx) for sfx in TRUE_SFX_BEATS]
-        }
-        return ensure_continuous_narration_coverage(fallback_data, total_dur, is_rooster_video=True)
-
-    print("[Gemini] Using dynamic narrative fallback for video...")
-    step_interval = max(5.0, total_dur / 8.0)
+    print("[Gemini Pass 2] Using dynamic comedy fallback...")
+    step_interval = max(4.5, total_dur / 10.0)
     generic_beats = []
     t = 0.5
     idx = 1
-    comedy_lines = [
-        "Right, you won't believe what these absolute legends are getting up to.",
-        "Look at the sheer confidence on this guy right now.",
-        "Wait for it... this is where things get completely unhinged.",
-        "I have witnessed some wild things, but this takes the absolute biscuit.",
-        "Bro really thought nobody would notice what was happening.",
-        "The reaction right here is pure comedy gold, honestly.",
-        "You can't even script this level of chaotic genius.",
-        "And that, ladies and gentlemen, is how you achieve legendary status."
-    ]
-    for line in comedy_lines:
-        if t < total_dur - 3.0:
+    for line in [
+        "Right, watch what this absolute genius is trying to pull off.",
+        "Look at the sheer confidence right before chaos begins.",
+        "So he immediately comes up with a two hundred IQ backup plan.",
+        "Wait for it... this is where the whole mission goes sideways.",
+        "Bro really thought nobody would notice what just happened.",
+        "And that instant karma at the end is pure comedy gold."
+    ]:
+        if t < total_dur - 2.5:
             generic_beats.append([f"line_{idx:02d}", round(t, 1), line])
             t += step_interval
             idx += 1
     return {
-        "title": "When The Plan Actually Works 😂",
+        "title": "Bro Really Thought His 200 IQ Plan Would Work 💀 #Shorts",
         "speech": generic_beats,
         "sfx": [
             ["vine_boom.mp3", 1.0, 0.85],
-            ["windows_error.mp3", min(round(total_dur * 0.4, 1), total_dur - 4.0), 0.85],
-            ["yeet.mp3", max(0.5, round(total_dur - 2.0, 1)), 0.85]
+            ["windows_error.mp3", min(round(total_dur * 0.5, 1), total_dur - 4.0), 0.85],
+            ["oh_no_wheeze_laugh.mp3", max(0.5, round(total_dur - 2.5, 1)), 0.85]
         ]
     }
-

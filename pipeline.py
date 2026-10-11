@@ -1,8 +1,6 @@
 import os
 import sys
 import argparse
-import subprocess
-import json
 
 if sys.stdout:
     try:
@@ -12,51 +10,58 @@ if sys.stdout:
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SCRATCH_DIR = BASE_DIR
-VAULT_DIR = os.path.join(BASE_DIR, "meme_sound_vault")
 
 from kuaishou_downloader import fetch_kuaishou_video_info, download_and_transcode
-from ai_script_generator import generate_comedy_script_with_gemini
+from ai_script_generator import condense_video_with_gemini, generate_comedy_script_with_gemini
 from video_composer import compose_final_short, get_video_duration
 import build_meme_vault
 
 
 def run_pipeline(url_or_id: str, output_path: str = None) -> str:
     print("=" * 70)
-    print("  AUTONOMOUS AI SHORTS ENGINE: GEMINI 1:1 STORY + 1.15X LOCKED SYNC")
+    print("  AUTONOMOUS AI SHORTS ENGINE: 2-PASS GEMINI <60S EDITOR + 1:1 SYNC")
     print("=" * 70)
 
-    # 0. Ensure Meme Sound Vault is populated
     if hasattr(build_meme_vault, "download_meme_sounds"):
         build_meme_vault.download_meme_sounds()
     elif hasattr(build_meme_vault, "download_all"):
         build_meme_vault.download_all()
 
-    # 1. Download & Transcode Video (Natural 1.0x flow)
-    print(f"\n[Step 1/3] Downloading Kuaishou/Douyin raw video: {url_or_id}...")
+    # Step 1: Download & Transcode Raw Video
+    print(f"\n[Step 1/4] Downloading Kuaishou/Douyin raw video: {url_or_id}...")
     info = fetch_kuaishou_video_info(url_or_id)
     raw_video = download_and_transcode(info)
-    total_dur = get_video_duration(raw_video)
-    print(f"[Step 1/3] Playable video ready: {raw_video} ({total_dur:.1f}s)")
+    raw_dur = get_video_duration(raw_video)
+    print(f"[Step 1/4] Playable raw video ready: {raw_video} ({raw_dur:.1f}s)")
 
-    # 2. Google Gemini watches natural video (compressed 480p low-res copy)
-    print(f"\n[Step 2/3] Google Gemini watching natural video ({total_dur:.1f}s) for 100% matched story...")
-    script_data = generate_comedy_script_with_gemini(raw_video)
+    # Step 2 (Pass 1): Gemini Master Editor condenses long video to ~60s connected story chapters
+    print(f"\n[Step 2/4] Pass 1: Gemini Master Editor analyzing {raw_dur:.1f}s video for smooth <60s story cut...")
+    edited_video = condense_video_with_gemini(raw_video)
+    edited_dur = get_video_duration(edited_video)
+    print(f"[Step 2/4] Condensed story video ready: {edited_video} ({edited_dur:.1f}s -> ~{edited_dur/1.15:.1f}s at 1.15x)")
+
+    # Step 3 (Pass 2): Gemini watches the condensed video for 100% matched 1:1 story script
+    print(f"\n[Step 3/4] Pass 2: Gemini watching condensed video ({edited_dur:.1f}s) for 1:1 matched script...")
+    script_data = generate_comedy_script_with_gemini(edited_video)
     speech_lines = script_data.get("speech", [])
-    print(f"[Step 2/3] Script generated: '{script_data.get('title')}' ({len(speech_lines)} Liam speech lines)")
+    print(f"[Step 3/4] Script generated: '{script_data.get('title')}' ({len(speech_lines)} Liam speech lines)")
+    for row in speech_lines:
+        print(f"   [Script Line] [{row[1]}s] {row[2]}")
 
-    # 3. Compose Final Video (1.15x Locked Sync: Liam voice + SFX + Subtitles + Video)
+    # Step 4: Render Final <60s Short with 1.15x Video & Audio Speed Lock
     if not output_path:
         output_path = os.path.join(SCRATCH_DIR, f"viral_short_{info['photo_id']}.mp4")
 
-    print(f"\n[Step 3/3] Rendering final Short with 1.15x Video & Audio Speed Lock...")
-    final_video = compose_final_short(raw_video, script_data, output_path, speed_factor=1.15)
-    print(f"\n[Success] Short completely rendered: {final_video}")
+    print(f"\n[Step 4/4] Rendering final Short with 1.15x Video & Audio Speed Lock...")
+    final_video = compose_final_short(edited_video, script_data, output_path, speed_factor=1.15)
+    final_dur = get_video_duration(final_video)
+    print(f"\n[Success] Short completely rendered: {final_video} (Final Duration: {final_dur:.1f}s)")
     return final_video
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Autonomous YouTube Shorts Pipeline (Gemini 1:1 Story + 1.15x Sync)")
-    parser.add_argument("--url", default="https://c.kuaishou.com/fw/photo/3xhpefxgm7t4c7k", help="Kuaishou/Douyin video URL or photo ID")
+    parser = argparse.ArgumentParser(description="Autonomous YouTube Shorts Pipeline (2-Pass Gemini <60s Editor + 1:1 Sync)")
+    parser.add_argument("--url", default="https://v.kuaishou.com/JnEKe8PN", help="Kuaishou/Douyin video URL or photo ID")
     parser.add_argument("--output", default=None, help="Output path for the generated Short video")
     args = parser.parse_args()
 

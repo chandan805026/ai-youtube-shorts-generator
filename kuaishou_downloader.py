@@ -61,20 +61,19 @@ def resolve_short_link_if_needed(raw_url: str) -> str:
 def fetch_kuaishou_video_info(url_or_id: str) -> dict:
     """
     Fetch unwatermarked CDN MP4 and metadata by querying mobile endpoint.
-    Bypasses desktop captchas completely.
+    Prioritizes fast global CDN edges (_hd15_ / txmov2 / v1.kwaicdn) for instant cloud download.
     """
     photo_id = extract_photo_id(url_or_id)
     if not photo_id:
         resolved = resolve_short_link_if_needed(url_or_id)
         photo_id = extract_photo_id(resolved)
 
-    if not photo_id and not "http" in url_or_id:
+    if not photo_id and "http" not in url_or_id:
         photo_id = url_or_id.strip()
 
     if not photo_id:
         raise ValueError(f"Could not extract photoId from: {url_or_id}")
 
-    # Mobile endpoint directly returns unwatermarked MP4 URL in HTML
     mobile_url = f"https://c.kuaishou.com/fw/photo/{photo_id}"
     req = urllib.request.Request(mobile_url, headers={"User-Agent": IPHONE_UA})
     
@@ -86,7 +85,6 @@ def fetch_kuaishou_video_info(url_or_id: str) -> dict:
 
     clean_html = html.replace(r'\/', '/').replace(r'\u002F', '/')
 
-    # Find unwatermarked CDN video URL (filter out 8s remux preview snippets)
     mp4_urls = list(set(re.findall(r'https?://[^\s"\'<>]+\.mp4[^\s"\'<>]*', clean_html)))
     if not mp4_urls:
         for alt_url in [f"https://www.kuaishou.com/short-video/{photo_id}", f"https://m.kuaishou.com/fw/photo/{photo_id}"]:
@@ -110,15 +108,22 @@ def fetch_kuaishou_video_info(url_or_id: str) -> dict:
     if not full_candidates:
         raise RuntimeError("No direct MP4 CDN URL found in mobile response!")
 
-    cdn_url = full_candidates[0]
-    for c in full_candidates:
-        if "/upic/" in c:
-            cdn_url = c
-            break
+    # Sort candidates to prioritize fast global edges (_hd15_ stream & txmov2/v1.kwaicdn) and avoid slow wsmov.a.yximgs.com
+    def cdn_score(u: str) -> int:
+        score = 0
+        if "https://" in u:
+            score += 10
+        if "_hd15_" in u:
+            score += 30
+        if "txmov2" in u or "v1.kwaicdn.com" in u:
+            score += 20
+        if "wsmov.a.yximgs.com" in u:
+            score -= 50
+        return score
 
-    cdn_url = cdn_url.replace(r"\/", "/")
+    full_candidates.sort(key=cdn_score, reverse=True)
+    cdn_url = full_candidates[0].replace(r"\/", "/")
 
-    # Extract author and caption
     caption = ""
     author = ""
     scripts = soup.find_all("script")
@@ -136,15 +141,16 @@ def fetch_kuaishou_video_info(url_or_id: str) -> dict:
     return {
         "photo_id": photo_id,
         "title": page_title,
-        "author": author or "川哥哥 (Creator)",
+        "author": author or "Creator",
         "caption": caption or page_title,
-        "cdn_url": cdn_url
+        "cdn_url": cdn_url,
+        "all_cdn_urls": [c.replace(r"\/", "/") for c in full_candidates]
     }
 
 
 def download_and_transcode(video_info: dict, output_dir: str = SCRATCH_DIR) -> str:
     """
-    Downloads CDN MP4 with chunked streaming and transcodes HEVC to standard H.264.
+    Downloads CDN MP4 with fast edge fallback and transcodes to standard H.264.
     """
     photo_id = video_info["photo_id"]
     playable_path = os.path.join(output_dir, f"playable_{photo_id}.mp4")
@@ -155,35 +161,38 @@ def download_and_transcode(video_info: dict, output_dir: str = SCRATCH_DIR) -> s
 
     raw_path = os.path.join(output_dir, f"raw_{photo_id}.mp4")
 
-    # 1. Download in chunks with robust retry & CDN headers
     if not os.path.exists(raw_path) or os.path.getsize(raw_path) < 1000:
-        print(f"[Downloader] Downloading {photo_id} from CDN...")
+        print(f"[Downloader] Downloading {photo_id} from fast CDN edge...")
         cdn_headers = {
             "User-Agent": IPHONE_UA,
             "Referer": "https://c.kuaishou.com/",
             "Accept": "*/*",
             "Connection": "keep-alive"
         }
+        candidates = video_info.get("all_cdn_urls") or [video_info["cdn_url"]]
         download_ok = False
-        for attempt in range(3):
+        for idx, url_cand in enumerate(candidates[:4]):
             try:
-                with requests.get(video_info["cdn_url"], headers=cdn_headers, stream=True, timeout=30) as r:
+                print(f"[Downloader] Trying CDN #{idx+1}: {url_cand[:75]}...")
+                with requests.get(url_cand, headers=cdn_headers, stream=True, timeout=20) as r:
                     r.raise_for_status()
+                    t_start = time.time()
                     with open(raw_path, "wb") as f:
-                        for chunk in r.iter_content(chunk_size=1024*1024):
+                        for chunk in r.iter_content(chunk_size=1024*512):
                             if chunk:
                                 f.write(chunk)
-                if os.path.exists(raw_path) and os.path.getsize(raw_path) > 10000:
+                            if time.time() - t_start > 90:
+                                raise TimeoutError("CDN edge too slow (>90s), switching edge...")
+                if os.path.exists(raw_path) and os.path.getsize(raw_path) > 50000:
                     download_ok = True
                     break
             except Exception as e:
-                print(f"[Downloader] Stream attempt {attempt+1} failed: {e}")
-                time.sleep(2)
+                print(f"[Downloader] CDN #{idx+1} notice: {e}")
 
         if not download_ok:
             print("[Downloader] Falling back to curl...")
             cmd_curl = [
-                "curl", "-L", "-s",
+                "curl", "-L", "-s", "--max-time", "120",
                 "-H", f"User-Agent: {IPHONE_UA}",
                 "-H", "Referer: https://c.kuaishou.com/",
                 video_info["cdn_url"],
@@ -193,8 +202,7 @@ def download_and_transcode(video_info: dict, output_dir: str = SCRATCH_DIR) -> s
 
         print(f"[Downloader] Downloaded raw video: {os.path.getsize(raw_path) / (1024*1024):.2f} MB")
 
-    # 2. Transcode HEVC -> H.264
-    print(f"[Downloader] Transcoding HEVC to H.264 for universal compatibility...")
+    print(f"[Downloader] Transcoding to H.264 for universal compatibility...")
     cmd = [
         FFMPEG_BIN, "-y",
         "-i", raw_path,
@@ -208,13 +216,3 @@ def download_and_transcode(video_info: dict, output_dir: str = SCRATCH_DIR) -> s
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     print(f"[Downloader] Transcoding complete: {playable_path}")
     return playable_path
-
-
-if __name__ == "__main__":
-    test_url = "https://www.kuaishou.com/short-video/3xnhw787utiscgu"
-    info = fetch_kuaishou_video_info(test_url)
-    print("Success! Photo ID:", info["photo_id"])
-    print("Author:", info["author"])
-    print("CDN URL:", info["cdn_url"][:60] + "...")
-    p = download_and_transcode(info)
-    print("Playable File:", p)
