@@ -66,9 +66,30 @@ def get_video_duration(video_path: str) -> float:
     return 60.0
 
 
-def make_lowres_copy_for_gemini(src_path: str, prefix: str = "gemini_lowres") -> str:
+LAST_CONDENSED_CHAPTERS = []
+
+
+def make_lowres_copy_for_gemini(src_path: str, prefix: str = "gemini_lowres", burn_timecode: bool = True) -> str:
     dst_path = os.path.join(SCRATCH_DIR, f"{prefix}_{os.path.basename(src_path)}")
-    print(f"[Gemini] Compressing video to 480p lightweight copy for Gemini...")
+    print(f"[Gemini] Compressing video to 480p lightweight copy for Gemini (On-Screen Timecode={burn_timecode})...")
+    if burn_timecode:
+        vf_str = "scale=-2:480,drawtext=text='TIME\\: %{pts\\:flt}s':x=16:y=16:fontsize=32:fontcolor=yellow:box=1:boxcolor=black@0.85"
+        cmd_tc = [
+            FFMPEG_BIN, "-y",
+            "-i", src_path,
+            "-vf", vf_str,
+            "-c:v", "libx264",
+            "-crf", "30",
+            "-preset", "veryfast",
+            "-c:a", "aac",
+            "-b:a", "64k",
+            dst_path
+        ]
+        res = subprocess.run(cmd_tc, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if res.returncode == 0 and os.path.exists(dst_path) and os.path.getsize(dst_path) > 1000:
+            print(f"[Gemini] Lightweight timecode-stamped copy ready: {os.path.getsize(dst_path) / (1024*1024):.1f} MB")
+            return dst_path
+
     cmd = [
         FFMPEG_BIN, "-y",
         "-i", src_path,
@@ -170,17 +191,21 @@ def condense_video_with_gemini(raw_video_path: str) -> str:
     (each 15s-26s long, totaling ~58-65s raw -> ~50-56s after 1.15x speed) with
     exact camera-cut snapping so there are ZERO sudden or confusing jumps!
     """
+    global LAST_CONDENSED_CHAPTERS
+    LAST_CONDENSED_CHAPTERS = []
+
     total_dur = get_video_duration(raw_video_path)
     if total_dur <= 68.0:
         print(f"[Editor Pass 1] Video is {total_dur:.1f}s (<=68s), already under 1 min at 1.15x! Keeping 100% uncut.")
+        LAST_CONDENSED_CHAPTERS = [{"chap": 1, "start": 0.0, "end": round(total_dur, 2), "description": "Full continuous comedy video"}]
         return raw_video_path
 
     print(f"\n[Editor Pass 1] Video is {total_dur:.1f}s. Asking Gemini Master Editor to select connected story chapters (<60s target)...")
     candidate_keys = get_candidate_gemini_keys()
-    lowres_full = make_lowres_copy_for_gemini(raw_video_path, prefix="pass1_full")
+    lowres_full = make_lowres_copy_for_gemini(raw_video_path, prefix="pass1_full", burn_timecode=True)
 
     editor_prompt = f"""You are a Master Film & Comedy Video Editor.
-First, watch this entire video carefully from start to finish ({total_dur:.1f} seconds). Deeply understand the complete story, characters, setups, pranks, and final climax.
+First, watch this entire video carefully from start to finish ({total_dur:.1f} seconds). Notice the yellow 'TIME: X.Xs' digital clock in the top-left corner showing the exact second of every frame. Deeply understand the complete story, characters, setups, pranks, and final climax.
 
 TASK:
 This video is {total_dur:.1f} seconds long, which is too long for a 60-second YouTube Short.
@@ -267,6 +292,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
 
     # Snap every cut to exact millisecond camera shot boundaries and extract chapters
     part_files = []
+    running_t = 0.0
     for idx, (s_raw, e_raw, desc) in enumerate(valid_ranges):
         s_snap = snap_timestamp_to_camera_cut(raw_video_path, s_raw, total_dur, is_start=True)
         e_snap = snap_timestamp_to_camera_cut(raw_video_path, e_raw, total_dur, is_start=False)
@@ -274,9 +300,17 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
             s_snap, e_snap = s_raw, e_raw
 
         part_path = os.path.join(SCRATCH_DIR, f"chap_{idx:02d}_{os.path.basename(raw_video_path)}")
-        print(f"[Editor Pass 1] Extracting Chapter {idx+1}: {s_snap:.2f}s -> {e_snap:.2f}s ({e_snap - s_snap:.1f}s) [{desc}]")
-        # Smooth 0.15s fade-in/out on chapter boundaries so transitions feel like a movie edit
         dur_c = e_snap - s_snap
+        print(f"[Editor Pass 1] Extracting Chapter {idx+1}: {s_snap:.2f}s -> {e_snap:.2f}s ({dur_c:.1f}s) | Condensed Window: [{running_t:.2f}s -> {running_t + dur_c:.2f}s] [{desc}]")
+        LAST_CONDENSED_CHAPTERS.append({
+            "chap": idx + 1,
+            "start": round(running_t, 2),
+            "end": round(running_t + dur_c, 2),
+            "description": desc
+        })
+        running_t += dur_c
+
+        # Smooth 0.15s fade-in/out on chapter boundaries so transitions feel like a movie edit
         vf_fade = f"fade=t=in:st=0:d=0.15,fade=t=out:st={max(0.1, dur_c - 0.15):.2f}:d=0.15"
         cmd_part = [
             FFMPEG_BIN, "-y",
@@ -319,46 +353,92 @@ def normalize_script_timeline(data: dict, total_dur: float) -> dict:
     speech = data["speech"]
     max_allowed = max(3.0, total_dur - 2.2)
 
-    for row in speech:
-        row[1] = round(min(max_allowed, max(0.2, float(row[1]))), 1)
+    # Identify exact chapter boundary cut points (e.g. 21.01s, 40.10s)
+    cut_boundaries = [ch["start"] for ch in LAST_CONDENSED_CHAPTERS if ch["start"] > 1.0]
+
+    for idx, row in enumerate(speech):
+        raw_t = float(row[1])
+        # Visual-First Reaction Lock:
+        # 1. If a line was placed in the last 2.2s right BEFORE a chapter transition,
+        #    it almost certainly belongs to the incoming chapter — snap it to cut_t + 0.5s
+        #    so the audio NEVER speaks before the new chapter appears on screen!
+        snapped_to_cut = False
+        for cut_t in cut_boundaries:
+            if (cut_t - 2.2) <= raw_t < (cut_t + 0.4):
+                new_t = round(cut_t + 0.5, 1)
+                print(f"[VisualSync] Snapped early pre-cut line '{row[2][:32]}...' from {raw_t:.1f}s -> {new_t:.1f}s (after chapter cut {cut_t:.2f}s)")
+                raw_t = new_t
+                snapped_to_cut = True
+                break
+
+        # 2. For all lines after the opening hook (idx > 0) that weren't just snapped,
+        #    add a +0.5s Visual-First Reaction Delay so the viewer's eyes see the visual
+        #    action FIRST and hear the voiceover right as it happens (never audio-first!).
+        if idx > 0 and not snapped_to_cut:
+            raw_t = round(raw_t + 0.5, 1)
+
+        row[1] = round(min(max_allowed, max(0.3, raw_t)), 1)
 
     speech.sort(key=lambda x: float(x[1]))
+
+    # Ensure minimum 3.4s spacing so lines never crowd or push each other out of sync
+    for i in range(1, len(speech)):
+        if speech[i][1] < speech[i - 1][1] + 3.4:
+            speech[i][1] = round(min(max_allowed, speech[i - 1][1] + 3.4), 1)
+
     data["speech"] = speech
 
     for row in data.get("sfx", []):
-        row[1] = round(min(max_allowed, max(0.2, float(row[1]))), 1)
+        row[1] = round(min(max_allowed, max(0.4, float(row[1]) + 0.4)), 1)
 
-    print(f"[Gemini Pass 2] Locked {len(speech)} authentic visual timestamps across {total_dur:.1f}s edited video.")
+    print(f"[Gemini Pass 2] Locked {len(speech)} visual-first timestamps across {total_dur:.1f}s edited video.")
     return data
 
 
 def generate_comedy_script_with_gemini(edited_video_path: str) -> dict:
     """
     PASS 2 (1:1 Storyteller on the Condensed Video):
-    Gemini watches the ALREADY-CONDENSED ~60s video from start to finish and writes
-    a seamless, connected comedy narrative locked 1:1 to its exact timestamps!
+    Gemini watches the ALREADY-CONDENSED ~60s video (with burned-in yellow 'TIME: X.Xs' clock)
+    and writes a comedy narrative strictly locked inside each chapter's exact time window!
     """
     total_dur = get_video_duration(edited_video_path)
     candidate_keys = get_candidate_gemini_keys()
-    lowres_vid = make_lowres_copy_for_gemini(edited_video_path, prefix="pass2_edited")
+    lowres_vid = make_lowres_copy_for_gemini(edited_video_path, prefix="pass2_edited", burn_timecode=True)
+
+    chapter_guide_lines = []
+    if LAST_CONDENSED_CHAPTERS:
+        for ch in LAST_CONDENSED_CHAPTERS:
+            c_idx = ch["chap"]
+            c_s = ch["start"]
+            c_e = ch["end"]
+            c_desc = ch["description"]
+            safe_s = round(c_s + 0.5, 1)
+            safe_e = round(max(safe_s + 2.0, c_e - 2.5), 1)
+            chapter_guide_lines.append(
+                f"   - CHAPTER {c_idx} ({c_s:.1f}s to {c_e:.1f}s): \"{c_desc}\"\n"
+                f"     -> Place Chapter {c_idx} speech lines ONLY between {safe_s:.1f}s and {safe_e:.1f}s! NEVER mention Chapter {c_idx} events before {safe_s:.1f}s!"
+            )
+    chapter_guide_text = "\n".join(chapter_guide_lines) if chapter_guide_lines else f"   - Full Video (0.5s to {total_dur - 2.5:.1f}s)"
 
     prompt = f"""You are an observant comedy storyteller (witty British/Global meme narrator style, like Liam).
-First, watch this entire {total_dur:.1f}-second video from start to finish. Understand the full story, visual actions, and comedy payoff.
-Now, narrate this wild, hilarious story to the audience so that every single sentence matches what is physically happening on screen at that exact second, AND smoothly connects the story from beginning to climax!
+First, watch this entire {total_dur:.1f}-second video from start to finish.
+Look at the yellow 'TIME: X.Xs' digital clock in the top-left corner of every frame! That clock shows the EXACT timestamp in seconds.
 
-STRICT RULES:
-1. 100% REAL OBSERVED STORY & SMOOTH BRIDGING:
-   - Tell the TRUE story of what physically happens on screen from 0.0s to {total_dur:.1f}s.
-   - Whenever the camera transitions to the next chapter of the story, smoothly bridge the narrative in your sentence (e.g., "So to get revenge, he set up this trap...", "Moments later, his plan completely backfired when...") so the viewer experiences one seamless, unbroken story!
-2. 1:1 AUDIO-VIDEO SYNC & SCENE ANCHORING:
-   - Total video duration is EXACTLY {total_dur:.1f} seconds.
-   - All speech timestamps MUST be between 0.4s and {total_dur - 2.5:.1f}s.
-   - Provide a lively line every 4 to 5 seconds (around 10 to 14 lines total) so there is zero awkward silence.
-   - Keep each line punchy and concise (5 to 9 words maximum) so it finishes before the next line starts.
+EXACT CHAPTER MAP OF THIS {total_dur:.1f}-SECOND VIDEO:
+{chapter_guide_text}
+
+STRICT VISUAL-FIRST AUDIO SYNC RULES (CRITICAL — DO NOT VIOLATE):
+1. NEVER SPEAK BEFORE THE VISUAL ACTION APPEARS ("Audio pahle mat bolo, video dikhne ke baad bolo"):
+   - Read the yellow 'TIME: X.Xs' clock on the frame when an action, object, or person ACTUALLY APPEARS on screen.
+   - Set the speech line's timestamp to the exact second (or +0.4s AFTER) that visual appears on screen—NEVER 1 to 3 seconds before it appears!
+   - Strictly obey the CHAPTER MAP above: NEVER mention an action from Chapter 2 while the video is still in Chapter 1, and NEVER mention an action from Chapter 3 while the video is still in Chapter 2!
+2. PUNCHY & CONCISE LINES (10 to 12 lines total):
+   - Write 3 to 4 lines per chapter, spaced at least 4.5 to 5.5 seconds apart.
+   - Keep each line short and punchy (5 to 8 words maximum) so it finishes cleanly within 2.5 seconds while that exact shot is still on screen.
 3. UNIVERSAL VIRAL MEME TITLE:
-   - Write a broad, mass-appeal viral title (e.g., "Bro Really Thought His 200 IQ Plan Would Work 💀" or "Instant Karma Hit Him at 100 MPH 😂") — never use boring domestic labels.
+   - Write a broad, mass-appeal viral title (e.g., "Bro Really Thought His 200 IQ Plan Would Work 💀" or "Instant Karma Hit Him at 100 MPH 😂").
 4. PERFECT SFX TIMING:
-   - Place meme sounds at the exact second where shock, fail, or laughter happens:
+   - Place meme sounds at the exact second on the yellow clock where shock, fail, or laughter happens:
      'vine_boom.mp3', 'wait_a_minute.mp3', 'metal_pipe.mp3', 'windows_error.mp3', 'bruh.mp3', 'no_god_please_no.mp3', 'sad_violin.mp3', 'oh_no_wheeze_laugh.mp3', 'anime_wow.mp3', 'fbi_open_up.mp3', 'ding_idea.mp3', 'yeet.mp3'
 5. NEVER MENTION SOUND NAMES IN SPEECH:
    - The "speech" list is 100% pure spoken comedy storytelling. Never write '.mp3' or sound names in speech.
@@ -369,10 +449,10 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
   "title": "Bro Really Thought His 200 IQ Plan Would Work 💀 #Shorts",
   "speech": [
     ["01", 0.5, "Opening hook matching the first scene."],
-    ["02", 4.8, "Next witty line matching the action."]
+    ["02", 5.5, "Next witty line right after the action appears."]
   ],
   "sfx": [
-    ["vine_boom.mp3", 4.8, 0.85],
+    ["vine_boom.mp3", 5.5, 0.85],
     ["oh_no_wheeze_laugh.mp3", 25.0, 0.85]
   ]
 }}"""
@@ -383,7 +463,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
             if not file_uri:
                 continue
 
-            print(f"[Gemini Pass 2] Prompting Gemini for 1:1 scene-locked script on {total_dur:.1f}s video...")
+            print(f"[Gemini Pass 2] Prompting Gemini for Visual-First + Chapter-Locked script on {total_dur:.1f}s video...")
             for model in ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"]:
                 try:
                     gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
