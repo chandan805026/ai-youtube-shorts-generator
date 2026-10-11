@@ -185,11 +185,12 @@ def snap_timestamp_to_camera_cut(video_path: str, target_t: float, total_dur: fl
 
 def condense_video_with_gemini(raw_video_path: str) -> str:
     """
-    PASS 1 (Master Story Editor):
-    If the raw video is longer than 68s, Gemini carefully watches the full video,
-    understands the complete story, and selects 2 or 3 LONG, CONNECTED STORY CHAPTERS
-    (each 15s-26s long, totaling ~58-65s raw -> ~50-56s after 1.15x speed) with
-    exact camera-cut snapping so there are ZERO sudden or confusing jumps!
+    PASS 1 (Master Story Arc Finder — Zero Middle Jump Cuts):
+    Gemini watches the entire raw video from start to finish and finds the SINGLE BEST,
+    MOST HILARIOUS, SELF-CONTAINED CONTINUOUS STORY ARC (60s to 68s long, starting from
+    wherever that story arc naturally begins in the video and ending at its climax).
+    Because it is extracted as ONE UNBROKEN CONTINUOUS SEQUENCE (snapped to exact camera cuts),
+    there are ZERO sudden middle jumps ('ye scene kaha se aa gya' never happens!).
     """
     global LAST_CONDENSED_CHAPTERS
     LAST_CONDENSED_CHAPTERS = []
@@ -197,44 +198,36 @@ def condense_video_with_gemini(raw_video_path: str) -> str:
     total_dur = get_video_duration(raw_video_path)
     if total_dur <= 68.0:
         print(f"[Editor Pass 1] Video is {total_dur:.1f}s (<=68s), already under 1 min at 1.15x! Keeping 100% uncut.")
-        LAST_CONDENSED_CHAPTERS = [{"chap": 1, "start": 0.0, "end": round(total_dur, 2), "description": "Full continuous comedy video"}]
+        LAST_CONDENSED_CHAPTERS = [{"chap": 1, "start": 0.0, "end": round(total_dur, 2), "description": "Full continuous comedy story"}]
         return raw_video_path
 
-    print(f"\n[Editor Pass 1] Video is {total_dur:.1f}s. Asking Gemini Master Editor to select connected story chapters (<60s target)...")
+    print(f"\n[Editor Pass 1] Video is {total_dur:.1f}s. Asking Gemini to find the SINGLE BEST continuous 60-68s story arc (Zero Middle Cuts)...")
     candidate_keys = get_candidate_gemini_keys()
     lowres_full = make_lowres_copy_for_gemini(raw_video_path, prefix="pass1_full", burn_timecode=True)
 
-    editor_prompt = f"""You are a Master Film & Comedy Video Editor.
-First, watch this entire video carefully from start to finish ({total_dur:.1f} seconds). Notice the yellow 'TIME: X.Xs' digital clock in the top-left corner showing the exact second of every frame. Deeply understand the complete story, characters, setups, pranks, and final climax.
+    editor_prompt = f"""You are a Master Comedy Film Editor.
+First, watch this entire video carefully from 0.0s to {total_dur:.1f}s. Look at the yellow 'TIME: X.Xs' digital clock in the top-left corner of every frame.
 
 TASK:
-This video is {total_dur:.1f} seconds long, which is too long for a 60-second YouTube Short.
-Your job is to select 2 or 3 LONG, CONTINUOUS, CONNECTED STORY CHAPTERS that tell the COMPLETE funny story from beginning to climax in a combined duration of 56 to 65 seconds (so at 1.15x playback it will be 49 to 56 seconds, strictly under 1 minute).
-
-STRICT CONTINUITY & EDITING RULES (DO NOT VIOLATE):
-1. NO TINY FRAGMENTS: Never cut small 3-to-8 second pieces! Every chapter you select MUST be between 15.0 and 26.0 seconds long so the viewer watches a smooth, uninterrupted scene without sudden jumps.
-2. ONLY 2 OR 3 CONNECTED CHAPTERS IN CHRONOLOGICAL ORDER:
-   - Chapter 1 (Opening Setup & Problem): 15 to 20 seconds showing how the story/problem begins.
-   - Chapter 2 (The Main Funny Plan / Trap / Action): 18 to 24 seconds showing the main comedic action or prank.
-   - Chapter 3 (The Final Climax & Payoff): 18 to 24 seconds showing the hilarious ending payoff.
-3. ZERO ABRUPT JUMPS ("Achanak koi alag hissa na aaye"):
-   - Start and end each chapter ONLY at a clean camera angle change or completed action.
-   - Never cut in the middle of someone walking, speaking, or swinging!
-   - Only remove slow, repetitive walking/waiting filler between the 3 main chapters.
-4. TOTAL COMBINED DURATION of all chapters MUST be between 56.0 and 65.0 seconds.
+This video is {total_dur:.1f} seconds long. If we cut random pieces from different parts of the video, the viewer gets confused ("ye wala scene achanak kaha se aa gaya").
+Instead, your job is to find the SINGLE BEST, CONTINUOUS, UNBROKEN 60 to 68 SECOND STORY ARC in this video!
+- You do NOT have to start at 0.0s! You can start wherever the best, funniest story arc naturally begins (for example at 0s, 18s, 35s, 50s, etc.) and end where its funny climax/payoff finishes, as long as (end - start) is between 60.0 and 68.0 seconds.
+- Within your chosen [start, end] window, the story must make 100% complete sense on its own: the viewer sees how the situation starts, how the characters react/plan, and the hilarious payoff at the end, with ZERO sudden jumps!
+- Start and end ONLY at a clean camera shot change or completed action (check the yellow 'TIME: X.Xs' clock).
 
 OUTPUT FORMAT:
 Return ONLY valid JSON (no markdown backticks, no extra text):
 {{
-  "story_summary": "Brief summary of the full story",
-  "chapters": [
-    {{"start": 0.0, "end": 18.0, "description": "Opening setup"}},
-    {{"start": 40.0, "end": 62.0, "description": "Main funny trap"}},
-    {{"start": 96.0, "end": 118.0, "description": "Final climax"}}
-  ]
+  "story_summary": "Clear summary of what happens in this continuous story arc",
+  "start": 37.0,
+  "end": 102.0,
+  "why_this_arc_works": "Explains why this continuous 65s window tells a complete, hilarious story without any confusing jumps"
 }}"""
 
-    selected_chapters = None
+    chosen_start = None
+    chosen_end = None
+    chosen_summary = "Continuous comedy story arc"
+
     for api_key in candidate_keys:
         try:
             file_uri = upload_video_to_gemini_files(lowres_full, api_key)
@@ -252,97 +245,71 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
                             ]
                         }]
                     }
-                    res = requests.post(gen_url, json=payload, timeout=50)
+                    res = requests.post(gen_url, json=payload, timeout=55)
                     if res.status_code == 200:
                         raw_text = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
                         clean_json = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text).strip()
                         parsed = json.loads(clean_json)
-                        chaps = parsed.get("chapters", [])
-                        if 2 <= len(chaps) <= 4:
-                            print(f"[Editor Pass 1] Gemini ({model}) Story Summary: {parsed.get('story_summary', '')}")
-                            selected_chapters = chaps
-                            break
+                        if "start" in parsed and "end" in parsed:
+                            s_val = float(parsed["start"])
+                            e_val = float(parsed["end"])
+                            if e_val - s_val >= 45.0:
+                                chosen_start = s_val
+                                chosen_end = e_val
+                                chosen_summary = parsed.get("story_summary", chosen_summary)
+                                print(f"[Editor Pass 1] Gemini ({model}) Selected Continuous Arc: {chosen_start:.1f}s -> {chosen_end:.1f}s ({chosen_end - chosen_start:.1f}s)")
+                                print(f"[Editor Pass 1] Story Arc Summary: {chosen_summary}")
+                                print(f"[Editor Pass 1] Why it works: {parsed.get('why_this_arc_works', '')}")
+                                break
                 except Exception as ex:
                     print(f"[Editor Pass 1] Model {model} notice: {ex}")
-            if selected_chapters:
+            if chosen_start is not None:
                 break
         except Exception as e:
             print(f"[Editor Pass 1] Key error: {e}")
 
-    # Validate & sanitize chapters (if Gemini didn't return valid chapters, use 3-part story arc: Setup + Middle + Climax)
-    valid_ranges = []
-    if selected_chapters:
-        prev_end = 0.0
-        for ch in selected_chapters:
-            s = max(prev_end, float(ch.get("start", 0.0)))
-            e = min(total_dur, float(ch.get("end", s + 18.0)))
-            if e - s >= 10.0:
-                valid_ranges.append((s, e, ch.get("description", "Story chapter")))
-                prev_end = e + 0.5
+    if chosen_start is None or chosen_end is None:
+        # Fallback: take the final 65 seconds leading up to the climax
+        chosen_end = total_dur
+        chosen_start = max(0.0, round(total_dur - 65.0, 1))
+        print(f"[Editor Pass 1] Using continuous climax story arc: {chosen_start:.1f}s -> {chosen_end:.1f}s")
 
-    total_selected = sum(e - s for s, e, _ in valid_ranges)
-    if not valid_ranges or total_selected < 42.0 or total_selected > 72.0:
-        print("[Editor Pass 1] Applying balanced 3-Chapter Story Arc (Setup 18s + Main Action 22s + Climax 22s = 62s)...")
-        mid_start = round(total_dur * 0.38, 1)
-        valid_ranges = [
-            (0.0, 18.0, "Opening Setup"),
-            (mid_start, mid_start + 22.0, "Main Comedy Action"),
-            (max(mid_start + 23.0, total_dur - 22.0), total_dur, "Final Climax")
-        ]
+    # Clamp duration to [56s, 68s] so at 1.15x it is 49s to 59s
+    chosen_start = max(0.0, min(chosen_start, total_dur - 56.0))
+    if chosen_end - chosen_start > 68.0:
+        chosen_end = chosen_start + 66.0
+    elif chosen_end - chosen_start < 54.0:
+        chosen_end = min(total_dur, chosen_start + 62.0)
 
-    # Snap every cut to exact millisecond camera shot boundaries and extract chapters
-    part_files = []
-    running_t = 0.0
-    for idx, (s_raw, e_raw, desc) in enumerate(valid_ranges):
-        s_snap = snap_timestamp_to_camera_cut(raw_video_path, s_raw, total_dur, is_start=True)
-        e_snap = snap_timestamp_to_camera_cut(raw_video_path, e_raw, total_dur, is_start=False)
-        if e_snap - s_snap < 8.0:
-            s_snap, e_snap = s_raw, e_raw
+    s_snap = snap_timestamp_to_camera_cut(raw_video_path, chosen_start, total_dur, is_start=True)
+    e_snap = snap_timestamp_to_camera_cut(raw_video_path, chosen_end, total_dur, is_start=False)
+    if e_snap - s_snap < 45.0:
+        s_snap, e_snap = chosen_start, chosen_end
 
-        part_path = os.path.join(SCRATCH_DIR, f"chap_{idx:02d}_{os.path.basename(raw_video_path)}")
-        dur_c = e_snap - s_snap
-        print(f"[Editor Pass 1] Extracting Chapter {idx+1}: {s_snap:.2f}s -> {e_snap:.2f}s ({dur_c:.1f}s) | Condensed Window: [{running_t:.2f}s -> {running_t + dur_c:.2f}s] [{desc}]")
-        LAST_CONDENSED_CHAPTERS.append({
-            "chap": idx + 1,
-            "start": round(running_t, 2),
-            "end": round(running_t + dur_c, 2),
-            "description": desc
-        })
-        running_t += dur_c
-
-        # Smooth 0.15s fade-in/out on chapter boundaries so transitions feel like a movie edit
-        vf_fade = f"fade=t=in:st=0:d=0.15,fade=t=out:st={max(0.1, dur_c - 0.15):.2f}:d=0.15"
-        cmd_part = [
-            FFMPEG_BIN, "-y",
-            "-ss", f"{s_snap:.2f}",
-            "-to", f"{e_snap:.2f}",
-            "-i", raw_video_path,
-            "-vf", vf_fade,
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
-            "-c:a", "aac", "-b:a", "192k",
-            part_path
-        ]
-        subprocess.run(cmd_part, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        part_files.append(part_path)
-
-    concat_list_path = os.path.join(SCRATCH_DIR, "chapters_concat.txt")
-    with open(concat_list_path, "w", encoding="utf-8") as cf:
-        for pf in part_files:
-            safe_p = pf.replace("\\", "/")
-            cf.write(f"file '{safe_p}'\n")
+    dur_c = e_snap - s_snap
+    LAST_CONDENSED_CHAPTERS = [{
+        "chap": 1,
+        "start": 0.0,
+        "end": round(dur_c, 2),
+        "description": chosen_summary
+    }]
 
     condensed_path = os.path.join(SCRATCH_DIR, f"condensed_{os.path.basename(raw_video_path)}")
-    cmd_concat = [
+    print(f"[Editor Pass 1] Extracting UNBROKEN Continuous Story Arc: {s_snap:.2f}s -> {e_snap:.2f}s ({dur_c:.1f}s raw -> {dur_c/1.15:.1f}s at 1.15x)")
+    vf_fade = f"fade=t=in:st=0:d=0.2,fade=t=out:st={max(0.1, dur_c - 0.2):.2f}:d=0.2"
+    cmd_extract = [
         FFMPEG_BIN, "-y",
-        "-f", "concat", "-safe", "0",
-        "-i", concat_list_path,
+        "-ss", f"{s_snap:.2f}",
+        "-to", f"{e_snap:.2f}",
+        "-i", raw_video_path,
+        "-vf", vf_fade,
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
         "-c:a", "aac", "-b:a", "192k",
         condensed_path
     ]
-    subprocess.run(cmd_concat, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    subprocess.run(cmd_extract, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     new_dur = get_video_duration(condensed_path)
-    print(f"[Editor Pass 1] Condensed story video ready: {condensed_path} ({new_dur:.1f}s raw -> {new_dur/1.15:.1f}s at 1.15x!)")
+    print(f"[Editor Pass 1] Condensed unbroken story video ready: {condensed_path} ({new_dur:.1f}s raw -> {new_dur/1.15:.1f}s at 1.15x!)")
     return condensed_path
 
 
@@ -353,90 +320,63 @@ def normalize_script_timeline(data: dict, total_dur: float) -> dict:
     speech = data["speech"]
     max_allowed = max(3.0, total_dur - 2.2)
 
-    # Identify exact chapter boundary cut points (e.g. 21.01s, 40.10s)
-    cut_boundaries = [ch["start"] for ch in LAST_CONDENSED_CHAPTERS if ch["start"] > 1.0]
-
     for idx, row in enumerate(speech):
         raw_t = float(row[1])
-        # Visual-First Reaction Lock:
-        # 1. If a line was placed in the last 2.2s right BEFORE a chapter transition,
-        #    it almost certainly belongs to the incoming chapter — snap it to cut_t + 0.5s
-        #    so the audio NEVER speaks before the new chapter appears on screen!
-        snapped_to_cut = False
-        for cut_t in cut_boundaries:
-            if (cut_t - 2.2) <= raw_t < (cut_t + 0.4):
-                new_t = round(cut_t + 0.5, 1)
-                print(f"[VisualSync] Snapped early pre-cut line '{row[2][:32]}...' from {raw_t:.1f}s -> {new_t:.1f}s (after chapter cut {cut_t:.2f}s)")
-                raw_t = new_t
-                snapped_to_cut = True
-                break
-
-        # 2. For all lines after the opening hook (idx > 0) that weren't just snapped,
-        #    add a +0.5s Visual-First Reaction Delay so the viewer's eyes see the visual
-        #    action FIRST and hear the voiceover right as it happens (never audio-first!).
-        if idx > 0 and not snapped_to_cut:
-            raw_t = round(raw_t + 0.5, 1)
-
+        # Visual-First Reaction Delay (+0.4s after opening hook) so the viewer sees the action first
+        if idx > 0:
+            raw_t = round(raw_t + 0.4, 1)
         row[1] = round(min(max_allowed, max(0.3, raw_t)), 1)
 
     speech.sort(key=lambda x: float(x[1]))
 
-    # Ensure minimum 3.4s spacing so lines never crowd or push each other out of sync
+    # Ensure minimum 3.6s spacing so storytelling lines never crowd each other
     for i in range(1, len(speech)):
-        if speech[i][1] < speech[i - 1][1] + 3.4:
-            speech[i][1] = round(min(max_allowed, speech[i - 1][1] + 3.4), 1)
+        if speech[i][1] < speech[i - 1][1] + 3.6:
+            speech[i][1] = round(min(max_allowed, speech[i - 1][1] + 3.6), 1)
 
     data["speech"] = speech
 
     for row in data.get("sfx", []):
-        row[1] = round(min(max_allowed, max(0.4, float(row[1]) + 0.4)), 1)
+        row[1] = round(min(max_allowed, max(0.4, float(row[1]) + 0.3)), 1)
 
-    print(f"[Gemini Pass 2] Locked {len(speech)} visual-first timestamps across {total_dur:.1f}s edited video.")
+    print(f"[Gemini Pass 2] Locked {len(speech)} visual-first storytelling lines across {total_dur:.1f}s continuous video.")
     return data
 
 
 def generate_comedy_script_with_gemini(edited_video_path: str) -> dict:
     """
-    PASS 2 (1:1 Storyteller on the Condensed Video):
-    Gemini watches the ALREADY-CONDENSED ~60s video (with burned-in yellow 'TIME: X.Xs' clock)
-    and writes a comedy narrative strictly locked inside each chapter's exact time window!
+    PASS 2 (Clear & Engaging Comedy Storyteller on the Continuous Video):
+    Gemini watches the UNBROKEN ~64s video (with burned-in yellow 'TIME: X.Xs' clock)
+    and writes a clear, funny, easy-to-follow story narration so the viewer understands
+    every single setup, motive, and payoff!
     """
     total_dur = get_video_duration(edited_video_path)
     candidate_keys = get_candidate_gemini_keys()
     lowres_vid = make_lowres_copy_for_gemini(edited_video_path, prefix="pass2_edited", burn_timecode=True)
 
-    chapter_guide_lines = []
-    if LAST_CONDENSED_CHAPTERS:
-        for ch in LAST_CONDENSED_CHAPTERS:
-            c_idx = ch["chap"]
-            c_s = ch["start"]
-            c_e = ch["end"]
-            c_desc = ch["description"]
-            safe_s = round(c_s + 0.5, 1)
-            safe_e = round(max(safe_s + 2.0, c_e - 2.5), 1)
-            chapter_guide_lines.append(
-                f"   - CHAPTER {c_idx} ({c_s:.1f}s to {c_e:.1f}s): \"{c_desc}\"\n"
-                f"     -> Place Chapter {c_idx} speech lines ONLY between {safe_s:.1f}s and {safe_e:.1f}s! NEVER mention Chapter {c_idx} events before {safe_s:.1f}s!"
-            )
-    chapter_guide_text = "\n".join(chapter_guide_lines) if chapter_guide_lines else f"   - Full Video (0.5s to {total_dur - 2.5:.1f}s)"
+    story_context = LAST_CONDENSED_CHAPTERS[0]["description"] if LAST_CONDENSED_CHAPTERS else "Continuous comedy story"
 
-    prompt = f"""You are an observant comedy storyteller (witty British/Global meme narrator style, like Liam).
-First, watch this entire {total_dur:.1f}-second video from start to finish.
+    prompt = f"""You are a hilarious, crystal-clear comedy storyteller (like a top viral YouTube Shorts narrator).
+First, watch this entire {total_dur:.1f}-second continuous video carefully from start to finish.
 Look at the yellow 'TIME: X.Xs' digital clock in the top-left corner of every frame! That clock shows the EXACT timestamp in seconds.
 
-EXACT CHAPTER MAP OF THIS {total_dur:.1f}-SECOND VIDEO:
-{chapter_guide_text}
+STORY CONTEXT OF THIS VIDEO:
+"{story_context}"
 
-STRICT VISUAL-FIRST AUDIO SYNC RULES (CRITICAL — DO NOT VIOLATE):
-1. NEVER SPEAK BEFORE THE VISUAL ACTION APPEARS ("Audio pahle mat bolo, video dikhne ke baad bolo"):
-   - Read the yellow 'TIME: X.Xs' clock on the frame when an action, object, or person ACTUALLY APPEARS on screen.
-   - Set the speech line's timestamp to the exact second (or +0.4s AFTER) that visual appears on screen—NEVER 1 to 3 seconds before it appears!
-   - Strictly obey the CHAPTER MAP above: NEVER mention an action from Chapter 2 while the video is still in Chapter 1, and NEVER mention an action from Chapter 3 while the video is still in Chapter 2!
-2. PUNCHY & CONCISE LINES (10 to 12 lines total):
-   - Write 3 to 4 lines per chapter, spaced at least 4.5 to 5.5 seconds apart.
-   - Keep each line short and punchy (5 to 8 words maximum) so it finishes cleanly within 2.5 seconds while that exact shot is still on screen.
+YOUR GOAL:
+Narrate this video so that ANY viewer immediately understands the FULL STORY—who the characters are, WHY they are doing what they're doing, what their funny plan/trick is, and how it turns out! Never leave the viewer confused about what is happening!
+
+STRICT RULES (DO NOT VIOLATE):
+1. CLEAR STORYTELLING (EXPLAIN THE 'WHY' AND 'WHAT'):
+   - Don't just write vague phrases like "He thought he won". Clearly and wittily explain the story beats on screen (e.g., "To hide from his angry wife, he dives behind this bedsheet...", "Then his buddy tries to distract the neighbor lady with a rose...", "And the moment she leans in for a kiss, bro sprints for his life!").
+   - Every line must connect naturally to the next like a fun story!
+2. VISUAL-FIRST AUDIO SYNC (READ THE YELLOW 'TIME: X.Xs' CLOCK):
+   - Total video duration is EXACTLY {total_dur:.1f} seconds.
+   - Read the yellow 'TIME: X.Xs' clock on the frame when an action physically starts on screen, and place your line at that exact second so the viewer sees the action and hears your explanation simultaneously!
+   - Write 11 to 13 engaging lines across the {total_dur:.1f}s video (roughly every 4.5 to 5.2 seconds, between 0.4s and {total_dur - 2.5:.1f}s).
+   - Keep each line 7 to 11 words long—clear, natural, and funny!
 3. UNIVERSAL VIRAL MEME TITLE:
-   - Write a broad, mass-appeal viral title (e.g., "Bro Really Thought His 200 IQ Plan Would Work 💀" or "Instant Karma Hit Him at 100 MPH 😂").
+   - Write a broad, mass-appeal viral title (e.g., "Bro Really Thought His 200 IQ Escape Plan Would Work 💀" or "His Distraction Plan Backfired Instantly 😂").
 4. PERFECT SFX TIMING:
    - Place meme sounds at the exact second on the yellow clock where shock, fail, or laughter happens:
      'vine_boom.mp3', 'wait_a_minute.mp3', 'metal_pipe.mp3', 'windows_error.mp3', 'bruh.mp3', 'no_god_please_no.mp3', 'sad_violin.mp3', 'oh_no_wheeze_laugh.mp3', 'anime_wow.mp3', 'fbi_open_up.mp3', 'ding_idea.mp3', 'yeet.mp3'
@@ -448,11 +388,11 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
 {{
   "title": "Bro Really Thought His 200 IQ Plan Would Work 💀 #Shorts",
   "speech": [
-    ["01", 0.5, "Opening hook matching the first scene."],
-    ["02", 5.5, "Next witty line right after the action appears."]
+    ["01", 0.5, "Clear, funny opening hook explaining how the situation starts."],
+    ["02", 5.2, "Next connected storytelling line matching the yellow clock."]
   ],
   "sfx": [
-    ["vine_boom.mp3", 5.5, 0.85],
+    ["vine_boom.mp3", 5.2, 0.85],
     ["oh_no_wheeze_laugh.mp3", 25.0, 0.85]
   ]
 }}"""
@@ -463,7 +403,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
             if not file_uri:
                 continue
 
-            print(f"[Gemini Pass 2] Prompting Gemini for Visual-First + Chapter-Locked script on {total_dur:.1f}s video...")
+            print(f"[Gemini Pass 2] Prompting Gemini for Clear Connected Story Script on {total_dur:.1f}s unbroken video...")
             for model in ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"]:
                 try:
                     gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
@@ -475,7 +415,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
                             ]
                         }]
                     }
-                    res = requests.post(gen_url, json=payload, timeout=50)
+                    res = requests.post(gen_url, json=payload, timeout=55)
                     if res.status_code == 200:
                         raw_text = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
                         clean_json = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text).strip()
@@ -492,7 +432,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
                         data["speech"] = clean_speech
 
                         if len(data["speech"]) >= 5:
-                            print(f"[Gemini Pass 2] Received {len(data['speech'])} scene-locked lines from {model}!")
+                            print(f"[Gemini Pass 2] Received {len(data['speech'])} clear storytelling lines from {model}!")
                             return normalize_script_timeline(data, total_dur)
                 except Exception as ex_m:
                     print(f"[Gemini Pass 2] Model {model} attempt: {ex_m}")
