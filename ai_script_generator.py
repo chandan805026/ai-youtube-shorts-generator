@@ -185,48 +185,60 @@ def snap_timestamp_to_camera_cut(video_path: str, target_t: float, total_dur: fl
 
 def condense_video_with_gemini(raw_video_path: str) -> str:
     """
-    PASS 1 (Master Story Arc Finder — Zero Middle Jump Cuts):
-    Gemini watches the entire raw video from start to finish and finds the SINGLE BEST,
-    MOST HILARIOUS, SELF-CONTAINED CONTINUOUS STORY ARC (60s to 68s long, starting from
-    wherever that story arc naturally begins in the video and ending at its climax).
-    Because it is extracted as ONE UNBROKEN CONTINUOUS SEQUENCE (snapped to exact camera cuts),
-    there are ZERO sudden middle jumps ('ye scene kaha se aa gya' never happens!).
+    PASS 1 (Full Video Watcher & Funniest Clip Extractor for US/UK Audiences):
+    Gemini watches the ENTIRE raw video from start to finish, understands the complete
+    story, and extracts the SINGLE FUNNIEST, MOST ENGAGING continuous clip (50s to 64s raw
+    -> ~44s to 55s at 1.15x) that hooks US/UK viewers immediately and ends on the biggest laugh!
     """
     global LAST_CONDENSED_CHAPTERS
     LAST_CONDENSED_CHAPTERS = []
 
     total_dur = get_video_duration(raw_video_path)
-    if total_dur <= 68.0:
-        print(f"[Editor Pass 1] Video is {total_dur:.1f}s (<=68s), already under 1 min at 1.15x! Keeping 100% uncut.")
-        LAST_CONDENSED_CHAPTERS = [{"chap": 1, "start": 0.0, "end": round(total_dur, 2), "description": "Full continuous comedy story"}]
+    if total_dur <= 66.0:
+        print(f"[Editor Pass 1] Video is {total_dur:.1f}s (<=66s), already under 1 min at 1.15x! Keeping 100% uncut.")
+        LAST_CONDENSED_CHAPTERS = [{
+            "chap": 1,
+            "start": 0.0,
+            "end": round(total_dur, 2),
+            "description": "Full continuous comedy story",
+            "full_backstory": "Complete original video"
+        }]
         return raw_video_path
 
-    print(f"\n[Editor Pass 1] Video is {total_dur:.1f}s. Asking Gemini to find the SINGLE BEST continuous 60-68s story arc (Zero Middle Cuts)...")
+    print(f"\n[Editor Pass 1] Sending FULL {total_dur:.1f}s video to Gemini to find the FUNNIEST clip for US/UK viewers...")
     candidate_keys = get_candidate_gemini_keys()
     lowres_full = make_lowres_copy_for_gemini(raw_video_path, prefix="pass1_full", burn_timecode=True)
 
-    editor_prompt = f"""You are a Master Comedy Film Editor.
-First, watch this entire video carefully from 0.0s to {total_dur:.1f}s. Look at the yellow 'TIME: X.Xs' digital clock in the top-left corner of every frame.
+    editor_prompt = f"""You are a Master Viral YouTube Shorts Producer for US and UK audiences.
+First, watch this ENTIRE video carefully from 0.0s to {total_dur:.1f}s. Look at the yellow 'TIME: X.Xs' digital clock in the top-left corner of every frame.
+Understand the complete plot, why the characters are doing what they are doing, and where the funniest comedy action happens.
 
 TASK:
-This video is {total_dur:.1f} seconds long. If we cut random pieces from different parts of the video, the viewer gets confused ("ye wala scene achanak kaha se aa gaya").
-Instead, your job is to find the SINGLE BEST, CONTINUOUS, UNBROKEN 60 to 68 SECOND STORY ARC in this video!
-- You do NOT have to start at 0.0s! You can start wherever the best, funniest story arc naturally begins (for example at 0s, 18s, 35s, 50s, etc.) and end where its funny climax/payoff finishes, as long as (end - start) is between 60.0 and 68.0 seconds.
-- Within your chosen [start, end] window, the story must make 100% complete sense on its own: the viewer sees how the situation starts, how the characters react/plan, and the hilarious payoff at the end, with ZERO sudden jumps!
-- Start and end ONLY at a clean camera shot change or completed action (check the yellow 'TIME: X.Xs' clock).
+From this {total_dur:.1f}-second video, extract the SINGLE FUNNIEST, MOST ENTERTAINING CONTINUOUS CLIP (between 50.0 and 64.0 seconds long) that will make US and UK audiences stop scrolling, laugh out loud, and watch until the very end!
+
+STRICT RULES FOR SELECTING THE FUNNIEST CLIP:
+1. INSTANT OPENING HOOK (FIRST 2 SECONDS):
+   - The start timestamp ('start') of your clip MUST begin right at a funny, dramatic, or eye-catching visual moment so US/UK viewers immediately stop scrolling (never start on a boring, empty, or slow walking frame!).
+2. ONE UNBROKEN FUNNY STORY (50 to 64 SECONDS LONG):
+   - Do NOT cut random pieces from different places that confuse the viewer ("ye scene achanak kaha se aa gaya").
+   - Pick ONE continuous, unbroken window [start, end] (50.0 to 64.0 seconds total) that contains the funniest setup, the smartest/craziest prank or escape plan, and the best laugh-out-loud payoff!
+3. CAPTURE THE FULL BACKSTORY:
+   - Write down the 'full_backstory' of the entire video (including anything that happened before 'start') so our US/UK comedy narrator can weave the whole story together seamlessly!
 
 OUTPUT FORMAT:
 Return ONLY valid JSON (no markdown backticks, no extra text):
 {{
-  "story_summary": "Clear summary of what happens in this continuous story arc",
-  "start": 37.0,
-  "end": 102.0,
-  "why_this_arc_works": "Explains why this continuous 65s window tells a complete, hilarious story without any confusing jumps"
+  "full_backstory": "Complete explanation of the full video plot and why the characters are in this situation",
+  "story_summary": "Detailed summary of what happens inside the selected funny clip [start to end]",
+  "start": 18.0,
+  "end": 80.0,
+  "why_us_uk_will_love_it": "Why this exact clip hooks US/UK viewers in the first 2 seconds and keeps them laughing till the end"
 }}"""
 
     chosen_start = None
     chosen_end = None
-    chosen_summary = "Continuous comedy story arc"
+    chosen_summary = "Hilarious comedy story"
+    full_backstory = "Full comedy skit"
 
     for api_key in candidate_keys:
         try:
@@ -253,13 +265,15 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
                         if "start" in parsed and "end" in parsed:
                             s_val = float(parsed["start"])
                             e_val = float(parsed["end"])
-                            if e_val - s_val >= 45.0:
+                            if e_val - s_val >= 42.0:
                                 chosen_start = s_val
                                 chosen_end = e_val
                                 chosen_summary = parsed.get("story_summary", chosen_summary)
-                                print(f"[Editor Pass 1] Gemini ({model}) Selected Continuous Arc: {chosen_start:.1f}s -> {chosen_end:.1f}s ({chosen_end - chosen_start:.1f}s)")
-                                print(f"[Editor Pass 1] Story Arc Summary: {chosen_summary}")
-                                print(f"[Editor Pass 1] Why it works: {parsed.get('why_this_arc_works', '')}")
+                                full_backstory = parsed.get("full_backstory", chosen_summary)
+                                print(f"[Editor Pass 1] Gemini ({model}) Selected Funniest Clip: {chosen_start:.1f}s -> {chosen_end:.1f}s ({chosen_end - chosen_start:.1f}s)")
+                                print(f"[Editor Pass 1] Full Backstory: {full_backstory}")
+                                print(f"[Editor Pass 1] Clip Summary: {chosen_summary}")
+                                print(f"[Editor Pass 1] Why US/UK Will Love It: {parsed.get('why_us_uk_will_love_it', '')}")
                                 break
                 except Exception as ex:
                     print(f"[Editor Pass 1] Model {model} notice: {ex}")
@@ -269,21 +283,20 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
             print(f"[Editor Pass 1] Key error: {e}")
 
     if chosen_start is None or chosen_end is None:
-        # Fallback: take the final 65 seconds leading up to the climax
         chosen_end = total_dur
-        chosen_start = max(0.0, round(total_dur - 65.0, 1))
+        chosen_start = max(0.0, round(total_dur - 60.0, 1))
         print(f"[Editor Pass 1] Using continuous climax story arc: {chosen_start:.1f}s -> {chosen_end:.1f}s")
 
-    # Clamp duration to [56s, 68s] so at 1.15x it is 49s to 59s
-    chosen_start = max(0.0, min(chosen_start, total_dur - 56.0))
-    if chosen_end - chosen_start > 68.0:
-        chosen_end = chosen_start + 66.0
-    elif chosen_end - chosen_start < 54.0:
-        chosen_end = min(total_dur, chosen_start + 62.0)
+    # Clamp duration to [48s, 64s] so at 1.15x it is 42s to 55s (high-retention US/UK sweet spot)
+    chosen_start = max(0.0, min(chosen_start, total_dur - 48.0))
+    if chosen_end - chosen_start > 64.0:
+        chosen_end = chosen_start + 62.0
+    elif chosen_end - chosen_start < 48.0:
+        chosen_end = min(total_dur, chosen_start + 56.0)
 
     s_snap = snap_timestamp_to_camera_cut(raw_video_path, chosen_start, total_dur, is_start=True)
     e_snap = snap_timestamp_to_camera_cut(raw_video_path, chosen_end, total_dur, is_start=False)
-    if e_snap - s_snap < 45.0:
+    if e_snap - s_snap < 42.0:
         s_snap, e_snap = chosen_start, chosen_end
 
     dur_c = e_snap - s_snap
@@ -291,11 +304,12 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
         "chap": 1,
         "start": 0.0,
         "end": round(dur_c, 2),
-        "description": chosen_summary
+        "description": chosen_summary,
+        "full_backstory": full_backstory
     }]
 
     condensed_path = os.path.join(SCRATCH_DIR, f"condensed_{os.path.basename(raw_video_path)}")
-    print(f"[Editor Pass 1] Extracting UNBROKEN Continuous Story Arc: {s_snap:.2f}s -> {e_snap:.2f}s ({dur_c:.1f}s raw -> {dur_c/1.15:.1f}s at 1.15x)")
+    print(f"[Editor Pass 1] Extracting Funniest Continuous Clip: {s_snap:.2f}s -> {e_snap:.2f}s ({dur_c:.1f}s raw -> {dur_c/1.15:.1f}s at 1.15x)")
     vf_fade = f"fade=t=in:st=0:d=0.2,fade=t=out:st={max(0.1, dur_c - 0.2):.2f}:d=0.2"
     cmd_extract = [
         FFMPEG_BIN, "-y",
@@ -309,7 +323,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
     ]
     subprocess.run(cmd_extract, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     new_dur = get_video_duration(condensed_path)
-    print(f"[Editor Pass 1] Condensed unbroken story video ready: {condensed_path} ({new_dur:.1f}s raw -> {new_dur/1.15:.1f}s at 1.15x!)")
+    print(f"[Editor Pass 1] Funniest clip ready: {condensed_path} ({new_dur:.1f}s raw -> {new_dur/1.15:.1f}s at 1.15x!)")
     return condensed_path
 
 
@@ -325,7 +339,7 @@ def normalize_script_timeline(data: dict, total_dur: float) -> dict:
         # Visual-First Reaction Delay (+0.4s after opening hook) so the viewer sees the action first
         if idx > 0:
             raw_t = round(raw_t + 0.4, 1)
-        row[1] = round(min(max_allowed, max(0.3, raw_t)), 1)
+        row[1] = round(min(max_allowed, max(0.2, raw_t)), 1)
 
     speech.sort(key=lambda x: float(x[1]))
 
@@ -339,60 +353,66 @@ def normalize_script_timeline(data: dict, total_dur: float) -> dict:
     for row in data.get("sfx", []):
         row[1] = round(min(max_allowed, max(0.4, float(row[1]) + 0.3)), 1)
 
-    print(f"[Gemini Pass 2] Locked {len(speech)} visual-first storytelling lines across {total_dur:.1f}s continuous video.")
+    print(f"[Gemini Pass 2] Locked {len(speech)} US/UK viral storytelling lines across {total_dur:.1f}s video.")
     return data
 
 
 def generate_comedy_script_with_gemini(edited_video_path: str) -> dict:
     """
-    PASS 2 (Clear & Engaging Comedy Storyteller on the Continuous Video):
-    Gemini watches the UNBROKEN ~64s video (with burned-in yellow 'TIME: X.Xs' clock)
-    and writes a clear, funny, easy-to-follow story narration so the viewer understands
-    every single setup, motive, and payoff!
+    PASS 2 (US/UK Viral Comedy Storywriter):
+    Gemini watches the extracted funny clip (with yellow 'TIME: X.Xs' clock) AND uses the
+    full original video backstory to write an addictive, hilarious Western comedy story
+    tailored specifically for US & UK audiences!
     """
     total_dur = get_video_duration(edited_video_path)
     candidate_keys = get_candidate_gemini_keys()
     lowres_vid = make_lowres_copy_for_gemini(edited_video_path, prefix="pass2_edited", burn_timecode=True)
 
-    story_context = LAST_CONDENSED_CHAPTERS[0]["description"] if LAST_CONDENSED_CHAPTERS else "Continuous comedy story"
+    story_context = LAST_CONDENSED_CHAPTERS[0]["description"] if LAST_CONDENSED_CHAPTERS else "Hilarious comedy story"
+    full_backstory = LAST_CONDENSED_CHAPTERS[0].get("full_backstory", story_context) if LAST_CONDENSED_CHAPTERS else story_context
 
-    prompt = f"""You are a hilarious, crystal-clear comedy storyteller (like a top viral YouTube Shorts narrator).
-First, watch this entire {total_dur:.1f}-second continuous video carefully from start to finish.
-Look at the yellow 'TIME: X.Xs' digital clock in the top-left corner of every frame! That clock shows the EXACT timestamp in seconds.
+    prompt = f"""You are a #1 Viral YouTube Shorts Comedy Storyteller for US and UK audiences (witty, charismatic British/American humor style—like Liam).
+First, watch this entire {total_dur:.1f}-second video carefully from start to finish.
+Look at the yellow 'TIME: X.Xs' digital clock in the top-left corner of every frame!
 
-STORY CONTEXT OF THIS VIDEO:
-"{story_context}"
+FULL VIDEO BACKSTORY & PLOT:
+- Backstory of the full video: "{full_backstory}"
+- What happens in this {total_dur:.1f}s clip: "{story_context}"
 
-YOUR GOAL:
-Narrate this video so that ANY viewer immediately understands the FULL STORY—who the characters are, WHY they are doing what they're doing, what their funny plan/trick is, and how it turns out! Never leave the viewer confused about what is happening!
+YOUR MISSION:
+Write an ADDICTIVE, HILARIOUS, EASY-TO-FOLLOW COMEDY STORY specifically for US and UK viewers!
+When an American or British viewer watches this Short, they must immediately get hooked in the first 2 seconds, understand the full funny situation, laugh at your witty commentary, and stay until the very last second!
 
-STRICT RULES (DO NOT VIOLATE):
-1. CLEAR STORYTELLING (EXPLAIN THE 'WHY' AND 'WHAT'):
-   - Don't just write vague phrases like "He thought he won". Clearly and wittily explain the story beats on screen (e.g., "To hide from his angry wife, he dives behind this bedsheet...", "Then his buddy tries to distract the neighbor lady with a rose...", "And the moment she leans in for a kiss, bro sprints for his life!").
-   - Every line must connect naturally to the next like a fun story!
-2. VISUAL-FIRST AUDIO SYNC (READ THE YELLOW 'TIME: X.Xs' CLOCK):
+STRICT US/UK STORYTELLING RULES (CRITICAL — DO NOT VIOLATE):
+1. TELL A HILARIOUS STORY, NOT A BORING DESCRIPTION!
+   - NEVER write flat, robotic captions like "The wife has a hammer" or "He runs away".
+   - Instead, narrate it like a hilarious story you're telling your best friends in the US/UK—explain the characters' sneaky motives, their '200 IQ' plans, the suspense when things go wrong, and the hilarious instant karma!
+   - Use natural, high-retention US/UK humor (e.g., "Bro got caught red-handed with a secret stash of liquor, and now his wife is hunting him down like a final boss!", "His wingman pulled off a genius cover-up under the hay—until they had to sneak behind the neighbor's laundry!", "To keep the neighbor quiet, his buddy tried turning on the romance with a rose... and instantly regretted his life choices!").
+2. KILLER OPENING HOOK AT 0.3s (FOR 75%+ STAYED-TO-WATCH):
+   - Your very first line at 0.3s MUST set up the whole hilarious premise and hook US/UK viewers immediately while matching the opening visual!
+3. 100% VISUAL-FIRST SYNC (READ THE YELLOW 'TIME: X.Xs' CLOCK):
    - Total video duration is EXACTLY {total_dur:.1f} seconds.
-   - Read the yellow 'TIME: X.Xs' clock on the frame when an action physically starts on screen, and place your line at that exact second so the viewer sees the action and hears your explanation simultaneously!
-   - Write 11 to 13 engaging lines across the {total_dur:.1f}s video (roughly every 4.5 to 5.2 seconds, between 0.4s and {total_dur - 2.5:.1f}s).
-   - Keep each line 7 to 11 words long—clear, natural, and funny!
-3. UNIVERSAL VIRAL MEME TITLE:
-   - Write a broad, mass-appeal viral title (e.g., "Bro Really Thought His 200 IQ Escape Plan Would Work 💀" or "His Distraction Plan Backfired Instantly 😂").
-4. PERFECT SFX TIMING:
+   - Read the yellow 'TIME: X.Xs' clock on the frame when each action physically appears on screen, and place your line right at that second!
+   - Write 10 to 12 connected story lines across the {total_dur:.1f}s video (spaced roughly every 4.5 to 5.2 seconds, between 0.3s and {total_dur - 2.5:.1f}s).
+   - Keep each line 7 to 11 words so it sounds punchy, natural, and perfectly timed!
+4. UNIVERSAL US/UK VIRAL TITLE:
+   - Write an irresistible US/UK viral title (e.g., "Bro's 200 IQ Escape Plan Backfired So Fast 💀 #Shorts" or "When Your Wingman Takes The Mission Too Far 😂 #Shorts").
+5. PERFECT SFX TIMING:
    - Place meme sounds at the exact second on the yellow clock where shock, fail, or laughter happens:
      'vine_boom.mp3', 'wait_a_minute.mp3', 'metal_pipe.mp3', 'windows_error.mp3', 'bruh.mp3', 'no_god_please_no.mp3', 'sad_violin.mp3', 'oh_no_wheeze_laugh.mp3', 'anime_wow.mp3', 'fbi_open_up.mp3', 'ding_idea.mp3', 'yeet.mp3'
-5. NEVER MENTION SOUND NAMES IN SPEECH:
+6. NEVER MENTION SOUND NAMES IN SPEECH:
    - The "speech" list is 100% pure spoken comedy storytelling. Never write '.mp3' or sound names in speech.
 
 OUTPUT FORMAT:
 Return ONLY valid JSON (no markdown backticks, no extra text):
 {{
-  "title": "Bro Really Thought His 200 IQ Plan Would Work 💀 #Shorts",
+  "title": "Bro's 200 IQ Escape Plan Backfired So Fast 💀 #Shorts",
   "speech": [
-    ["01", 0.5, "Clear, funny opening hook explaining how the situation starts."],
-    ["02", 5.2, "Next connected storytelling line matching the yellow clock."]
+    ["01", 0.3, "Killer opening hook setting up the story for US/UK viewers."],
+    ["02", 5.0, "Next witty storytelling line matching the yellow clock."]
   ],
   "sfx": [
-    ["vine_boom.mp3", 5.2, 0.85],
+    ["vine_boom.mp3", 5.0, 0.85],
     ["oh_no_wheeze_laugh.mp3", 25.0, 0.85]
   ]
 }}"""
@@ -403,7 +423,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
             if not file_uri:
                 continue
 
-            print(f"[Gemini Pass 2] Prompting Gemini for Clear Connected Story Script on {total_dur:.1f}s unbroken video...")
+            print(f"[Gemini Pass 2] Prompting Gemini for US/UK Viral Comedy Story Script on {total_dur:.1f}s video...")
             for model in ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"]:
                 try:
                     gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
@@ -424,7 +444,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
                         clean_speech = []
                         for sp in data.get("speech", []):
                             s_id = sp[0] if len(sp) > 2 else f"line_{len(clean_speech):02d}"
-                            s_t = float(sp[1]) if len(sp) > 2 else 0.5
+                            s_t = float(sp[1]) if len(sp) > 2 else 0.3
                             s_txt = str(sp[2]) if len(sp) > 2 else str(sp[0])
                             s_clean = sanitize_speech_text(s_txt)
                             if len(s_clean.split()) >= 2:
@@ -432,7 +452,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
                         data["speech"] = clean_speech
 
                         if len(data["speech"]) >= 5:
-                            print(f"[Gemini Pass 2] Received {len(data['speech'])} clear storytelling lines from {model}!")
+                            print(f"[Gemini Pass 2] Received {len(data['speech'])} US/UK storytelling lines from {model}!")
                             return normalize_script_timeline(data, total_dur)
                 except Exception as ex_m:
                     print(f"[Gemini Pass 2] Model {model} attempt: {ex_m}")
