@@ -20,6 +20,16 @@ def run_youtube_server_diagnosis():
     client_secret = os.getenv("YOUTUBE_CLIENT_SECRET", "").strip()
     refresh_token = os.getenv("YOUTUBE_REFRESH_TOKEN", "").strip()
 
+    token_json = os.getenv("YOUTUBE_TOKEN_JSON", "").strip()
+    if token_json and not (client_id and refresh_token):
+        try:
+            tj = json.loads(token_json)
+            client_id = client_id or tj.get("client_id")
+            client_secret = client_secret or tj.get("client_secret")
+            refresh_token = refresh_token or tj.get("refresh_token")
+        except Exception:
+            pass
+
     from google.oauth2.credentials import Credentials
     from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
@@ -32,32 +42,52 @@ def run_youtube_server_diagnosis():
         client_secret=client_secret
     )
     creds.refresh(Request())
+    print(f"✅ OAuth Token Scopes: {creds.scopes}")
     yt = build("youtube", "v3", credentials=creds)
 
     # 1. Channel Status & Audit
-    ch_resp = yt.channels().list(part="snippet,statistics,status,contentDetails,brandingSettings", mine=True).execute()
+    uploads_playlist_id = None
+    ch_resp = yt.channels().list(part="snippet,statistics,status,contentDetails,brandingSettings,topicDetails", mine=True).execute()
     for ch in ch_resp.get("items", []):
+        uploads_playlist_id = ch.get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
         print("\n[YOUTUBE CHANNEL SERVER DATA]:")
         print(json.dumps({
             "id": ch.get("id"),
             "title": ch.get("snippet", {}).get("title"),
+            "publishedAt": ch.get("snippet", {}).get("publishedAt"),
             "country": ch.get("snippet", {}).get("country"),
             "defaultLanguage": ch.get("snippet", {}).get("defaultLanguage"),
             "statistics": ch.get("statistics"),
             "status": ch.get("status"),
+            "topicDetails": ch.get("topicDetails"),
+            "brandingSettings": ch.get("brandingSettings", {}).get("channel")
         }, indent=2))
 
-    # 2. Fetch last 10 uploaded videos on the channel
-    search_resp = yt.search().list(part="id,snippet", forMine=True, type="video", maxResults=15, order="date").execute()
-    vid_ids = [item["id"]["videoId"] for item in search_resp.get("items", []) if "videoId" in item.get("id", {})]
+    # 2. Try auditDetails if permitted
+    try:
+        aud_resp = yt.channels().list(part="auditDetails", mine=True).execute()
+        print("\n[YOUTUBE CHANNEL AUDIT DETAILS]:")
+        print(json.dumps(aud_resp.get("items", []), indent=2))
+    except Exception as e:
+        print(f"\n[AuditDetails Note]: {e}")
+
+    # 3. Fetch ALL uploaded videos on the channel via uploads playlist
+    vid_ids = []
+    if uploads_playlist_id:
+        pl_resp = yt.playlistItems().list(part="snippet,contentDetails,status", playlistId=uploads_playlist_id, maxResults=25).execute()
+        for item in pl_resp.get("items", []):
+            vid = item.get("contentDetails", {}).get("videoId")
+            if vid and vid not in vid_ids:
+                vid_ids.append(vid)
+
     for known_id in ["Su6i4eFRV5E", "dAnG1SZQFbc", "14XiUbqjqvw", "fzqxUylFbbU", "DdMkn9eOJ4E"]:
         if known_id not in vid_ids:
             vid_ids.append(known_id)
 
-    # 3. Query full server details for every video
+    # 4. Query full server details for every video
     v_resp = yt.videos().list(
-        part="snippet,status,statistics,contentDetails,processingDetails,topicDetails,recordingDetails",
-        id=",".join(vid_ids[:15])
+        part="snippet,status,statistics,contentDetails,processingDetails,suggestions,topicDetails,recordingDetails,localizations",
+        id=",".join(vid_ids[:20])
     ).execute()
 
     print("\n[YOUTUBE VIDEOS SERVER REPORT]:")
@@ -66,40 +96,47 @@ def run_youtube_server_diagnosis():
             "id": v.get("id"),
             "publishedAt": v.get("snippet", {}).get("publishedAt"),
             "title": v.get("snippet", {}).get("title"),
+            "description": v.get("snippet", {}).get("description"),
             "categoryId": v.get("snippet", {}).get("categoryId"),
             "defaultLanguage": v.get("snippet", {}).get("defaultLanguage"),
             "defaultAudioLanguage": v.get("snippet", {}).get("defaultAudioLanguage"),
             "tags": v.get("snippet", {}).get("tags"),
+            "liveBroadcastContent": v.get("snippet", {}).get("liveBroadcastContent"),
             "duration": v.get("contentDetails", {}).get("duration"),
             "dimension": v.get("contentDetails", {}).get("dimension"),
             "definition": v.get("contentDetails", {}).get("definition"),
+            "caption": v.get("contentDetails", {}).get("caption"),
             "licensedContent": v.get("contentDetails", {}).get("licensedContent"),
+            "projection": v.get("contentDetails", {}).get("projection"),
+            "hasCustomThumbnail": v.get("contentDetails", {}).get("hasCustomThumbnail"),
             "contentRating": v.get("contentDetails", {}).get("contentRating"),
             "regionRestriction": v.get("contentDetails", {}).get("regionRestriction"),
             "status": v.get("status"),
             "processingDetails": v.get("processingDetails"),
+            "suggestions": v.get("suggestions"),
             "statistics": v.get("statistics"),
             "topicDetails": v.get("topicDetails")
         }
         print(f"--- VIDEO {v.get('id')} ---")
         print(json.dumps(vid_report, indent=2))
 
-    # 4. Try YouTube Analytics API if scope permits
+    # 5. Try YouTube Analytics API if scope permits
     try:
         yt_analytics = build("youtubeAnalytics", "v2", credentials=creds)
         an_resp = yt_analytics.reports().query(
             ids="channel==MINE",
             startDate="2026-10-01",
-            endDate="2026-10-13",
+            endDate="2026-10-14",
             metrics="views,engagedViews,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,comments,shares",
             dimensions="video",
             sort="-views",
-            maxResults=15
+            maxResults=20
         ).execute()
         print("\n[YOUTUBE ANALYTICS SERVER REPORT]:")
         print(json.dumps(an_resp, indent=2))
     except Exception as ex:
         print(f"\n[YouTube Analytics Note]: {ex}")
+
 
 
 def upload_short(video_source=None, title=None, desc=None, tags=None, publish_at=None):
