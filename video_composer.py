@@ -35,7 +35,34 @@ def sanitize_speech_text(text: str) -> str:
     for pat in sfx_patterns:
         text = re.sub(pat, '', text, flags=re.IGNORECASE)
 
-    # 5. Clean up extra punctuation and spaces
+    # 5. Family-safe / Shorts Seed-Shelf safe word replacements
+    safe_replacements = [
+        (r'\bholding\s+(.*?)\s+hostage\b', r'using \1 as a bargaining chip'),
+        (r'\bheld\s+(.*?)\s+hostage\b', r'used \1 as a bargaining chip'),
+        (r'\bhostage\b', 'tied-up'),
+        (r'\blive\s+bomb\b', 'firecracker'),
+        (r'\bbomb\b', 'firecracker'),
+        (r'\bcommit\s+a\s+crime\b', 'lose her temper'),
+        (r'\bcrime\b', 'prank'),
+        (r'\bnear\s+death\s+experience\b', 'hilarious close call'),
+        (r'\bdeath\b', 'disaster'),
+        (r'\bdead\b', 'done for'),
+        (r'\bkilled\b', 'busted'),
+        (r'\bkill\b', 'catch'),
+        (r'\bmurder\b', 'trouble'),
+        (r'\bsuicide\b', 'mistake'),
+        (r'\bkidnapped\b', 'carried away'),
+        (r'\bkidnap\b', 'carry away'),
+        (r'\bterrorist\b', 'prankster'),
+        (r'\bweapon\b', 'prop'),
+        (r'\bgun\b', 'water blaster'),
+        (r'\bliquor\b', 'secret drink'),
+        (r'\balcohol\b', 'secret drink'),
+    ]
+    for pat, repl in safe_replacements:
+        text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+
+    # 6. Clean up extra punctuation and spaces
     text = re.sub(r'\s+', ' ', text).strip()
     text = re.sub(r'^[\s\-_:,\.]+|[\s\-_:,\.]+$', '', text).strip()
     return text
@@ -189,14 +216,26 @@ def compose_final_short(video_input: str, script_data: dict, out_video: str = No
     final_timeline = total_timeline / speed_factor
     print(f"[Composer] Rendering final Short with locked 1.15x sync ({total_timeline:.1f}s -> {final_timeline:.1f}s)...")
 
+    vf_chain = (
+        f"[0:v]crop=iw*0.96:ih*0.96:iw*0.02:ih*0.02,"
+        f"scale=720:1280:flags=lanczos,"
+        f"eq=contrast=1.03:saturation=1.06:brightness=0.01,"
+        f"setpts={pts_factor:.4f}*PTS,"
+        f"subtitles='{safe_ass}'[v];"
+        f"[1:a]atempo={speed_factor:.3f}[a]"
+    )
+
     cmd_burn = [
         FFMPEG_BIN, "-y",
         "-i", video_input,
         "-i", master_wav,
-        "-filter_complex", f"[0:v]setpts={pts_factor:.4f}*PTS,subtitles='{safe_ass}'[v];[1:a]atempo={speed_factor:.3f}[a]",
+        "-filter_complex", vf_chain,
         "-map", "[v]",
         "-map", "[a]",
+        "-r", "30",
         "-c:v", "libx264",
+        "-profile:v", "main",
+        "-pix_fmt", "yuv420p",
         "-crf", "20",
         "-preset", "fast",
         "-c:a", "aac",
