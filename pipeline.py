@@ -45,6 +45,8 @@ def run_pipeline(url_or_id: str, output_path: str = None) -> str:
     script_data = generate_comedy_script_with_gemini(edited_video)
     speech_lines = script_data.get("speech", [])
     print(f"[Step 3/4] Script generated: '{script_data.get('title')}' ({len(speech_lines)} Liam speech lines)")
+    print(f"   [Description] {script_data.get('description', '')}")
+    print(f"   [Tags] {script_data.get('tags', [])}")
     for row in speech_lines:
         print(f"   [Script Line] [{row[1]}s] {row[2]}")
 
