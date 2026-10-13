@@ -301,6 +301,8 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
                                 print(f"[Editor Pass 1] Full Backstory: {full_backstory}")
                                 print(f"[Editor Pass 1] Story Arc Summary: {chosen_summary}")
                                 break
+                    else:
+                        print(f"[Editor Pass 1] Model {model} returned HTTP {res.status_code}: {res.text[:200]}")
                 except Exception as ex:
                     print(f"[Editor Pass 1] Model {model} notice: {ex}")
             if chosen_start is not None:
@@ -501,28 +503,75 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
                                 pass
                             print(f"[Gemini Pass 2] Received {len(norm_data['speech'])} clear, family-safe storytelling lines from {model}!")
                             return norm_data
+                    else:
+                        print(f"[Gemini Pass 2] Model {model} returned HTTP {res.status_code}: {res.text[:200]}")
                 except Exception as ex_m:
                     print(f"[Gemini Pass 2] Model {model} attempt: {ex_m}")
         except Exception as e:
             print(f"[Gemini Pass 2] API error: {e}")
 
-    print("[Gemini Pass 2] Using dynamic comedy fallback...")
-    step_interval = max(4.5, total_dur / 10.0)
+    # Fallback to OpenRouter if available
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    if openrouter_key:
+        print("[Gemini Pass 2] Trying OpenRouter fallback for video script...")
+        for or_model in ["google/gemini-2.0-flash-exp:free", "google/gemini-flash-1.5", "openai/gpt-4o-mini"]:
+            try:
+                or_headers = {
+                    "Authorization": f"Bearer {openrouter_key}",
+                    "Content-Type": "application/json"
+                }
+                or_payload = {
+                    "model": or_model,
+                    "messages": [
+                        {"role": "system", "content": "You are a hilarious, crystal-clear comedy video storyteller for YouTube Shorts. Return ONLY valid JSON."},
+                        {"role": "user", "content": f"{prompt}\n(Total Duration: {total_dur:.1f}s. Return 11-12 lines from 0.5s to {total_dur-2.5:.1f}s)"}
+                    ]
+                }
+                r_or = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=or_headers, json=or_payload, timeout=40)
+                if r_or.status_code == 200:
+                    raw_text = r_or.json()["choices"][0]["message"]["content"].strip()
+                    clean_json = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text).strip()
+                    data = json.loads(clean_json)
+                    clean_speech = []
+                    for sp in data.get("speech", []):
+                        s_id = sp[0] if len(sp) > 2 else f"line_{len(clean_speech):02d}"
+                        s_t = float(sp[1]) if len(sp) > 2 else 0.5
+                        s_txt = str(sp[2]) if len(sp) > 2 else str(sp[0])
+                        s_clean = sanitize_speech_text(s_txt)
+                        if len(s_clean.split()) >= 2:
+                            clean_speech.append([s_id, s_t, s_clean])
+                    data["speech"] = clean_speech
+                    if len(data["speech"]) >= 6:
+                        print(f"[Gemini Pass 2] OpenRouter ({or_model}) generated {len(data['speech'])} storytelling lines!")
+                        return normalize_script_timeline(data, total_dur)
+                else:
+                    print(f"[OpenRouter] {or_model} returned {r_or.status_code}")
+            except Exception as e_or:
+                print(f"[OpenRouter] error: {e_or}")
+
+    print(f"[Gemini Pass 2] Using dynamic 12-line comedy storyteller across FULL {total_dur:.1f}s video...")
+    fallback_story_lines = [
+        "Watch how this hilarious prank plan starts unfolding right here!",
+        "Look at their sheer confidence right before the chaos begins!",
+        "He really thought he had the smartest trick in the village!",
+        "So they immediately activate a super sneaky backup plan!",
+        "Wait for it... this is where the whole mission goes sideways!",
+        "The neighbor lady is watching every move they make!",
+        "He tries to charm his way out with a smooth distraction!",
+        "Look at his face when reality completely backfires on him!",
+        "Now he is running for his life with maximum panic!",
+        "His buddy completely abandoned the mission to save himself!",
+        "You can never outsmart someone who caught you red-handed!",
+        "And that instant karma at the end is pure comedy gold!"
+    ]
+    step_interval = max(4.5, (total_dur - 4.0) / len(fallback_story_lines))
     generic_beats = []
     t = 0.5
-    idx = 1
-    for line in [
-        "Watch how this clever prank plan starts unfolding right here.",
-        "Look at their sheer confidence right before the chaos begins.",
-        "So they immediately come up with a sneaky backup plan.",
-        "Wait for it... this is where the whole trick goes sideways.",
-        "He really thought nobody would notice what just happened.",
-        "And that instant karma at the end is pure comedy gold."
-    ]:
-        if t < total_dur - 2.5:
+    for idx, line in enumerate(fallback_story_lines, 1):
+        if t <= total_dur - 2.0:
             generic_beats.append([f"line_{idx:02d}", round(t, 1), line])
             t += step_interval
-            idx += 1
+
     return {
         "title": "His Clever Prank Plan Backfired Instantly! 😂 #Shorts",
         "description": "He really thought his sneaky backup plan would work, until instant karma took over! 😂🔥 #Shorts #Comedy #Funny #Prank #Humor #Storytime",
@@ -530,7 +579,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
         "speech": generic_beats,
         "sfx": [
             ["vine_boom.mp3", 1.0, 0.85],
-            ["windows_error.mp3", min(round(total_dur * 0.5, 1), total_dur - 4.0), 0.85],
+            ["windows_error.mp3", min(round(total_dur * 0.4, 1), total_dur - 4.0), 0.85],
             ["oh_no_wheeze_laugh.mp3", max(0.5, round(total_dur - 2.5, 1)), 0.85]
         ]
     }
