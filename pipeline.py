@@ -17,7 +17,7 @@ from video_composer import compose_final_short, get_video_duration
 import build_meme_vault
 
 
-def run_pipeline(url_or_id: str, output_path: str = None) -> str:
+def run_pipeline(url_or_id: str, output_path: str = None, start_sec: float = None, end_sec: float = None) -> str:
     print("=" * 70)
     print("  AUTONOMOUS AI SHORTS ENGINE: 2-PASS GEMINI <60S EDITOR + 1:1 SYNC")
     print("=" * 70)
@@ -35,8 +35,8 @@ def run_pipeline(url_or_id: str, output_path: str = None) -> str:
     print(f"[Step 1/4] Playable raw video ready: {raw_video} ({raw_dur:.1f}s)")
 
     # Step 2 (Pass 1): Gemini Master Editor condenses long video to ~60s connected story chapters
-    print(f"\n[Step 2/4] Pass 1: Gemini Master Editor analyzing {raw_dur:.1f}s video for smooth <60s story cut...")
-    edited_video = condense_video_with_gemini(raw_video)
+    print(f"\n[Step 2/4] Pass 1: Master Editor analyzing {raw_dur:.1f}s video for smooth <60s story cut...")
+    edited_video = condense_video_with_gemini(raw_video, start_sec=start_sec, end_sec=end_sec)
     edited_dur = get_video_duration(edited_video)
     print(f"[Step 2/4] Condensed story video ready: {edited_video} ({edited_dur:.1f}s -> ~{edited_dur/1.15:.1f}s at 1.15x)")
 
@@ -64,10 +64,12 @@ def run_pipeline(url_or_id: str, output_path: str = None) -> str:
 def main():
     parser = argparse.ArgumentParser(description="Autonomous YouTube Shorts Pipeline (2-Pass Gemini <60s Editor + 1:1 Sync)")
     parser.add_argument("--url", default="https://v.kuaishou.com/JnEKe8PN", help="Kuaishou/Douyin video URL or photo ID")
+    parser.add_argument("--start", type=float, default=None, help="Optional start timestamp in seconds")
+    parser.add_argument("--end", type=float, default=None, help="Optional end timestamp in seconds")
     parser.add_argument("--output", default=None, help="Output path for the generated Short video")
     args = parser.parse_args()
 
-    out = run_pipeline(args.url, args.output)
+    out = run_pipeline(args.url, output_path=args.output, start_sec=args.start, end_sec=args.end)
     print(f"\nPipeline finished successfully! Final output file: {out}")
 
 
