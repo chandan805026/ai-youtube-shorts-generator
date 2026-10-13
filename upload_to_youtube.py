@@ -139,6 +139,73 @@ def run_youtube_server_diagnosis():
 
 
 
+def sanitize_youtube_metadata(text: str) -> str:
+    if not text:
+        return ""
+    import re
+    safe_replacements = [
+        (r'\bholding\s+(.*?)\s+hostage\b', r'using \1 as a bargaining chip'),
+        (r'\bheld\s+(.*?)\s+hostage\b', r'used \1 as a bargaining chip'),
+        (r'\bhostage\b', 'prank'),
+        (r'\blive\s+bomb\b', 'firecracker'),
+        (r'\bbomb\b', 'firecracker'),
+        (r'\bcommit\s+a\s+crime\b', 'lose her temper'),
+        (r'\bcrime\b', 'prank'),
+        (r'\bnear\s+death\s+experience\b', 'hilarious close call'),
+        (r'\bdeath\b', 'disaster'),
+        (r'\bdead\b', 'done for'),
+        (r'\bkilled\b', 'busted'),
+        (r'\bkill\b', 'catch'),
+        (r'\bmurder\b', 'trouble'),
+        (r'\bsuicide\b', 'mistake'),
+        (r'\bkidnapped\b', 'carried away'),
+        (r'\bkidnap\b', 'carry away'),
+        (r'\bterrorist\b', 'prankster'),
+        (r'\bweapon\b', 'prop'),
+        (r'\bgun\b', 'water blaster'),
+        (r'\bliquor\b', 'secret drink'),
+        (r'\balcohol\b', 'secret drink'),
+    ]
+    for pat, repl in safe_replacements:
+        text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+    return text.strip()
+
+
+def build_dynamic_tags(title: str, desc: str, custom_tags=None) -> list:
+    import re
+    base_tags = ["Shorts", "Comedy", "Funny", "Humor", "Viral", "Storytime", "Prank"]
+    if custom_tags:
+        if isinstance(custom_tags, str):
+            extra = [t.strip() for t in custom_tags.split(",") if t.strip()]
+        else:
+            extra = [str(t).strip() for t in custom_tags if str(t).strip()]
+    else:
+        extra = []
+
+    # Extract meaningful topic keywords from title & description
+    stop_words = {
+        "the", "and", "for", "his", "her", "their", "when", "with", "from", "that",
+        "this", "into", "until", "would", "could", "really", "thought", "plan",
+        "actually", "worked", "backfired", "instantly", "shorts", "funny", "comedy",
+        "watch", "like", "share", "subscribe", "daily", "hilarious", "stories", "story"
+    }
+    words = re.findall(r'[A-Za-z]{4,14}', f"{title} {desc}")
+    for w in words:
+        lw = w.lower()
+        if lw not in stop_words and lw not in {"hostage", "bomb", "crime", "kill", "death", "rooster", "barnyard"}:
+            cap_w = w.capitalize()
+            if cap_w not in base_tags and cap_w not in extra:
+                extra.append(cap_w)
+            if len(extra) >= 7:
+                break
+
+    final_tags = []
+    for t in base_tags + extra:
+        if t not in final_tags and t.lower() not in {"rooster", "barnyard"}:
+            final_tags.append(t)
+    return final_tags[:14]
+
+
 def upload_short(video_source=None, title=None, desc=None, tags=None, publish_at=None):
     if video_source == "DIAGNOSE":
         run_youtube_server_diagnosis()
@@ -160,13 +227,11 @@ def upload_short(video_source=None, title=None, desc=None, tags=None, publish_at
             f.write(resp.read())
         video_path = local_dl
     else:
-        # Search locally
         files = glob.glob("viral_short_*.mp4") or glob.glob("viral_short.mp4")
         if files:
             video_path = files[0]
         else:
-            # Fallback to current Uguu live backup stream
-            backup_url = "https://n.uguu.se/ssEHaavH.mp4"
+            backup_url = "https://n.uguu.se/JytmzlvD.mp4"
             local_dl = "viral_short_target.mp4"
             print(f"📥 Downloading latest rendered short from backup stream: {backup_url}...")
             req = urllib.request.Request(backup_url, headers={"User-Agent": "Mozilla/5.0"})
@@ -219,23 +284,30 @@ def upload_short(video_source=None, title=None, desc=None, tags=None, publish_at
 
     yt_service = build("youtube", "v3", credentials=creds)
 
+    # Check if latest_metadata.json exists for automatic metadata
+    saved_meta = {}
+    if os.path.exists("latest_metadata.json"):
+        try:
+            with open("latest_metadata.json", "r", encoding="utf-8") as mf:
+                saved_meta = json.load(mf)
+        except Exception:
+            pass
+
     if not title:
-        title = "Gary's Tactical Barnyard Prison Break! 🐔🍷 #Shorts"
+        title = saved_meta.get("title") or "His Clever Prank Plan Backfired Instantly! 😂 #Shorts"
 
     if not desc:
-        desc = (
-            "Gary attempts the ultimate tactical escape from Brenda's strict barnyard lockdown! 😂\n\n"
-            "From an undercover wine shuttle to green laser distress SOS signals and a covert phone recycling heist, "
-            "watch the unbelievable escape unfold! 🐔🍷\n\n"
-            "🎙️ Narrated with British comedic flair by Liam.\n\n"
-            "🔔 Like, Share and Subscribe for Gary's next legendary escape mission!\n\n"
-            "#Shorts #Comedy #Funny #Escape #Rooster #Viral #Storytelling #Humor #Relatable #ShortsFeed #Trending"
+        desc = saved_meta.get("description") or (
+            "He really thought his sneaky backup plan would work, until instant karma took over! 😂🔥\n\n"
+            "🔔 Subscribe for daily hilarious comedy stories!\n\n"
+            "#Shorts #Comedy #Funny #Prank #Humor #Storytime #Viral #Laughter"
         )
 
-    tags = [
-        "Shorts", "Comedy", "Funny", "Viral", "Humor", "Storytime",
-        "Barnyard", "Escape", "Meme", "Trending", "Rooster", "BritishNarrator"
-    ]
+    title = sanitize_youtube_metadata(title)
+    if "#Shorts" not in title and "#shorts" not in title:
+        title = f"{title} #Shorts"
+    desc = sanitize_youtube_metadata(desc)
+    final_tags = build_dynamic_tags(title, desc, tags or saved_meta.get("tags"))
 
     status_dict = {
         "privacyStatus": "private" if publish_at else "public",
@@ -248,15 +320,18 @@ def upload_short(video_source=None, title=None, desc=None, tags=None, publish_at
         "snippet": {
             "title": title,
             "description": desc,
-            "tags": tags,
-            "categoryId": "23"  # Comedy category
+            "tags": final_tags,
+            "categoryId": "23",  # Comedy category
+            "defaultLanguage": "en",
+            "defaultAudioLanguage": "en"
         },
         "status": status_dict
     }
 
     print(f"\n📺 Publishing YouTube Short:")
     print(f"   📌 Title: {title}")
-    print(f"   📂 Category: Comedy (23)")
+    print(f"   🏷️  Tags ({len(final_tags)}): {final_tags}")
+    print(f"   📂 Category: Comedy (23) | Language: en")
     if publish_at:
         print(f"   ⏰ Scheduled Publish Time: {publish_at} (Private until release)")
     else:
@@ -283,7 +358,6 @@ def upload_short(video_source=None, title=None, desc=None, tags=None, publish_at
     print(f"📱 YouTube Short Link: {yt_short_url}")
     print("=" * 60)
 
-    # Write summary for GitHub Actions if available
     summary_file = os.getenv("GITHUB_STEP_SUMMARY")
     if summary_file and os.path.exists(summary_file):
         with open(summary_file, "a", encoding="utf-8") as sf:
@@ -299,7 +373,9 @@ if __name__ == "__main__":
     parser.add_argument("--video", default=None, help="Video file path or HTTP stream URL")
     parser.add_argument("--title", default=None, help="Video Title")
     parser.add_argument("--desc", default=None, help="Video Description")
+    parser.add_argument("--tags", default=None, help="Comma-separated custom tags")
     parser.add_argument("--publish-at", default=None, help="Scheduled publish time in ISO-8601 UTC")
     args = parser.parse_args()
 
-    upload_short(video_source=args.video, title=args.title, desc=args.desc, publish_at=args.publish_at)
+    upload_short(video_source=args.video, title=args.title, desc=args.desc, tags=args.tags, publish_at=args.publish_at)
+
