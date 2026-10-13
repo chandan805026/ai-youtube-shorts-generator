@@ -273,7 +273,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
             if not file_uri:
                 continue
 
-            for model in ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"]:
+            for model in ["gemini-1.5-flash", "gemini-2.0-flash-exp", "gemini-flash-latest", "gemini-1.5-pro"]:
                 try:
                     gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
                     payload = {
@@ -453,7 +453,7 @@ Return ONLY valid JSON (no markdown backticks, no extra text):
                 continue
 
             print(f"[Gemini Pass 2] Prompting Gemini for Clear Connected Story Script on {total_dur:.1f}s unbroken video...")
-            for model in ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"]:
+            for model in ["gemini-1.5-flash", "gemini-2.0-flash-exp", "gemini-flash-latest", "gemini-1.5-pro"]:
                 try:
                     gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
                     payload = {
