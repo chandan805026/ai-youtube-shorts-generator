@@ -11,33 +11,46 @@ ELEVEN_VOICE_ID = "TX3LPaxmHKxFdv7VOQHJ"  # Liam - #1 Viral High-Energy Comedy &
 EDGE_FALLBACK_VOICE = "en-US-ChristopherNeural"   # Expressive American Male Fallback
 
 
+_CACHED_VAULT = None
+
+
 def load_vault():
+    global _CACHED_VAULT
+    if _CACHED_VAULT is not None:
+        return _CACHED_VAULT
+
     # 1. Check environment variable (for GitHub Actions)
     pool_env = os.environ.get("ELEVENLABS_KEYS_POOL")
     if pool_env:
         try:
-            return json.loads(pool_env)
+            _CACHED_VAULT = json.loads(pool_env)
+            return _CACHED_VAULT
         except Exception:
             pass
 
     # 2. Check local vault file
     if os.path.exists(LOCAL_VAULT_PATH):
         with open(LOCAL_VAULT_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+            _CACHED_VAULT = json.load(f)
+            return _CACHED_VAULT
 
     # 3. Fallback to single ELEVENLABS_API_KEY
     single_key = os.environ.get("ELEVENLABS_API_KEY")
     if single_key:
-        return {
+        _CACHED_VAULT = {
             "keys": [
                 {"id": 1, "key": single_key, "status": "active", "limit": 10000, "remaining": 10000}
             ]
         }
+        return _CACHED_VAULT
 
-    return {"keys": []}
+    _CACHED_VAULT = {"keys": []}
+    return _CACHED_VAULT
 
 
 def save_vault(vault_data):
+    global _CACHED_VAULT
+    _CACHED_VAULT = vault_data
     if os.path.exists(LOCAL_VAULT_PATH):
         try:
             with open(LOCAL_VAULT_PATH, "w", encoding="utf-8") as f:
