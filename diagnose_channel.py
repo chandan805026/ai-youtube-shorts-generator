@@ -1,37 +1,34 @@
 import os
 import json
-from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
-from googleapiclient.discovery import build
+import requests
 
-client_id = os.getenv("YOUTUBE_CLIENT_ID", "").strip()
-client_secret = os.getenv("YOUTUBE_CLIENT_SECRET", "").strip()
-refresh_token = os.getenv("YOUTUBE_REFRESH_TOKEN", "").strip()
-
-creds = Credentials(
-    token=None,
-    refresh_token=refresh_token,
-    token_uri="https://oauth2.googleapis.com/token",
-    client_id=client_id,
-    client_secret=client_secret
-)
-creds.refresh(Request())
-yt = build("youtube", "v3", credentials=creds)
+api_key = os.getenv("GEMINI_API_KEY", "").strip()
 
 print("=" * 70)
-print("  FORENSIC YOUTUBE VIDEO INVESTIGATION")
+print("  FORENSIC YOUTUBE VIDEO INVESTIGATION (API KEY METHOD)")
 print("=" * 70)
 
 vids_to_check = ["Su6i4eFRV5E", "AtqtNMnL-xo", "14XiUbqjqvw", "dAnG1SZQFbc", "8NXyPlkPtVY"]
-v_resp = yt.videos().list(
-    part="snippet,status,statistics,contentDetails",
-    id=",".join(vids_to_check)
-).execute()
+url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet,status,contentDetails,statistics&id={','.join(vids_to_check)}&key={api_key}"
 
-print(f"Found {len(v_resp.get('items', []))} videos:")
-for v in v_resp.get("items", []):
-    print("\n------------------------------------------------------------")
-    print(f"VIDEO ID: {v.get('id')}")
-    print(f"Title: {v.get('snippet', {}).get('title')}")
-    print(f"Status: {json.dumps(v.get('status'), indent=2)}")
-    print(f"Statistics: {json.dumps(v.get('statistics'), indent=2)}")
+r = requests.get(url)
+print(f"API Response Code: {r.status_code}")
+if r.status_code == 200:
+    data = r.json()
+    items = data.get("items", [])
+    print(f"Total videos returned by YouTube API: {len(items)}")
+    found_ids = [item["id"] for item in items]
+    print(f"Found IDs: {found_ids}")
+    
+    for v in items:
+        print("\n------------------------------------------------------------")
+        print(f"VIDEO ID: {v.get('id')}")
+        print(f"Title: {v.get('snippet', {}).get('title')}")
+        print(f"Status: {json.dumps(v.get('status'), indent=2)}")
+        print(f"Statistics: {json.dumps(v.get('statistics'), indent=2)}")
+        
+    for vid in vids_to_check:
+        if vid not in found_ids:
+            print(f"\n⚠️ CRITICAL: Video {vid} was COMPLETELY EXPUNGED / DELETED from YouTube database!")
+else:
+    print("API Error Response:", r.text[:500])
