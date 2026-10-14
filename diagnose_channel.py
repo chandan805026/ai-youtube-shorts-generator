@@ -19,31 +19,19 @@ creds.refresh(Request())
 yt = build("youtube", "v3", credentials=creds)
 
 print("=" * 70)
-print("  FORENSIC YOUTUBE CHANNEL & VIDEO INVESTIGATION")
+print("  FORENSIC YOUTUBE VIDEO INVESTIGATION")
 print("=" * 70)
 
-# 1. Channel Details & Status
-ch_resp = yt.channels().list(part="snippet,statistics,status,contentDetails", mine=True).execute()
-for ch in ch_resp.get("items", []):
-    print("\n[CHANNEL STATUS]:")
-    print(json.dumps({
-        "id": ch.get("id"),
-        "title": ch.get("snippet", {}).get("title"),
-        "status": ch.get("status"),
-        "statistics": ch.get("statistics")
-    }, indent=2))
-
-# 2. Query target videos: Su6i4eFRV5E, AtqtNMnL-xo, 14XiUbqjqvw, dAnG1SZQFbc
 vids_to_check = ["Su6i4eFRV5E", "AtqtNMnL-xo", "14XiUbqjqvw", "dAnG1SZQFbc", "8NXyPlkPtVY"]
 v_resp = yt.videos().list(
-    part="snippet,status,statistics,contentDetails,processingDetails",
+    part="snippet,status,statistics,contentDetails",
     id=",".join(vids_to_check)
 ).execute()
 
-print("\n[VIDEO DETAILED STATUSES]:")
+print(f"Found {len(v_resp.get('items', []))} videos:")
 for v in v_resp.get("items", []):
     print("\n------------------------------------------------------------")
-    print(f"VIDEO ID: {v.get('id')} | Title: {v.get('snippet', {}).get('title')}")
+    print(f"VIDEO ID: {v.get('id')}")
+    print(f"Title: {v.get('snippet', {}).get('title')}")
     print(f"Status: {json.dumps(v.get('status'), indent=2)}")
-    print(f"Processing Details: {json.dumps(v.get('processingDetails'), indent=2)}")
     print(f"Statistics: {json.dumps(v.get('statistics'), indent=2)}")
