@@ -1,0 +1,57 @@
+name: Autonomous Bilibili Cloud Publisher
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: 'Bilibili Video URL'
+        required: true
+        default: 'https://www.bilibili.com/video/BV1My5S64Ebk'
+      title:
+        description: 'YouTube Short Title'
+        required: true
+        default: 'When You Try To Mimic A 100-Ton Hydraulic Press! 😂 #Shorts'
+      desc:
+        description: 'YouTube Short Description'
+        required: false
+        default: 'Can a human actually imitate a hydraulic press crushing a fluffy monster?! Her facial expressions are 100% accurate! 😂🔥 #Shorts #Comedy #HydraulicPress #Funny #Reaction #Viral #Challenge'
+
+jobs:
+  cloud-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Setup FFmpeg and System Fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu fonts-liberation fontconfig
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install yt-dlp edge-tts requests google-api-python-client google-auth-httplib2 google-auth-oauthlib
+
+      - name: Run 100% Cloud Pipeline & Publish To YouTube
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_KEYS_POOL: ${{ secrets.ELEVENLABS_KEYS_POOL }}
+        run: |
+          python process_bilibili_cloud_short.py --url "${{ github.event.inputs.video_url }}" --title "${{ github.event.inputs.title }}" --desc "${{ github.event.inputs.desc }}" --upload
+
+      - name: Upload Generated Short as Preview Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-bilibili-short
+          path: final_cloud_short.mp4
+          retention-days: 7
