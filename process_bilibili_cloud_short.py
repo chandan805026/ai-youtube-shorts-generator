@@ -1,8 +1,10 @@
 import os
 import sys
 import json
+import time
 import subprocess
 import argparse
+import urllib.request
 import yt_dlp
 from tts_rotator import synthesize_speech
 import build_meme_vault
@@ -15,7 +17,22 @@ if sys.stdout:
         pass
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FFMPEG_BIN = "ffmpeg"
+
+def get_bilibili_cookie():
+    try:
+        req = urllib.request.Request(
+            'https://api.bilibili.com/x/frontend/finger/spi',
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36', 'Referer': 'https://www.bilibili.com/'}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            b3 = data.get('data', {}).get('b_3')
+            if b3:
+                print(f"[Downloader] Generated fresh Bilibili buvid3 token: {b3[:15]}...")
+                return f"buvid3={b3}; b_nut={int(time.time())}"
+    except Exception as e:
+        print("[Downloader] Notice fetching SPI cookie:", e)
+    return "buvid3=6EA88FF2-65FF-DCA9-4B8B-794F121676FC01753infoc; b_nut=1728994393"
 
 def get_video_info(video_path):
     cmd = [
@@ -44,25 +61,25 @@ def run_cloud_pipeline(video_url: str, title: str = None, desc: str = None, auto
     print("🚀 AUTONOMOUS BILIBILI CLOUD SHORTS ENGINE (100% GITHUB ACTIONS)")
     print("=" * 70)
 
-    # 1. Ensure Meme Vault Sounds are downloaded
+    # 1. Initialize Meme Sounds
     print("\n[Step 1/5] Initializing Cloud SFX & Music Vault...")
     if hasattr(build_meme_vault, "download_all"):
         build_meme_vault.download_all()
     elif hasattr(build_meme_vault, "download_meme_sounds"):
         build_meme_vault.download_meme_sounds()
 
-    # 2. Download Raw Bilibili Video with yt-dlp
+    # 2. Download Raw Video
     print(f"\n[Step 2/5] Downloading Bilibili Video from Cloud Edge: {video_url}...")
-    raw_path = os.path.join(BASE_DIR, "raw_bilibili_video.mp4")
-    if os.path.exists(raw_path):
-        os.remove(raw_path)
+    cookie_str = get_bilibili_cookie()
 
+    out_tmpl = os.path.join(BASE_DIR, 'raw_bilibili_video.%(ext)s')
     ydl_opts = {
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-        'outtmpl': os.path.join(BASE_DIR, 'raw_bilibili_video.%(ext)s'),
+        'outtmpl': out_tmpl,
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Referer': 'https://www.bilibili.com'
+            'Referer': 'https://www.bilibili.com/',
+            'Cookie': cookie_str
         },
         'quiet': False
     }
@@ -70,17 +87,16 @@ def run_cloud_pipeline(video_url: str, title: str = None, desc: str = None, auto
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([video_url])
 
-    # Find the downloaded file
-    actual_files = [f for f in os.listdir(BASE_DIR) if f.startswith('raw_bilibili_video')]
+    actual_files = [f for f in os.listdir(BASE_DIR) if f.startswith('raw_bilibili_video.') and not f.endswith(('.f100026.mp4', '.f30280.m4a'))]
     if not actual_files:
-        raise FileNotFoundError("Bilibili video download failed!")
+        raise FileNotFoundError("Could not find merged downloaded Bilibili MP4!")
     raw_video = os.path.join(BASE_DIR, actual_files[0])
     print(f"Downloaded raw video: {raw_video} ({os.path.getsize(raw_video)/(1024*1024):.2f} MB)")
 
     width, height, total_dur = get_video_info(raw_video)
     print(f"Raw Video Dimensions: {width}x{height}, Duration: {total_dur:.2f}s")
 
-    # 3. Script Lines & Voiceover
+    # 3. Voiceover Generation
     print("\n[Step 3/5] Generating ElevenLabs High-Energy Voiceover...")
     script_lines = [
         {"id": "line_01", "start": 0.5, "text": "Can a human actually mimic a 100-ton hydraulic press?!"},
@@ -95,7 +111,6 @@ def run_cloud_pipeline(video_url: str, title: str = None, desc: str = None, auto
     for item in script_lines:
         out_mp3 = os.path.join(BASE_DIR, f"tts_{item['id']}.mp3")
         synthesize_speech(item["text"], out_mp3)
-        # probe duration
         cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json", out_mp3]
         pr = subprocess.run(cmd, capture_output=True, text=True)
         dur = float(json.loads(pr.stdout)["format"]["duration"])
@@ -104,7 +119,7 @@ def run_cloud_pipeline(video_url: str, title: str = None, desc: str = None, auto
         item["mp3"] = out_mp3
         print(f"  -> Generated line {item['id']} ({dur:.2f}s): {item['text']}")
 
-    # 4. Generate Subtitles ASS
+    # 4. ASS Subtitles
     print("\n[Step 4/5] Generating 1080x1920 ASS Subtitles...")
     ass_path = os.path.join(BASE_DIR, "bilibili_subtitles.ass")
     ass_header = """[Script Info]
@@ -115,8 +130,8 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Hook,Arial,56,&H0000FFFF,&H000000FF,&H00000000,&H90000000,-1,0,0,0,100,100,0,0,1,5,2,2,40,40,240,1
-Style: Story,Arial,52,&H00FFFFFF,&H000000FF,&H00000000,&H90000000,-1,0,0,0,100,100,0,0,1,5,2,2,40,40,240,1
+Style: Hook,DejaVu Sans,56,&H0000FFFF,&H000000FF,&H00000000,&H90000000,-1,0,0,0,100,100,0,0,1,5,2,2,40,40,240,1
+Style: Story,DejaVu Sans,52,&H00FFFFFF,&H000000FF,&H00000000,&H90000000,-1,0,0,0,100,100,0,0,1,5,2,2,40,40,240,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -130,7 +145,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     with open(ass_path, "w", encoding="utf-8") as f:
         f.write(ass_header)
 
-    # 5. Build Mixed Audio
+    # 5. Build Audio Mix
     bgm_path = os.path.join(BASE_DIR, "meme_sound_vault", "monkeys_spinning_monkeys.mp3")
     if not os.path.exists(bgm_path):
         bgm_path = os.path.join(BASE_DIR, "meme_sound_vault", "sneaky_snitch.mp3")
@@ -176,38 +191,52 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     ]
     subprocess.run(audio_full_cmd, check=True)
 
-    # 6. Render Final Video (Vertical 9:16 layout)
+    # 6. Render Final 9:16 Video
     print("\n[Step 5/5] Rendering High-Definition 1080x1920 Short with FFmpeg...")
     final_output = os.path.join(BASE_DIR, "final_cloud_short.mp4")
 
-    # If 16:9 split screen (left: hydraulic press, right: girl), stack vertically!
     if width > height:
         print("Detected 16:9 side-by-side split screen! Converting to Vertical Stack (Press on Top, Girl on Bottom)...")
-        vf_pipeline = (
+        filter_str = (
             f"[0:v]crop=960:1080:0:0,scale=1080:960[top];"
             f"[0:v]crop=960:1080:960:0,scale=1080:960[bottom];"
             f"[top][bottom]vstack[v_stack];"
-            f"[v_stack]subtitles='{ass_path}'[v_out]"
+            f"[v_stack]subtitles={ass_path}[v_out]"
         )
+        render_cmd = [
+            "ffmpeg", "-y",
+            "-i", raw_video,
+            "-i", master_audio,
+            "-filter_complex", filter_str,
+            "-map", "[v_out]",
+            "-map", "1:a:0",
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-crf", "18",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-t", str(total_dur),
+            final_output
+        ]
     else:
         print("Detected native vertical format! Applying subtitle overlay...")
-        vf_pipeline = f"subtitles='{ass_path}'"
+        filter_str = f"subtitles={ass_path}"
+        render_cmd = [
+            "ffmpeg", "-y",
+            "-i", raw_video,
+            "-i", master_audio,
+            "-vf", filter_str,
+            "-map", "0:v:0",
+            "-map", "1:a:0",
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-crf", "18",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-t", str(total_dur),
+            final_output
+        ]
 
-    render_cmd = [
-        "ffmpeg", "-y",
-        "-i", raw_video,
-        "-i", master_audio,
-        "-filter_complex" if width > height else "-vf", vf_pipeline,
-        "-map", "[v_out]" if width > height else "0:v:0",
-        "-map", "1:a:0",
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-crf", "18",
-        "-c:a", "aac",
-        "-b:a", "192k",
-        "-t", str(total_dur),
-        final_output
-    ]
     subprocess.run(render_cmd, check=True)
     print(f"\n✅ Video successfully rendered on Cloud: {final_output} ({os.path.getsize(final_output)/(1024*1024):.2f} MB)")
 
