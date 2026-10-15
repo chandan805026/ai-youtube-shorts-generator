@@ -34,6 +34,71 @@ def get_bilibili_cookie():
         print("[Downloader] Notice fetching SPI cookie:", e)
     return "buvid3=6EA88FF2-65FF-DCA9-4B8B-794F121676FC01753infoc; b_nut=1728994393"
 
+def download_cdn_stream(url, out_path, referer="https://www.bilibili.com/"):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': referer
+    }
+    req = urllib.request.Request(url, headers=headers)
+    print(f"[CDN Downloader] Direct stream download: {url[:70]}...")
+    with urllib.request.urlopen(req, timeout=45) as resp, open(out_path, 'wb') as f:
+        while True:
+            chunk = resp.read(1024 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
+    print(f"[CDN Downloader] Saved {out_path} ({os.path.getsize(out_path)/(1024*1024):.2f} MB)")
+
+def download_bilibili_video(video_url: str, out_merged_mp4: str) -> str:
+    manifest_path = os.path.join(BASE_DIR, "bilibili_stream_manifest.json")
+    if os.path.exists(manifest_path):
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+            bvid = manifest.get("bvid", "")
+            if bvid and (bvid in video_url or manifest.get("video_url") == video_url):
+                print(f"[Downloader] Using pre-resolved Akamai CDN streams for {video_url}...")
+                v_url = manifest["video_stream_url"]
+                a_url = manifest.get("audio_stream_url")
+                
+                v_m4s = os.path.join(BASE_DIR, "raw_stream_v.m4s")
+                download_cdn_stream(v_url, v_m4s)
+                
+                if a_url:
+                    a_m4s = os.path.join(BASE_DIR, "raw_stream_a.m4s")
+                    download_cdn_stream(a_url, a_m4s)
+                    cmd = ["ffmpeg", "-y", "-i", v_m4s, "-i", a_m4s, "-c:v", "copy", "-c:a", "aac", out_merged_mp4]
+                else:
+                    cmd = ["ffmpeg", "-y", "-i", v_m4s, "-c:v", "copy", out_merged_mp4]
+                
+                subprocess.run(cmd, check=True)
+                print(f"[Downloader] Remuxed video into {out_merged_mp4}")
+                return out_merged_mp4
+        except Exception as e:
+            print(f"[Downloader] Manifest download notice: {e}, attempting yt-dlp fallback...")
+
+    # Fallback to yt-dlp
+    cookie_str = get_bilibili_cookie()
+    out_tmpl = os.path.join(BASE_DIR, 'raw_bilibili_video.%(ext)s')
+    ydl_opts = {
+        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        'outtmpl': out_tmpl,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://www.bilibili.com/',
+            'Cookie': cookie_str
+        },
+        'quiet': False
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([video_url])
+
+    actual_files = [f for f in os.listdir(BASE_DIR) if f.startswith('raw_bilibili_video.') and not f.endswith(('.f100026.mp4', '.f30280.m4a'))]
+    if not actual_files:
+        raise FileNotFoundError("Could not find merged downloaded Bilibili MP4!")
+    return os.path.join(BASE_DIR, actual_files[0])
+
 def get_video_info(video_path):
     cmd = [
         "ffprobe", "-v", "error",
@@ -46,9 +111,9 @@ def get_video_info(video_path):
     try:
         data = json.loads(res.stdout)
         st = data["streams"][0]
-        return int(st["width"]), int(st["height"]), float(st.get("duration", 30.0))
+        return int(st["width"]), int(st["height"]), float(st.get("duration", 30.79))
     except Exception:
-        return 1920, 1080, 30.8
+        return 1920, 1080, 30.79
 
 def fmt_ass_time(sec):
     h = int(sec // 3600)
@@ -70,27 +135,8 @@ def run_cloud_pipeline(video_url: str, title: str = None, desc: str = None, auto
 
     # 2. Download Raw Video
     print(f"\n[Step 2/5] Downloading Bilibili Video from Cloud Edge: {video_url}...")
-    cookie_str = get_bilibili_cookie()
-
-    out_tmpl = os.path.join(BASE_DIR, 'raw_bilibili_video.%(ext)s')
-    ydl_opts = {
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-        'outtmpl': out_tmpl,
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Referer': 'https://www.bilibili.com/',
-            'Cookie': cookie_str
-        },
-        'quiet': False
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([video_url])
-
-    actual_files = [f for f in os.listdir(BASE_DIR) if f.startswith('raw_bilibili_video.') and not f.endswith(('.f100026.mp4', '.f30280.m4a'))]
-    if not actual_files:
-        raise FileNotFoundError("Could not find merged downloaded Bilibili MP4!")
-    raw_video = os.path.join(BASE_DIR, actual_files[0])
+    merged_target = os.path.join(BASE_DIR, "raw_bilibili_video.mp4")
+    raw_video = download_bilibili_video(video_url, merged_target)
     print(f"Downloaded raw video: {raw_video} ({os.path.getsize(raw_video)/(1024*1024):.2f} MB)")
 
     width, height, total_dur = get_video_info(raw_video)
@@ -151,7 +197,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         bgm_path = os.path.join(BASE_DIR, "meme_sound_vault", "sneaky_snitch.mp3")
 
     sfx_cues = [
-        {"file": "vine_boom.mp3", "time": 0.5, "volume": 0.6},
+        {"file": "metal_pipe.mp3", "time": 0.5, "volume": 0.6},
         {"file": "anime_wow.mp3", "time": 26.5, "volume": 0.7}
     ]
 
