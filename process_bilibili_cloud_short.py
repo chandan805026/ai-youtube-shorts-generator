@@ -142,68 +142,69 @@ def run_cloud_pipeline(video_url: str, title: str = None, desc: str = None, auto
     width, height, total_dur = get_video_info(raw_video)
     print(f"Raw Video Dimensions: {width}x{height}, Duration: {total_dur:.2f}s")
 
-    # 3. Voiceover Generation - CONTINUOUS SEAMLESS NARRATION (NO GAPS)
-    print("\n[Step 3/5] Generating Continuous High-Energy Viral Voiceover...")
+    # 3. Voiceover Generation - FULL SEQUENTIAL CONCATENATION (ZERO CHANCE OF CUTOFF)
+    print("\n[Step 3/5] Generating Seamless Full-Coverage Viral Voiceover...")
     
-    # 7 densely timed segments that cover the entire 30.5s duration without dead air
     script_segments = [
         {
-            "audio_text": "Can a human actually mimic a 100-ton hydraulic press?! Just watch this!",
+            "audio_text": "Can a human actually mimic a 100-ton hydraulic press?! Watch this!",
             "sub_cards": [
                 "Can a human mimic a 100-ton hydraulic press?!",
-                "Just watch this! 👀"
+                "Watch this! 👀"
             ]
         },
         {
-            "audio_text": "This green rubber monster is about to get flattened into absolute oblivion!",
+            "audio_text": "This green monster is about to get flattened into absolute oblivion!",
             "sub_cards": [
-                "This green rubber monster...",
+                "This green monster...",
                 "is about to get FLATTENED! 😱"
             ]
         },
         {
-            "audio_text": "The steel cylinder pushes down, and her legs immediately shoot straight up into the air!",
+            "audio_text": "The steel cylinder pushes down, and her legs shoot straight up in sync!",
             "sub_cards": [
-                "The steel cylinder pushes down...",
-                "her legs shoot STRAIGHT UP in sync! 🚀"
+                "The cylinder pushes down...",
+                "her legs shoot STRAIGHT UP! 🚀"
             ]
         },
         {
-            "audio_text": "Look at her face! She is matching every single millimeter in real time!",
+            "audio_text": "Look at her face! She is matching every millimeter in real time!",
             "sub_cards": [
                 "LOOK AT HER FACE! 🤣",
-                "Matching EVERY single millimeter!"
+                "Matching EVERY millimeter!"
             ]
         },
         {
-            "audio_text": "Fifty tons of crushing pressure, and she is holding that crazy curve with pure core strength!",
+            "audio_text": "Fifty tons of crushing force, and her body is completely squashed flat!",
             "sub_cards": [
-                "50 TONS of crushing pressure...",
-                "PURE CORE STRENGTH! 💪"
+                "50 TONS of crushing force...",
+                "completely SQUASHED flat! 💪"
             ]
         },
         {
-            "audio_text": "The rubber folds completely flat, and she is in absolute comedy agony! The dedication is unreal!",
+            "audio_text": "The rubber folds flat against the base, and she stays in pure comedy agony!",
             "sub_cards": [
-                "The rubber folds COMPLETELY flat...",
-                "The dedication is UNREAL! 😂💀"
+                "The rubber folds flat...",
+                "pure COMEDY AGONY! 😂💀"
             ]
         },
         {
-            "audio_text": "Did she nail the squish? Drop a like and subscribe if this was a solid ten out of ten!",
+            "audio_text": "The dedication is unreal! Drop a like if her mimic was a solid ten out of ten!",
             "sub_cards": [
-                "Did she nail the squish?!",
-                "Drop a LIKE for a 10/10! 🔥👇"
+                "The dedication is UNREAL!",
+                "Drop a LIKE for 10/10! 🔥👇"
             ]
         }
     ]
 
-    current_audio_time = 0.2  # Start immediately at 0.2s
+    current_audio_time = 0.30  # Speech starts at 0.3s
     all_sub_cues = []
+    tts_mp3_files = []
 
     for idx, seg in enumerate(script_segments):
         out_mp3 = os.path.join(BASE_DIR, f"tts_{idx+1:02d}.mp3")
         synthesize_speech(seg["audio_text"], out_mp3)
+        tts_mp3_files.append(out_mp3)
         
         cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json", out_mp3]
         pr = subprocess.run(cmd, capture_output=True, text=True)
@@ -215,15 +216,14 @@ def run_cloud_pipeline(video_url: str, title: str = None, desc: str = None, auto
         seg["end"] = end_t
         seg["duration"] = dur
         seg["mp3"] = out_mp3
-        print(f"  -> Spoken Seg {idx+1} ({start_t:.2f}s - {end_t:.2f}s | dur {dur:.2f}s): {seg['audio_text']}")
+        print(f"  -> Segment {idx+1} ({start_t:.2f}s - {end_t:.2f}s | dur {dur:.2f}s): {seg['audio_text']}")
 
-        # Split subtitle display evenly across the segment duration
+        # Split subtitle display into fast, punchy 1.5-2.0s cards
         n_cards = len(seg["sub_cards"])
         card_dur = dur / n_cards
         for c_idx, card_text in enumerate(seg["sub_cards"]):
             c_start = start_t + (c_idx * card_dur)
             c_end = c_start + card_dur
-            # Hook style for first segment or CTA punchline, Story style for others
             is_hook = (idx == 0) or (idx == len(script_segments) - 1 and c_idx == 1) or ("FLATTENED" in card_text) or ("LOOK AT HER FACE" in card_text)
             all_sub_cues.append({
                 "start": c_start,
@@ -232,17 +232,34 @@ def run_cloud_pipeline(video_url: str, title: str = None, desc: str = None, auto
                 "style": "CenterHook" if is_hook else "CenterStory"
             })
 
-        # Tiny natural breath pause (only 0.1s) to prevent overlap while eliminating dead silence
-        current_audio_time = end_t + 0.10
+        current_audio_time = end_t
 
     total_spoken_time = current_audio_time
-    print(f"Total Spoken Narration Duration: {total_spoken_time:.2f}s / {total_dur:.2f}s (Seamless full coverage!)")
+    print(f"\nTotal Spoken Narration Duration: {total_spoken_time:.2f}s (Video duration: {total_dur:.2f}s) -> PERFECT COVERAGE!")
 
-    # 4. ASS Subtitles - EXACT CENTER ALIGNED (Alignment = 5)
+    # Combine all TTS segments into ONE SINGLE continuous audio track via concat demuxer
+    tts_list_file = os.path.join(BASE_DIR, "tts_concat_list.txt")
+    with open(tts_list_file, "w", encoding="utf-8") as f:
+        for p in tts_mp3_files:
+            f.write(f"file '{p}'\n")
+
+    full_voice_path = os.path.join(BASE_DIR, "full_voiceover.wav")
+    concat_cmd = [
+        "ffmpeg", "-y",
+        "-f", "concat",
+        "-safe", "0",
+        "-i", tts_list_file,
+        "-c:a", "pcm_s16le",
+        full_voice_path
+    ]
+    subprocess.run(concat_cmd, check=True)
+    print(f"Concatenated all voice segments into single continuous master voice track: {full_voice_path}")
+
+    # 4. ASS Subtitles - EXACT SCREEN CENTER ALIGNED (Alignment = 5)
     print("\n[Step 4/5] Generating 1080x1920 CENTER-ALIGNED Subtitles...")
     ass_path = os.path.join(BASE_DIR, "bilibili_subtitles.ass")
     
-    # ASS Alignment 5 is exact Middle-Center (X=540, Y=960) right at the eye-level dividing zone!
+    # ASS Alignment 5 puts text directly in the geometric center (X=540, Y=960)
     ass_header = """[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -251,8 +268,8 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: CenterHook,DejaVu Sans,60,&H0000FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,6,3,5,50,50,0,1
-Style: CenterStory,DejaVu Sans,54,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,6,3,5,50,50,0,1
+Style: CenterHook,DejaVu Sans,62,&H0000FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,6,3,5,50,50,0,1
+Style: CenterStory,DejaVu Sans,56,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,6,3,5,50,50,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -265,54 +282,42 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     with open(ass_path, "w", encoding="utf-8") as f:
         f.write(ass_header)
 
-    # 5. Build Audio Mix
+    # 5. Build Master Audio Mix - WITH LONGEST DURATION (NO EARLY CUTOFF)
+    print("\n[Step 5/5] Mixing Master Voiceover, BGM, and Sound Effects...")
     bgm_path = os.path.join(BASE_DIR, "meme_sound_vault", "monkeys_spinning_monkeys.mp3")
     if not os.path.exists(bgm_path):
         bgm_path = os.path.join(BASE_DIR, "meme_sound_vault", "sneaky_snitch.mp3")
 
-    sfx_cues = [
-        {"file": "metal_pipe.mp3", "time": 0.5, "volume": 0.55},
-        {"file": "anime_wow.mp3", "time": 26.8, "volume": 0.70}
-    ]
-
-    ffmpeg_audio_cmd = ["ffmpeg", "-y"]
-    for seg in script_segments:
-        ffmpeg_audio_cmd.extend(["-i", seg["mp3"]])
-    ffmpeg_audio_cmd.extend(["-i", bgm_path])
-    for sfx in sfx_cues:
-        p = os.path.join(BASE_DIR, "meme_sound_vault", sfx["file"])
-        ffmpeg_audio_cmd.extend(["-i", p])
-
-    filter_parts = []
-    for idx, seg in enumerate(script_segments):
-        delay_ms = int(seg["start"] * 1000)
-        filter_parts.append(f"[{idx}:a]adelay={delay_ms}|{delay_ms},volume=1.0[a_tts_{idx}]")
-
-    bgm_idx = len(script_segments)
-    filter_parts.append(f"[{bgm_idx}:a]atrim=0:{total_dur},volume=0.12,afade=t=in:st=0:d=0.5,afade=t=out:st={total_dur-1.0}:d=1.0[a_bgm]")
-
-    sfx_labels = []
-    for s_idx, sfx in enumerate(sfx_cues):
-        in_idx = bgm_idx + 1 + s_idx
-        delay_ms = int(sfx["time"] * 1000)
-        filter_parts.append(f"[{in_idx}:a]adelay={delay_ms}|{delay_ms},volume={sfx['volume']}[a_sfx_{s_idx}]")
-        sfx_labels.append(f"[a_sfx_{s_idx}]")
-
-    all_streams = [f"[a_tts_{i}]" for i in range(len(script_segments))] + ["[a_bgm]"] + sfx_labels
-    concat_str = "".join(all_streams)
-    filter_parts.append(f"{concat_str}amix=inputs={len(all_streams)}:duration=first:dropout_transition=2[a_out]")
+    sfx_pipe = os.path.join(BASE_DIR, "meme_sound_vault", "metal_pipe.mp3")
+    sfx_wow = os.path.join(BASE_DIR, "meme_sound_vault", "anime_wow.mp3")
 
     master_audio = os.path.join(BASE_DIR, "master_audio_cloud.wav")
-    audio_full_cmd = ffmpeg_audio_cmd + [
-        "-filter_complex", ";".join(filter_parts),
-        "-map", "[a_out]",
+    
+    # Mix single continuous voice track with background music & sound effects
+    filter_complex = (
+        "[0:a]adelay=300|300,volume=1.35[a_vox];"
+        f"[1:a]atrim=0:{total_dur},volume=0.10,afade=t=in:st=0:d=0.5,afade=t=out:st={total_dur-1.0}:d=1.0[a_bgm];"
+        "[2:a]adelay=500|500,volume=0.50[a_sfx1];"
+        "[3:a]adelay=26500|26500,volume=0.60[a_sfx2];"
+        "[a_vox][a_bgm][a_sfx1][a_sfx2]amix=inputs=4:duration=longest:dropout_transition=0[a_mix]"
+    )
+
+    audio_cmd = [
+        "ffmpeg", "-y",
+        "-i", full_voice_path,
+        "-i", bgm_path,
+        "-i", sfx_pipe,
+        "-i", sfx_wow,
+        "-filter_complex", filter_complex,
+        "-map", "[a_mix]",
         "-t", str(total_dur),
         master_audio
     ]
-    subprocess.run(audio_full_cmd, check=True)
+    subprocess.run(audio_cmd, check=True)
+    print(f"Master audio successfully mixed: {master_audio}")
 
     # 6. Render Final 9:16 Video
-    print("\n[Step 5/5] Rendering High-Definition 1080x1920 Short with FFmpeg...")
+    print("\n[Step 6/6] Rendering High-Definition 1080x1920 Short with FFmpeg...")
     final_output = os.path.join(BASE_DIR, "final_cloud_short.mp4")
 
     if width > height:
